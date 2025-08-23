@@ -1,88 +1,111 @@
 package main
 
 import (
+	"log"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
+	"github.com/joho/godotenv"
 	"github.com/rivo/tview"
 )
 
-// selected line
-// 0x1B4248
+// loadColorFromEnv loads a color from environment variable in #AABBCC format
+// Falls back to defaultValue if not found or invalid
+func loadColorFromEnv(key string, defaultValue int32) tcell.Color {
+	hexStr := os.Getenv(key)
+	if hexStr == "" {
+		return tcell.NewHexColor(defaultValue)
+	}
 
-// background
-// 0x102529
+	// Remove '#' if present
+	hexStr = strings.TrimPrefix(hexStr, "#")
 
-// border
-// 0x95CEDA
+	// Parse hex string to int64
+	if colorValue, err := strconv.ParseInt(hexStr, 16, 32); err == nil {
+		return tcell.NewHexColor(int32(colorValue))
+	}
 
-// focus border
-// 0xFB4F49
-// 0xFF9F77
+	// Return default if parsing failed
+	return tcell.NewHexColor(defaultValue)
+}
 
-// title
-// 0xEBEBEB
-
-// Add these color definitions after your import statements.
 var (
-	//
-	terafoxBg     = tcell.NewHexColor(0x102529)
-	terafoxFg     = tcell.NewHexColor(0xe4e4e4)
-	terafoxBorder = tcell.NewHexColor(0x95CEDA)
-	terafoxTitle  = tcell.NewHexColor(0xEBEBEB)
-	terafoxFocus  = tcell.NewHexColor(0xFF9F77)
+	backgroundColor  tcell.Color
+	foregroundColor  tcell.Color
+	borderColor      tcell.Color
+	borderFocusColor tcell.Color
+	titleColor       tcell.Color
 )
 
-// newPanel now creates a panel with a title on its border, but with empty content.
+// loadRuneFromEnv loads a rune from an environment variable.
+// Falls back to defaultValue if not found or empty.
+func loadRuneFromEnv(key string, defaultValue rune) rune {
+	strValue := os.Getenv(key)
+	if strValue == "" {
+		return defaultValue
+	}
+	// Return the first rune of the string
+	for _, r := range strValue {
+		return r
+	}
+	return defaultValue
+}
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using defaults")
+	}
+
+	backgroundColor = loadColorFromEnv("BACKGROUND_COLOR", 0x000000)
+	foregroundColor = loadColorFromEnv("FOREGROUND_COLOR", 0xFFFFFF)
+	borderColor = loadColorFromEnv("BORDER_COLOR", 0x888888)
+	borderFocusColor = loadColorFromEnv("BORDER_FOCUS_COLOR", 0xFFFFFF)
+	titleColor = loadColorFromEnv("TITLE_COLOR", 0xFFFFFF)
+
+	// Load border characters from .env
+	tview.Borders.TopLeft = loadRuneFromEnv("BORDER_TOP_LEFT", '┌')
+	tview.Borders.TopRight = loadRuneFromEnv("BORDER_TOP_RIGHT", '┐')
+	tview.Borders.BottomLeft = loadRuneFromEnv("BORDER_BOTTOM_LEFT", '└')
+	tview.Borders.BottomRight = loadRuneFromEnv("BORDER_BOTTOM_RIGHT", '┘')
+	tview.Borders.Horizontal = loadRuneFromEnv("BORDER_HORIZONTAL", '─')
+	tview.Borders.Vertical = loadRuneFromEnv("BORDER_VERTICAL", '│')
+
+	tview.Borders.TopLeftFocus = loadRuneFromEnv("BORDER_TOP_LEFT_FOCUS", '┌')
+	tview.Borders.TopRightFocus = loadRuneFromEnv("BORDER_TOP_RIGHT_FOCUS", '┐')
+	tview.Borders.BottomLeftFocus = loadRuneFromEnv("BORDER_BOTTOM_LEFT_FOCUS", '└')
+	tview.Borders.BottomRightFocus = loadRuneFromEnv("BORDER_BOTTOM_RIGHT_FOCUS", '┘')
+	tview.Borders.HorizontalFocus = loadRuneFromEnv("BORDER_HORIZONTAL_FOCUS", '─')
+	tview.Borders.VerticalFocus = loadRuneFromEnv("BORDER_VERTICAL_FOCUS", '│')
+}
+
 func newPanel(title string) *tview.TextView {
 	tv := tview.NewTextView()
 	tv.SetBorder(true)
 	tv.SetTitle(title)
-	// Apply terafox theme
-	tv.SetBackgroundColor(terafoxBg)
-	tv.SetBorderColor(terafoxBorder)
-	tv.SetTitleColor(terafoxTitle)
-	tv.SetTextColor(terafoxFg)
+
+	tv.SetBackgroundColor(backgroundColor)
+	tv.SetBorderColor(borderColor)
+	tv.SetTitleColor(titleColor)
+	tv.SetTextColor(foregroundColor)
 	return tv
 }
 
 func main() {
-
-	// Define styles for focused and unfocused borders, without extra attributes.
-	unfocusedBorderStyle := tcell.StyleDefault.Foreground(terafoxBorder)
-	focusedBorderStyle := tcell.StyleDefault.Foreground(terafoxFocus)
-
-	// Define styles that explicitly remove the bold attribute.
-	// unfocusedBorderStyle := tcell.StyleDefault.
-	// 	Foreground(terafoxBorder).
-	// 	Attributes(tcell.AttrBold)
-	// focusedBorderStyle := tcell.StyleDefault.
-	// 	Foreground(terafoxFocus).
-	// 	Attributes(tcell.AttrBold)
+	unfocusedBorderStyle := tcell.StyleDefault.Foreground(borderColor)
+	focusedBorderStyle := tcell.StyleDefault.Foreground(borderFocusColor)
 
 	setFocusStyle := func(p *tview.TextView, focused bool) {
 		if focused {
 			p.SetBorderStyle(focusedBorderStyle)
-			// p.SetTitleColor(terafoxFocus)
+			p.SetBackgroundColor(backgroundColor)
 		} else {
 			p.SetBorderStyle(unfocusedBorderStyle)
-			// p.SetTitleColor(terafoxTitle)
+			p.SetBackgroundColor(backgroundColor)
 		}
 	}
 
-	tview.Borders.TopLeft = '┌'
-	tview.Borders.TopRight = '┐'
-	tview.Borders.BottomLeft = '└'
-	tview.Borders.BottomRight = '┘'
-	tview.Borders.Horizontal = '─'
-	tview.Borders.Vertical = '│'
-
-	tview.Borders.TopLeftFocus = '┌'
-	tview.Borders.TopRightFocus = '┐'
-	tview.Borders.BottomLeftFocus = '└'
-	tview.Borders.BottomRightFocus = '┘'
-	tview.Borders.HorizontalFocus = '─'
-	tview.Borders.VerticalFocus = '│'
-
-	// Use a tview.Application.
 	app := tview.NewApplication()
 
 	// Create the main panels of the layout.
@@ -124,7 +147,7 @@ func main() {
 	grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
 
 	// Add collections panel on the left.
-	grid.AddItem(collections, 1, 0, 1, 1, 0, 0, true) // Initially focused
+	grid.AddItem(collections, 1, 0, 1, 1, 0, 0, true)
 
 	// Add the right-side Flex layout (request/response) to the grid.
 	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
@@ -132,9 +155,6 @@ func main() {
 	// --- Focus and Navigation ---
 
 	// A slice of the panels that can be focused.
-	// panels := []tview.Primitive{collections, request, response}
-	// currentPanel := 0
-
 	currentFocus := 0
 	panels := []*tview.TextView{collections, request, response}
 
@@ -170,9 +190,6 @@ func main() {
 		// If we don't handle the key, return it to be processed by the focused widget.
 		return event
 	})
-
-	// Set the grid as the root widget and run the application.
-	grid.SetBackgroundColor(terafoxBg)
 
 	// Set the grid as the root widget and run the application.
 	if err := app.SetRoot(grid, true).SetFocus(collections).Run(); err != nil {
