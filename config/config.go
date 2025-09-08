@@ -11,17 +11,20 @@ import (
 )
 
 type AppConfig struct {
-	Theme ThemeConfig `mapstructure:"theme"`
+	Theme        ThemeConfig        `mapstructure:"theme"`
+	UI           UIConfig           `mapstructure:"ui"`
+	MethodColors MethodColorsConfig `mapstructure:"methodColors"`
 }
 
 type ThemeConfig struct {
-	BackgroundColor  string       `mapstructure:"backgroundColor"`
-	ForegroundColor  string       `mapstructure:"foregroundColor"`
-	BorderColor      string       `mapstructure:"borderColor"`
-	BorderFocusColor string       `mapstructure:"borderFocusColor"`
-	TitleColor       string       `mapstructure:"titleColor"`
-	Borders          BorderConfig `mapstructure:"borders"`
-	BordersFocus     BorderConfig `mapstructure:"bordersFocus"`
+	BackgroundColor     string       `mapstructure:"backgroundColor"`
+	ForegroundColor     string       `mapstructure:"foregroundColor"`
+	BorderColor         string       `mapstructure:"borderColor"`
+	BorderFocusColor    string       `mapstructure:"borderFocusColor"`
+	TitleColor          string       `mapstructure:"titleColor"`
+	SelectionBackground string       `mapstructure:"selectionBackground"`
+	Borders             BorderConfig `mapstructure:"borders"`
+	BordersFocus        BorderConfig `mapstructure:"bordersFocus"`
 }
 
 type BorderConfig struct {
@@ -33,17 +36,37 @@ type BorderConfig struct {
 	Vertical    string `mapstructure:"vertical"`
 }
 
+type UIConfig struct {
+	CollectionExpansion      string `mapstructure:"collectionExpansion"`      // "closed", "expanded", "remember"
+	CollectionIcon           string `mapstructure:"collectionIcon"`           // icon to display before closed collection names
+	CollectionExpandedIcon   string `mapstructure:"collectionExpandedIcon"`   // icon to display before expanded collection names
+	SelectedRequestIcon      string `mapstructure:"selectedRequestIcon"`      // icon to display before selected request names
+	SelectedRequestIconColor string `mapstructure:"selectedRequestIconColor"` // color for selected request icon
+}
+
+type MethodColorsConfig struct {
+	GET     string `mapstructure:"GET"`
+	POST    string `mapstructure:"POST"`
+	PUT     string `mapstructure:"PUT"`
+	PATCH   string `mapstructure:"PATCH"`
+	DELETE  string `mapstructure:"DELETE"`
+	OPTIONS string `mapstructure:"OPTIONS"`
+	HEAD    string `mapstructure:"HEAD"`
+	Default string `mapstructure:"default"`
+}
+
 var C AppConfig
 
 // defaultConfigYAML is the default configuration template.
 // This is what `petitorium init` will create.
 const defaultConfigYAML = `
 theme:
-  backgroundColor: "#000000"
-  foregroundColor: "#FFFFFF"
-  borderColor: "#888888"
-  borderFocusColor: "#FFFFFF"
-  titleColor: "#FFFFFF"
+  backgroundColor: "#102529"
+  foregroundColor: "#e4e4e4"
+  borderColor: "#95CEDA"
+  borderFocusColor: "#FF9F77"
+  titleColor: "#EBEBEB"
+  selectionBackground: "#1B4248"  # background color for selected items
 
   borders:
     topLeft: "╭"
@@ -60,6 +83,23 @@ theme:
     bottomRight: "╯"
     horizontal: "─"
     vertical: "│"
+
+ui:
+  collectionExpansion: "closed"       # "closed", "expanded", or "remember"
+  collectionIcon: "󰉋"                 # icon displayed before closed collection names
+  collectionExpandedIcon: "󰝰"         # icon displayed before expanded collection names
+  selectedRequestIcon: "󰼛"            # icon displayed before selected request names
+  selectedRequestIconColor: "#95CEDA" # color for selected request icon
+
+methodColors:
+  GET: "#6EA5A0"
+  POST: "#FF00FF"
+  PUT: "#FF9F77"
+  PATCH: "#FF9F77"
+  DELETE: "#FB4F49"
+  OPTIONS: "#FFA500"
+  HEAD: "#800080"
+  default: "#888888"
 `
 
 func LoadConfig() error {
