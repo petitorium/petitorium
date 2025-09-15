@@ -14,6 +14,7 @@ type AppConfig struct {
 	Theme        ThemeConfig        `mapstructure:"theme"`
 	UI           UIConfig           `mapstructure:"ui"`
 	MethodColors MethodColorsConfig `mapstructure:"methodColors"`
+	SyntaxTheme  string             `mapstructure:"syntaxTheme"`
 }
 
 type ThemeConfig struct {
@@ -23,6 +24,7 @@ type ThemeConfig struct {
 	BorderFocusColor    string       `mapstructure:"borderFocusColor"`
 	TitleColor          string       `mapstructure:"titleColor"`
 	SelectionBackground string       `mapstructure:"selectionBackground"`
+	ActiveTabColor      string       `mapstructure:"activeTabColor"`
 	Borders             BorderConfig `mapstructure:"borders"`
 	BordersFocus        BorderConfig `mapstructure:"bordersFocus"`
 }
@@ -67,6 +69,7 @@ theme:
   borderFocusColor: "#FF9F77"
   titleColor: "#EBEBEB"
   selectionBackground: "#1B4248"  # background color for selected items
+  activeTabColor: "#FF9F77"       # color for active tab indicator
 
   borders:
     topLeft: "╭"
@@ -85,11 +88,16 @@ theme:
     vertical: "│"
 
 ui:
-  collectionExpansion: "closed"       # "closed", "expanded", or "remember"
-  collectionIcon: "󰉋"                 # icon displayed before closed collection names
-  collectionExpandedIcon: "󰝰"         # icon displayed before expanded collection names
-  selectedRequestIcon: "󰼛"            # icon displayed before selected request names
-  selectedRequestIconColor: "#95CEDA" # color for selected request icon
+   collectionExpansion: "closed"       # "closed", "expanded", or "remember"
+   CollectionIcon: ""
+   CollectionExpandedIcon: ""
+   SelectedRequestIcon: ""
+   SelectedRequestIconColor: "#c8d3f5"
+
+# Syntax highlighting theme (chroma themes)
+# Popular options: github-dark, dracula, monokai, solarized-dark, nord, one-dark, vim, github
+# Run 'petitorium themes' to see all available themes
+syntaxTheme: "github-dark"
 
 methodColors:
   GET: "#6EA5A0"
