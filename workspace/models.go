@@ -1,10 +1,11 @@
 package workspace
 
 type Request struct {
-	Name   string `yaml:"name"`
-	Method string `yaml:"method"`
-	URL    string `yaml:"url"`
-	Body   string `yaml:"body,omitempty"`
+	Name    string            `yaml:"name"`
+	Method  string            `yaml:"method"`
+	URL     string            `yaml:"url"`
+	Headers map[string]string `yaml:"headers,omitempty"`
+	Body    string            `yaml:"body,omitempty"`
 }
 
 type Collection struct {

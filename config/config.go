@@ -18,15 +18,17 @@ type AppConfig struct {
 }
 
 type ThemeConfig struct {
-	BackgroundColor     string       `mapstructure:"backgroundColor"`
-	ForegroundColor     string       `mapstructure:"foregroundColor"`
-	BorderColor         string       `mapstructure:"borderColor"`
-	BorderFocusColor    string       `mapstructure:"borderFocusColor"`
-	TitleColor          string       `mapstructure:"titleColor"`
-	SelectionBackground string       `mapstructure:"selectionBackground"`
-	ActiveTabColor      string       `mapstructure:"activeTabColor"`
-	Borders             BorderConfig `mapstructure:"borders"`
-	BordersFocus        BorderConfig `mapstructure:"bordersFocus"`
+	BackgroundColor           string       `mapstructure:"backgroundColor"`
+	ForegroundColor           string       `mapstructure:"foregroundColor"`
+	BorderColor               string       `mapstructure:"borderColor"`
+	BorderFocusColor          string       `mapstructure:"borderFocusColor"`
+	TitleColor                string       `mapstructure:"titleColor"`
+	SelectionBackground       string       `mapstructure:"selectionBackground"`
+	ActiveTabColor            string       `mapstructure:"activeTabColor"`
+	ButtonSelectedColor       string       `mapstructure:"buttonSelectedColor"`
+	DropdownFocusedBackground string       `mapstructure:"dropdownFocusedBackground"`
+	Borders                   BorderConfig `mapstructure:"borders"`
+	BordersFocus              BorderConfig `mapstructure:"bordersFocus"`
 }
 
 type BorderConfig struct {
@@ -44,6 +46,7 @@ type UIConfig struct {
 	CollectionExpandedIcon   string `mapstructure:"collectionExpandedIcon"`   // icon to display before expanded collection names
 	SelectedRequestIcon      string `mapstructure:"selectedRequestIcon"`      // icon to display before selected request names
 	SelectedRequestIconColor string `mapstructure:"selectedRequestIconColor"` // color for selected request icon
+	HeaderRemoveIcon         string `mapstructure:"headerRemoveIcon"`         // icon for removing headers
 }
 
 type MethodColorsConfig struct {
@@ -61,8 +64,7 @@ var C AppConfig
 
 // defaultConfigYAML is the default configuration template.
 // This is what `petitorium init` will create.
-const defaultConfigYAML = `
-theme:
+const defaultConfigYAML = `theme:
   backgroundColor: "#102529"
   foregroundColor: "#e4e4e4"
   borderColor: "#95CEDA"
@@ -70,6 +72,8 @@ theme:
   titleColor: "#EBEBEB"
   selectionBackground: "#1B4248"  # background color for selected items
   activeTabColor: "#FF9F77"       # color for active tab indicator
+  buttonSelectedColor: "#FFD700"  # color for selected buttons
+  dropdownFocusedBackground: "#636DA6"  # background color for focused dropdown
 
   borders:
     topLeft: "╭"
@@ -88,16 +92,17 @@ theme:
     vertical: "│"
 
 ui:
-   collectionExpansion: "closed"       # "closed", "expanded", or "remember"
-   CollectionIcon: ""
-   CollectionExpandedIcon: ""
-   SelectedRequestIcon: ""
-   SelectedRequestIconColor: "#c8d3f5"
+  collectionExpansion: "closed"       # "closed", "expanded", or "remember"
+  collectionIcon: ""
+  collectionExpandedIcon: ""
+  selectedRequestIcon: ""
+  selectedRequestIconColor: "#c8d3f5"
+  headerRemoveIcon: "✕"
 
 # Syntax highlighting theme (chroma themes)
 # Popular options: github-dark, dracula, monokai, solarized-dark, nord, one-dark, vim, github
 # Run 'petitorium themes' to see all available themes
-syntaxTheme: "github-dark"
+syntaxTheme: "tokyonight-night"
 
 methodColors:
   GET: "#6EA5A0"

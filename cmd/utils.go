@@ -209,9 +209,10 @@ func (f *chromaToTviewFormatter) Format(w *bytes.Buffer, style *chroma.Style, it
 		// Get the text value
 		text := token.String()
 
-		// More robust escaping for tview
-		text = strings.ReplaceAll(text, "[", "[[")
-		text = strings.ReplaceAll(text, "]", "]]")
+		// Only escape brackets in text that could be misinterpreted as tview formatting
+		// JSON structural brackets and content don't need escaping
+		// text = strings.ReplaceAll(text, "[", "[[")
+		// text = strings.ReplaceAll(text, "]", "]]")
 
 		// Apply color if available
 		if !entry.IsZero() {
@@ -278,9 +279,9 @@ func formatJSONSimple(content string) string {
 	// Simple JSON highlighting that preserves original order
 	result := content
 
-	// Escape any existing brackets first
-	result = strings.ReplaceAll(result, "[", "[[")
-	result = strings.ReplaceAll(result, "]", "]]")
+	// JSON brackets don't need escaping for tview as they're not valid color commands
+	// result = strings.ReplaceAll(result, "[", "[[")
+	// result = strings.ReplaceAll(result, "]", "]]")
 
 	// Add basic JSON highlighting with minimal color tags
 	result = strings.ReplaceAll(result, `"`, `[green]"[-]`)

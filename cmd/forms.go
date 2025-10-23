@@ -11,7 +11,118 @@ import (
 	"github.com/hbarral/petitorium/workspace"
 )
 
-func createCollectionForm(app *tview.Application, pages *tview.Pages, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, parentNode *tview.TreeNode, collectionsTreeView *tview.TreeView, parentCollection *workspace.Collection) *tview.Form {
+func createCollectionFormWithLocation(
+	app *tview.Application,
+	pages *tview.Pages,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+) *tview.Form {
+	theme := config.C.Theme
+	backgroundColor := hexToColor(theme.BackgroundColor)
+	foregroundColor := hexToColor(theme.ForegroundColor)
+	borderFocusColor := hexToColor(theme.BorderFocusColor)
+	titleColor := hexToColor(theme.TitleColor)
+
+	form := tview.NewForm()
+	form.SetBackgroundColor(backgroundColor)
+	form.SetBorderColor(borderFocusColor)
+	form.SetTitleColor(titleColor)
+	form.SetFieldBackgroundColor(backgroundColor)
+	form.SetFieldTextColor(foregroundColor)
+	form.SetLabelColor(foregroundColor)
+	form.SetButtonBackgroundColor(backgroundColor)
+	form.SetButtonTextColor(foregroundColor)
+
+	// Get all available collections for location targets
+	var locationOptions []string
+	locationOptions = append(locationOptions, "(Root Level)")
+
+	var addCollectionsToOptions func(collections []workspace.Collection, prefix string)
+	addCollectionsToOptions = func(collections []workspace.Collection, prefix string) {
+		for _, col := range collections {
+			locationOptions = append(locationOptions, prefix+col.Name)
+			if len(col.Collections) > 0 {
+				addCollectionsToOptions(col.Collections, prefix+col.Name+" → ")
+			}
+		}
+	}
+	addCollectionsToOptions(*collectionsData, "")
+
+	form.AddInputField("Collection Name", "", 21, nil, nil)
+	form.AddDropDown("Location", locationOptions, 0, nil)
+
+	cancelFunc := func() {
+		pages.RemovePage("newCollection")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	}
+
+	form.AddButton("Save", func() {
+		name := form.GetFormItem(0).(*tview.InputField).GetText()
+		_, location := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+		if strings.TrimSpace(name) == "" {
+			return
+		}
+
+		newCollection := workspace.Collection{Name: name}
+
+		if location == "(Root Level)" {
+			// Add to root level
+			*collectionsData = append(*collectionsData, newCollection)
+		} else {
+			// Find target collection and add to it
+			targetName := strings.Split(location, " → ")[0]
+			var addToCollection func(collections *[]workspace.Collection) bool
+			addToCollection = func(collections *[]workspace.Collection) bool {
+				for i := range *collections {
+					if (*collections)[i].Name == targetName {
+						(*collections)[i].Collections = append((*collections)[i].Collections, newCollection)
+						return true
+					}
+					if len((*collections)[i].Collections) > 0 {
+						if addToCollection(&(*collections)[i].Collections) {
+							return true
+						}
+					}
+				}
+				return false
+			}
+			addToCollection(collectionsData)
+		}
+
+		// Rebuild the entire tree to reflect changes
+		rootNode.ClearChildren()
+		addCollectionsToTree(*collectionsData, rootNode)
+
+		// Save workspace
+		if err := workspace.SaveCollections(*collectionsData); err != nil {
+			// Handle error
+		}
+
+		cancelFunc()
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("newCollection")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.SetCancelFunc(cancelFunc)
+
+	form.SetBorder(true).SetTitle(" New Collection ")
+	return form
+}
+
+func createCollectionForm(app *tview.Application,
+	pages *tview.Pages,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	parentNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	parentCollection *workspace.Collection,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -76,7 +187,13 @@ func createCollectionForm(app *tview.Application, pages *tview.Pages, collection
 	return form
 }
 
-func createRequestForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView) *tview.Form {
+func createRequestForm(app *tview.Application,
+	pages *tview.Pages,
+	selectedCollection *workspace.Collection,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -154,7 +271,14 @@ func createRequestForm(app *tview.Application, pages *tview.Pages, selectedColle
 	return form
 }
 
-func createRenameCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode) *tview.Form {
+func createRenameCollectionForm(app *tview.Application,
+	pages *tview.Pages,
+	selectedCollection *workspace.Collection,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	node *tview.TreeNode,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -218,7 +342,14 @@ func createRenameCollectionForm(app *tview.Application, pages *tview.Pages, sele
 	return form
 }
 
-func createRenameRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode) *tview.Form {
+func createRenameRequestForm(app *tview.Application,
+	pages *tview.Pages,
+	selectedRequest *workspace.Request,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	node *tview.TreeNode,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -287,7 +418,14 @@ func createRenameRequestForm(app *tview.Application, pages *tview.Pages, selecte
 	return form
 }
 
-func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode) *tview.Form {
+func createMoveCollectionForm(app *tview.Application,
+	pages *tview.Pages,
+	selectedCollection *workspace.Collection,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	node *tview.TreeNode,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -404,7 +542,13 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 	return form
 }
 
-func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView) *tview.Form {
+func createMoveRequestForm(app *tview.Application,
+	pages *tview.Pages,
+	selectedRequest *workspace.Request,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -515,7 +659,14 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 	return form
 }
 
-func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode) *tview.Form {
+func createDeleteCollectionConfirm(app *tview.Application,
+	pages *tview.Pages,
+	selectedCollection *workspace.Collection,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	node *tview.TreeNode,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -564,7 +715,14 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 	return form
 }
 
-func createDeleteRequestConfirm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode) *tview.Form {
+func createDeleteRequestConfirm(app *tview.Application,
+	pages *tview.Pages,
+	selectedRequest *workspace.Request,
+	collectionsData *[]workspace.Collection,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	node *tview.TreeNode,
+) *tview.Form {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)

@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -10,7 +12,7 @@ import (
 )
 
 // setupTheme configures the theme colors and borders
-func setupTheme() (tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color) {
+func setupTheme() (tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color) {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
@@ -19,6 +21,8 @@ func setupTheme() (tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Col
 	titleColor := hexToColor(theme.TitleColor)
 	selectionBackgroundColor := hexToColor(theme.SelectionBackground)
 	activeTabColor := hexToColor(theme.ActiveTabColor)
+	buttonSelectedColor := hexToColor(theme.ButtonSelectedColor)
+	dropdownFocusedBackgroundColor := hexToColor(theme.DropdownFocusedBackground)
 
 	tview.Borders.TopLeft = strToRune(theme.Borders.TopLeft)
 	tview.Borders.TopRight = strToRune(theme.Borders.TopRight)
@@ -34,7 +38,7 @@ func setupTheme() (tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Col
 	tview.Borders.HorizontalFocus = strToRune(theme.BordersFocus.Horizontal)
 	tview.Borders.VerticalFocus = strToRune(theme.BordersFocus.Vertical)
 
-	return backgroundColor, foregroundColor, borderColor, borderFocusColor, titleColor, selectionBackgroundColor, activeTabColor
+	return backgroundColor, foregroundColor, borderColor, borderFocusColor, titleColor, selectionBackgroundColor, activeTabColor, buttonSelectedColor, dropdownFocusedBackgroundColor
 }
 
 // createPanel creates a new text view panel with consistent styling and 16m color support
@@ -70,25 +74,44 @@ func createInputField(title string, backgroundColor, borderColor, titleColor, fo
 }
 
 // createDropDown creates a dropdown with consistent styling
-func createDropDown(title string, options []string, backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.DropDown {
+func createDropDown(title string,
+	options []string,
+	backgroundColor,
+	borderColor,
+	titleColor,
+	foregroundColor,
+	activeTabColor,
+	listBackgroundColor,
+	listSelectedColor,
+	dropdownFocusedBackgroundColor tcell.Color,
+) *tview.DropDown {
 	dropdown := tview.NewDropDown()
 	dropdown.SetBorder(true)
 	dropdown.SetTitle(title)
 	dropdown.SetBackgroundColor(backgroundColor)
 	dropdown.SetBorderColor(borderColor)
 	dropdown.SetTitleColor(titleColor)
-	dropdown.SetFieldTextColor(foregroundColor)
+	dropdown.SetFieldTextColor(activeTabColor)
 	dropdown.SetFieldBackgroundColor(backgroundColor)
 	dropdown.SetBorderPadding(0, 0, 0, 0)
 	dropdown.SetOptions(options, nil)
+	dropdown.SetFocusedStyle(tcell.StyleDefault.Background(dropdownFocusedBackgroundColor).Foreground(activeTabColor))
+
+	// Set the dropdown list styles to match the theme
+	unselectedStyle := tcell.StyleDefault.Background(listBackgroundColor).Foreground(foregroundColor)
+	selectedStyle := tcell.StyleDefault.Background(listSelectedColor).Foreground(foregroundColor)
+	dropdown.SetListStyles(unselectedStyle, selectedStyle)
+
 	return dropdown
 }
 
-func createButton(text string, backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.Button {
+func createButton(text string, backgroundColor, borderColor, titleColor, foregroundColor, selectedColor tcell.Color) *tview.Button {
 	button := tview.NewButton(text)
 	button.SetBorder(false)
 	button.SetBackgroundColor(backgroundColor)
 	button.SetLabelColor(foregroundColor)
+	button.SetBackgroundColorActivated(selectedColor)
+	button.SetLabelColorActivated(backgroundColor)
 	button.SetBorderPadding(0, 0, 0, 0)
 	button.SetBorderColor(borderColor)
 	return button
@@ -99,33 +122,18 @@ func setFocusStyle(p tview.Primitive, focused bool, borderColor, borderFocusColo
 	type borderStyler interface {
 		SetBorderColor(tcell.Color) *tview.Box
 	}
+
 	styler, ok := p.(borderStyler)
+
 	if !ok {
 		return
 	}
+
 	if focused {
 		styler.SetBorderColor(borderFocusColor)
 	} else {
 		styler.SetBorderColor(borderColor)
 	}
-}
-
-// setBodyContainerFocusStyle handles focus styling for the body container's active panel
-func setBodyContainerFocusStyle(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, bodyEditMode bool, focused bool, borderColor, borderFocusColor tcell.Color) {
-	if bodyEditMode {
-		// Focus the edit panel
-		setFocusStyle(bodyEditPanel, focused, borderColor, borderFocusColor)
-		setFocusStyle(bodyViewPanel, false, borderColor, borderFocusColor)
-	} else {
-		// Focus the view panel
-		setFocusStyle(bodyViewPanel, focused, borderColor, borderFocusColor)
-		setFocusStyle(bodyEditPanel, false, borderColor, borderFocusColor)
-	}
-}
-
-// setMethodUrlBarFocusStyle handles focus styling for the method+URL bar container
-func setMethodUrlBarFocusStyle(methodUrlBar *tview.Flex, focused bool, borderColor, borderFocusColor tcell.Color) {
-	setFocusStyle(methodUrlBar, focused, borderColor, borderFocusColor)
 }
 
 // createTextArea creates a new text area with consistent styling for body editing
@@ -142,16 +150,37 @@ func createTextArea(title string, backgroundColor, borderColor, titleColor, fore
 	return textArea
 }
 
-// createMethodUrlBar creates a unified method+URL+Send input component
-func createMethodUrlBar(title string, backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) (*tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button) {
+// createMethodURLBar creates a unified method+URL+Send input component
+func createMethodURLBar(
+	title string,
+	backgroundColor,
+	borderColor,
+	titleColor,
+	foregroundColor,
+	selectionBackgroundColor,
+	activeTabColor,
+	buttonSelectedColor,
+	dropdownFocusedBackgroundColor tcell.Color,
+) (*tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button) {
 	// Create the components without borders
-	methodDropdown := createDropDown("", []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}, backgroundColor, backgroundColor, foregroundColor, foregroundColor)
+	methodDropdown := createDropDown(
+		"",
+		[]string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
+		backgroundColor,
+		backgroundColor,
+		backgroundColor,
+		foregroundColor,
+		activeTabColor,
+		backgroundColor,
+		selectionBackgroundColor,
+		dropdownFocusedBackgroundColor,
+	)
 	methodDropdown.SetBorder(false)
 
 	urlInput := createInputField("", backgroundColor, backgroundColor, foregroundColor, foregroundColor)
 	urlInput.SetBorder(false)
 
-	sendButton := createButton(" Send ", borderColor, borderColor, titleColor, foregroundColor)
+	sendButton := createButton(" Send ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
 	sendButton.SetBackgroundColor(borderColor)
 	sendButton.SetLabelColor(backgroundColor)
 
@@ -177,7 +206,14 @@ func createMethodUrlBar(title string, backgroundColor, borderColor, titleColor, 
 }
 
 // createTabHeader creates a clickable tab header bar
-func createTabHeader(backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor tcell.Color, onTabClick func(int)) *tview.Flex {
+func createTabHeader(backgroundColor,
+	borderColor,
+	titleColor,
+	foregroundColor,
+	activeTabColor,
+	selectionBackgroundColor tcell.Color,
+	onTabClick func(int),
+) *tview.Flex {
 	tabHeader := tview.NewFlex().SetDirection(tview.FlexColumn)
 	tabHeader.SetBackgroundColor(backgroundColor)
 
@@ -199,9 +235,11 @@ func createTabHeader(backgroundColor, borderColor, titleColor, foregroundColor, 
 		// Set initial text based on whether it's active
 		if i == activeTab {
 			tab.SetText(tabTitle)
-			tab.SetTextColor(hexToColor(activeTabColor.String()))
+			tab.SetTextColor(activeTabColor)
+			tab.SetBackgroundColor(selectionBackgroundColor)
 		} else {
 			tab.SetText(tabTitle)
+			tab.SetBackgroundColor(backgroundColor)
 		}
 
 		// Make tab clickable
@@ -228,7 +266,14 @@ func createTabHeader(backgroundColor, borderColor, titleColor, foregroundColor, 
 }
 
 // updateTabHeader updates the active tab indicator in the tab header
-func updateTabHeader(tabHeader *tview.Flex, activeTabIndex int, backgroundColor, foregroundColor, activeTabColor tcell.Color) {
+func updateTabHeader(
+	tabHeader *tview.Flex,
+	activeTabIndex int,
+	backgroundColor,
+	foregroundColor,
+	activeTabColor,
+	selectionBackgroundColor tcell.Color,
+) {
 	// Tab titles
 	tabs := []string{"Body", "Auth", "Query", "Headers"}
 
@@ -239,14 +284,15 @@ func updateTabHeader(tabHeader *tview.Flex, activeTabIndex int, backgroundColor,
 		if tabIndex < tabHeader.GetItemCount() {
 			if tab, ok := tabHeader.GetItem(tabIndex).(*tview.TextView); ok {
 				if i == activeTabIndex {
-					// Active tab - use active tab color
-					// tab.SetText(fmt.Sprintf("[%s][ %s ][-]", activeTabColor.String(), tabs[i]))
+					// Active tab - use active tab color and background
 					tab.SetText(tabs[i])
 					tab.SetTextColor(activeTabColor)
+					tab.SetBackgroundColor(selectionBackgroundColor)
 				} else {
-					// Inactive tab - use regular foreground color
+					// Inactive tab - use regular foreground color and background
 					tab.SetText(fmt.Sprintf(" %s ", tabs[i]))
 					tab.SetTextColor(foregroundColor)
+					tab.SetBackgroundColor(backgroundColor)
 				}
 			}
 		}
@@ -255,70 +301,547 @@ func updateTabHeader(tabHeader *tview.Flex, activeTabIndex int, backgroundColor,
 
 // createAuthTab creates placeholder authentication tab content
 func createAuthTab(backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextView {
-	authPanel := createPanel(" Auth ", backgroundColor, borderColor, titleColor, foregroundColor)
+	// Auth panel
+	// borderColor
+	authPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
 	authPanel.SetText("Authentication settings will go here.\n\n• Bearer Token\n• Basic Auth\n• API Key\n• OAuth (future)")
 	return authPanel
 }
 
 // createQueryTab creates placeholder query parameters tab content
 func createQueryTab(backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextView {
-	queryPanel := createPanel(" Query Parameters ", backgroundColor, borderColor, titleColor, foregroundColor)
+	// Query Parameters panel
+	// borderColor
+	queryPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
 	queryPanel.SetText("URL Query Parameters editor will go here.\n\n• Key-Value pairs\n• Add/Remove parameters\n• Bulk import\n• Templates (future)")
 	return queryPanel
 }
 
-// createHeadersTab creates placeholder headers tab content
-func createHeadersTab(backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextView {
-	headersPanel := createPanel(" Headers ", backgroundColor, borderColor, titleColor, foregroundColor)
-	headersPanel.SetText("HTTP Headers editor will go here.\n\n• Key-Value pairs\n• Common headers presets\n• Add/Remove headers\n• Auto-complete (future)")
-	return headersPanel
+// Global variables for headers management
+var currentHeadersTab *tview.Flex
+
+var currentHeaderRows []*HeaderRow
+
+var currentHeadersList *tview.Flex
+
+var rowHeight int = 1
+
+// HeaderRow represents a single header key-value pair in the UI
+type HeaderRow struct {
+	KeyInput     *tview.InputField
+	ValueInput   *tview.InputField
+	DeleteButton *tview.Button
+	Row          *tview.Flex
+}
+
+// createHeadersTabWithData creates headers tab with initial data
+func createHeadersTabWithData(backgroundColor,
+	borderColor,
+	titleColor,
+	foregroundColor,
+	buttonSelectedColor tcell.Color,
+	initialHeaders map[string]string,
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+) *tview.Flex {
+	headersContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	headersContainer.SetBackgroundColor(backgroundColor)
+	headersContainer.SetBorder(true)
+	headersContainer.SetBorderColor(backgroundColor) // borderColor
+	headersContainer.SetTitleColor(titleColor)
+	headersContainer.SetBackgroundColor(backgroundColor)
+
+	// Scrollable area for header entries
+	headersList := tview.NewFlex().SetDirection(tview.FlexRow)
+	headersList.SetBackgroundColor(backgroundColor)
+
+	// Store references for global access
+	currentHeadersTab = headersContainer
+	currentHeadersList = headersList
+
+	// Initialize global header rows
+	currentHeaderRows = []*HeaderRow{}
+
+	// Function to refresh the UI
+	var refreshHeadersUI func()
+	refreshHeadersUI = func() {
+		headersList.Clear()
+		for _, row := range currentHeaderRows {
+			headersList.AddItem(row.Row, rowHeight, 0, false)
+		}
+		// Always keep at least one empty row
+		if len(currentHeaderRows) == 0 {
+			addHeaderRow(headersList, backgroundColor, foregroundColor, borderColor, refreshHeadersUI, saveCallback, focusSetter)
+		}
+	}
+
+	// Add initial rows based on data
+	if initialHeaders != nil && len(initialHeaders) > 0 {
+		for key, value := range initialHeaders {
+			addHeaderRowWithData(headersList, backgroundColor, foregroundColor, borderColor, key, value, refreshHeadersUI, saveCallback, focusSetter)
+		}
+	}
+	// Always add at least one empty row
+	addHeaderRow(headersList, backgroundColor, foregroundColor, borderColor, refreshHeadersUI, saveCallback, focusSetter)
+
+	// Add button row at the top
+	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonRow.SetBackgroundColor(backgroundColor)
+
+	addButton := createButton(" Add Header ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+	addButton.SetBackgroundColorActivated(foregroundColor)
+	addButton.SetLabelColor(backgroundColor)
+	addButton.SetSelectedFunc(func() {
+		addHeaderRow(headersList, backgroundColor, foregroundColor, borderColor, refreshHeadersUI, saveCallback, focusSetter)
+		refreshHeadersUI()
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	// Delete all button
+	deleteAllButton := createButton(" Delete All ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+	deleteAllButton.SetBorder(false)
+	deleteAllButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	deleteAllButton.SetSelectedFunc(func() {
+		// Clear all header rows
+		currentHeaderRows = []*HeaderRow{}
+		refreshHeadersUI()
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	buttonRow.AddItem(addButton, 15, 0, false)
+	buttonRow.AddItem(deleteAllButton, 15, 0, false)
+	buttonRow.AddItem(nil, 0, 1, false)
+
+	headersContainer.AddItem(buttonRow, 1, 0, false)
+
+	// Add visual spacing between buttons and headers
+	spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
+	headersContainer.AddItem(spacer, 1, 0, false)
+
+	headersContainer.AddItem(headersList, 0, 1, false)
+
+	return headersContainer
+}
+
+// addHeaderRow adds a new key-value header input row to the headers list
+func addHeaderRow(headersList *tview.Flex,
+	backgroundColor,
+	foregroundColor,
+	borderColor tcell.Color,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(backgroundColor)
+
+	keyInput := tview.NewInputField()
+	keyInput.SetBackgroundColor(backgroundColor)
+	keyInput.SetFieldBackgroundColor(backgroundColor)
+	keyInput.SetFieldTextColor(foregroundColor)
+	keyInput.SetLabelColor(foregroundColor)
+	keyInput.SetPlaceholder("Header name")
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	keyInput.SetFieldBackgroundColor(backgroundColor)
+	keyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	keyInput.SetBlurFunc(func() {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	valueInput := tview.NewInputField()
+	valueInput.SetBackgroundColor(backgroundColor)
+	valueInput.SetFieldBackgroundColor(backgroundColor)
+	valueInput.SetFieldTextColor(foregroundColor)
+	valueInput.SetLabelColor(foregroundColor)
+	valueInput.SetPlaceholder("Header value")
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	valueInput.SetFieldBackgroundColor(backgroundColor)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.SetBlurFunc(func() {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(backgroundColor)
+	removeButton.SetLabelColor(foregroundColor)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+
+	headerRow := &HeaderRow{
+		KeyInput:     keyInput,
+		ValueInput:   valueInput,
+		DeleteButton: removeButton,
+		Row:          row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		// Find and remove this row
+		for i, r := range currentHeaderRows {
+			if r == headerRow {
+				currentHeaderRows = append(currentHeaderRows[:i], currentHeaderRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Handle Tab navigation for delete button
+	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Tab from delete button to next row's key input
+			// Simple implementation: cycle to first row's key input
+			if len(currentHeaderRows) > 0 {
+				firstRow := currentHeaderRows[0]
+				focusSetter(firstRow.KeyInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Handle Tab to add new header row when on the last value input
+	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Check if this is the last value input
+			if len(currentHeaderRows) > 0 && currentHeaderRows[len(currentHeaderRows)-1] == headerRow {
+				// Cycle back to first key input
+				firstRow := currentHeaderRows[0]
+				focusSetter(firstRow.KeyInput)
+				return nil
+			}
+		}
+		return event
+	})
+
+	// Wrap button in a container to match row height
+	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonContainer.SetBackgroundColor(backgroundColor)
+	buttonContainer.AddItem(nil, 0, 1, false)
+	buttonContainer.AddItem(removeButton, 1, 0, false)
+	buttonContainer.AddItem(nil, 0, 1, false)
+
+	row.AddItem(keyInput, 0, 1, false)
+	row.AddItem(valueInput, 0, 1, false)
+	row.AddItem(buttonContainer, 4, 0, false)
+
+	currentHeaderRows = append(currentHeaderRows, headerRow)
+	headersList.AddItem(row, rowHeight, 0, false)
+
+	// Add separator line between rows
+	separator := tview.NewBox().SetBackgroundColor(backgroundColor)
+	separator.SetBorder(false)
+	headersList.AddItem(separator, 1, 0, false)
+
+	// Update headers cycle
+	if headersCycle != nil {
+		headersCycle.UpdateInputs()
+	}
+}
+
+// getHeadersFromUI extracts headers from the current UI state
+func getHeadersFromUI() map[string]string {
+	headers := make(map[string]string)
+	for _, row := range currentHeaderRows {
+		key := strings.TrimSpace(row.KeyInput.GetText())
+		value := strings.TrimSpace(row.ValueInput.GetText())
+		if key != "" {
+			headers[key] = value
+		}
+	}
+	return headers
+}
+
+// setHeadersInUI populates the UI with the given headers
+func setHeadersInUI(headers map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
+	// Clear existing rows
+	currentHeaderRows = []*HeaderRow{}
+
+	if currentHeadersList != nil {
+		currentHeadersList.Clear()
+
+		// Get current theme colors
+		theme := config.C.Theme
+		backgroundColor := hexToColor(theme.BackgroundColor)
+		foregroundColor := hexToColor(theme.ForegroundColor)
+		borderColor := hexToColor(theme.BorderColor)
+
+		// Add rows for each header (sorted by key for consistent ordering)
+		var keys []string
+		for key := range headers {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			value := headers[key]
+			addHeaderRowWithData(currentHeadersList, backgroundColor, foregroundColor, borderColor, key, value, func() {
+				// Refresh function - for now just rebuild the list
+				setHeadersInUI(getHeadersFromUI(), saveCallback, focusSetter)
+			}, saveCallback, focusSetter)
+		}
+
+		// Always add one empty row
+		addHeaderRow(currentHeadersList, backgroundColor, foregroundColor, borderColor, func() {
+			setHeadersInUI(getHeadersFromUI(), saveCallback, focusSetter)
+		}, saveCallback, focusSetter)
+	}
+
+	// Update headers cycle
+	if headersCycle != nil {
+		headersCycle.UpdateInputs()
+	}
+}
+
+// addHeaderRowWithData adds a header row with pre-filled data
+func addHeaderRowWithData(
+	headersList *tview.Flex,
+	backgroundColor, foregroundColor, borderColor tcell.Color,
+	key, value string,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(backgroundColor)
+
+	keyInput := tview.NewInputField()
+	keyInput.SetBackgroundColor(backgroundColor)
+	keyInput.SetFieldBackgroundColor(backgroundColor)
+	keyInput.SetFieldTextColor(foregroundColor)
+	keyInput.SetLabelColor(foregroundColor)
+	keyInput.SetPlaceholder("Header name")
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	keyInput.SetText(key)
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	if saveCallback != nil {
+		keyInput.SetChangedFunc(func(text string) {
+			saveCallback()
+		})
+		keyInput.SetBlurFunc(func() {
+			saveCallback()
+		})
+	}
+
+	valueInput := tview.NewInputField()
+	valueInput.SetBackgroundColor(backgroundColor)
+	valueInput.SetFieldBackgroundColor(backgroundColor)
+	valueInput.SetFieldTextColor(foregroundColor)
+	valueInput.SetLabelColor(foregroundColor)
+	valueInput.SetPlaceholder("Header value")
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	valueInput.SetText(value)
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	if saveCallback != nil {
+		valueInput.SetChangedFunc(func(text string) {
+			saveCallback()
+		})
+		valueInput.SetBlurFunc(func() {
+			saveCallback()
+		})
+	}
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(backgroundColor)
+	removeButton.SetLabelColor(foregroundColor)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+
+	headerRow := &HeaderRow{
+		KeyInput:     keyInput,
+		ValueInput:   valueInput,
+		DeleteButton: removeButton,
+		Row:          row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		// Find and remove this row
+		for i, r := range currentHeaderRows {
+			if r == headerRow {
+				currentHeaderRows = append(currentHeaderRows[:i], currentHeaderRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Handle Tab navigation for delete button
+	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Tab from delete button to next row's key input
+			// Simple implementation: cycle to first row's key input
+			if len(currentHeaderRows) > 0 {
+				firstRow := currentHeaderRows[0]
+				focusSetter(firstRow.KeyInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Handle Shift+Tab navigation between key/value inputs
+	keyInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyBacktab {
+			// Shift+Tab: Find current row index and move to previous row's value input
+			currentIndex := -1
+			for i, row := range currentHeaderRows {
+				if row == headerRow {
+					currentIndex = i
+					break
+				}
+			}
+
+			if currentIndex > 0 {
+				// Move to previous row's value input
+				prevRow := currentHeaderRows[currentIndex-1]
+				focusSetter(prevRow.ValueInput)
+			} else {
+				// First row, cycle to last row's value input
+				lastRow := currentHeaderRows[len(currentHeaderRows)-1]
+				focusSetter(lastRow.ValueInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyBacktab {
+			// Shift+Tab: Move to key input of same row
+			focusSetter(keyInput)
+			return nil
+		}
+		return event
+	})
+
+	// Wrap button in a container to match row height
+	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonContainer.SetBackgroundColor(backgroundColor)
+	buttonContainer.AddItem(nil, 0, 1, false)
+	buttonContainer.AddItem(removeButton, 1, 0, false)
+	buttonContainer.AddItem(nil, 0, 1, false)
+
+	row.AddItem(keyInput, 0, 1, false)
+	row.AddItem(valueInput, 0, 1, false)
+	row.AddItem(buttonContainer, 4, 0, false)
+
+	currentHeaderRows = append(currentHeaderRows, headerRow)
+	headersList.AddItem(row, rowHeight, 0, false)
+
+	// Add separator line between rows
+	// separator := tview.NewBox().SetBackgroundColor(backgroundColor)
+	// separator.SetBorder(true)
+	// headersList.AddItem(separator, 1, 0, false)
+
+	// Update headers cycle
+	if headersCycle != nil {
+		headersCycle.UpdateInputs()
+	}
 }
 
 // createRequestDataTabs creates the main tabbed interface for request data
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor tcell.Color) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex) {
+func createRequestDataTabs(
+	bodyViewPanel *tview.TextView,
+	bodyEditPanel *tview.TextArea,
+	backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, buttonSelectedColor tcell.Color,
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+	tabIndexSetter func(int),
+	panelFocusSetter func(int, bool),
+) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.Flex, func(int)) {
 	// Create the tab content pages
 	tabPages := tview.NewPages()
 
 	// Create placeholder tabs
 	authTab := createAuthTab(backgroundColor, borderColor, titleColor, foregroundColor)
 	queryTab := createQueryTab(backgroundColor, borderColor, titleColor, foregroundColor)
-	headersTab := createHeadersTab(backgroundColor, borderColor, titleColor, foregroundColor)
+	headersTab := createHeadersTabWithData(backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor, nil, saveCallback, focusSetter)
 
 	// Body tab uses the existing dual-mode container
 	bodyContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	bodyContainer.AddItem(bodyViewPanel, 0, 1, false)
+	bodyContainer.SetBorderColor(backgroundColor)
 
 	// Add all tabs to pages
 	tabPages.AddPage("body", bodyContainer, true, true)
 	tabPages.AddPage("auth", authTab, true, false)
 	tabPages.AddPage("query", queryTab, true, false)
 	tabPages.AddPage("headers", headersTab, true, false)
+	tabPages.SetBackgroundColor(backgroundColor)
 
 	// Create tab header first
 	var tabHeader *tview.Flex
-	var switchToTab func(int)
+	// var switchToTab func(int)
 
 	// Create tab switching function
-	switchToTab = func(tabIndex int) {
+	switchToTab := func(tabIndex int) {
 		tabNames := []string{"body", "auth", "query", "headers"}
 		if tabIndex >= 0 && tabIndex < len(tabNames) {
 			tabPages.SwitchToPage(tabNames[tabIndex])
+			// Update current tab index
+			if tabIndexSetter != nil {
+				tabIndexSetter(tabIndex)
+			}
 			// Update the tab header to show the new active tab
 			if tabHeader != nil {
-				updateTabHeader(tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor)
+				updateTabHeader(tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+			}
+
+			// Ensure only the request panel is focused
+			// Unfocus all panels that have borders
+			if panelFocusSetter != nil {
+				// Unfocus all panels: collections, request panel, response
+				for i := 0; i < 3; i++ {
+					if i != 1 { // Don't unfocus request panel itself
+						panelFocusSetter(i, false)
+					}
+				}
+			}
+
+			// Explicitly focus the request panel
+			if panelFocusSetter != nil {
+				panelFocusSetter(1, true)
 			}
 		}
 	}
 
 	// Create tab header
-	tabHeader = createTabHeader(backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor, switchToTab)
+	tabHeader = createTabHeader(backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, switchToTab)
 
 	// Create main container with header and content
 	tabContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	tabContainer.AddItem(tabHeader, 1, 0, false)
 	tabContainer.AddItem(tabPages, 0, 1, false)
+	tabContainer.SetBorder(true)
+	tabContainer.SetBorderColor(borderColor)
+	tabContainer.SetTitle(" Request ")
+	tabContainer.SetTitleColor(titleColor)
+	tabContainer.SetBackgroundColor(backgroundColor)
 
-	return tabContainer, tabPages, bodyContainer, tabHeader
+	return tabContainer, tabPages, bodyContainer, tabHeader, authTab, queryTab, headersTab, switchToTab
 }
 
 // createModal creates a centered modal dialog

@@ -1,3 +1,5 @@
+// Package cmd provides the root command for the Petitorium CLI application.
+// It includes the main TUI setup, UI components, and event handling.
 package cmd
 
 import (
@@ -36,7 +38,7 @@ func init() {
 }
 
 func runTUI(cmd *cobra.Command, args []string) {
-	backgroundColor, foregroundColor, borderColor, borderFocusColor, titleColor, selectionBackgroundColor, activeTabColor := setupTheme()
+	backgroundColor, foregroundColor, borderColor, borderFocusColor, titleColor, selectionBackgroundColor, activeTabColor, buttonSelectedColor, dropdownFocusedBackgroundColor := setupTheme()
 
 	collectionsData, err := workspace.LoadCollections()
 	if err != nil {
@@ -46,30 +48,52 @@ func runTUI(cmd *cobra.Command, args []string) {
 	app := tview.NewApplication().
 		EnableMouse(true)
 
-	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
-	// Change the root node's text to an empty string. It's cleaner.
-	rootNode := tview.NewTreeNode("").SetSelectable(false)
+	// Create all UI components
+	header,
+		rootNode,
+		methodURLBar,
+		methodDropdown,
+		urlInput,
+		sendButton,
+		bodyViewPanel,
+		bodyEditPanel,
+		response,
+		footer,
+		collectionsTreeView :=
+		setupUIComponents(backgroundColor,
+			foregroundColor,
+			borderColor,
+			borderFocusColor,
+			titleColor,
+			selectionBackgroundColor,
+			activeTabColor,
+			buttonSelectedColor,
+			dropdownFocusedBackgroundColor,
+		)
 
-	// Create unified method+URL+Send bar
-	methodUrlBar, methodDropdown, urlInput, sendButton := createMethodUrlBar(" Request ", backgroundColor, borderColor, titleColor, foregroundColor)
+	// Variable declarations
+	var currentSelectedNode *tview.TreeNode
+	var currentRequest *workspace.Request
+	var programmaticallyUpdatingMethod bool // Track programmatic updates
+	var programmaticallyUpdatingURL bool    // Track programmatic URL updates
+	var tabPages *tview.Pages
+	var tabHeader *tview.Flex
 
-	// Add placeholder functionality to Send button (no logic yet)
-	sendButton.SetSelectedFunc(func() {
-		// TODO: Implement request sending logic
-	})
+	// Track current tab index (0=body, 1=auth, 2=query, 3=headers)
+	currentTabIndex := 0
 
-	// Create both view and edit panels for body
-	bodyViewPanel := createPanel(" Body [VIEW] ", backgroundColor, borderColor, titleColor, foregroundColor)
-	bodyEditPanel := createTextArea(" Body [EDIT] ", backgroundColor, borderColor, titleColor, foregroundColor)
+	// Additional UI variables
+	var requestDataTabs *tview.Flex
+	var bodyContainer *tview.Flex
 
 	// Set up vim-style navigation for body view panel (TextView)
 	bodyViewPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case 'h':
 			// Move left (scroll horizontally left)
-			_, col := bodyViewPanel.GetScrollOffset()
+			row, col := bodyViewPanel.GetScrollOffset()
 			if col > 0 {
-				bodyViewPanel.ScrollTo(0, col-1)
+				bodyViewPanel.ScrollTo(row, col-1)
 			}
 			return nil
 		case 'j':
@@ -107,38 +131,39 @@ func runTUI(cmd *cobra.Command, args []string) {
 		return event
 	})
 
+	// Helper function to save current request changes
+	saveCurrentRequest := func() {
+		if currentRequest != nil {
+			// Sync headers from UI before saving
+			currentRequest.Headers = getHeadersFromUI()
+			if err := workspace.SaveCollections(collectionsData); err != nil {
+				// Handle error (could show in status or log)
+				return
+			}
+		}
+	}
+
+	// Placeholder for panel focus setter - will be updated after setPanelFocus is defined
+	var panelFocusSetter func(int, bool)
+	// var currentFocusSetter func(int)
+
 	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
-	requestDataTabs, tabPages, bodyContainer, tabHeader := createRequestDataTabs(bodyViewPanel, bodyEditPanel, backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor)
-	response := createPanel(" Response ", backgroundColor, borderColor, titleColor, foregroundColor)
-	footer := createPanel("", backgroundColor, borderColor, titleColor, foregroundColor)
-	footer.SetText(" [Tab] Cycle Focus | Tabs: [1234] Switch | Body: [i] Insert [Esc] Normal [hjkl] Nav | [F4] External Editor | [q] Quit | [n] New Collection | [r] New Request | [R] Rename | [m] Move Item | [d] Delete")
-
-	rightSide := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(methodUrlBar, 3, 0, false).
-		AddItem(requestDataTabs, 0, 1, false).
-		AddItem(response, 0, 1, false)
-
-	grid := tview.NewGrid().
-		SetRows(3, 0, 3).
-		SetColumns(30, 0).
-		SetBorders(false)
-
-	collectionsTreeView := tview.NewTreeView().
-		SetRoot(rootNode).
-		SetCurrentNode(rootNode)
-
-	collectionsTreeView.
-		SetGraphics(false).
-		SetTopLevel(0)
-
-	collectionsTreeView.
-		SetBorder(true).
-		SetTitle(" Collections ").
-		SetBackgroundColor(backgroundColor).
-		SetBorderColor(borderColor).
-		SetTitleColor(titleColor).
-		SetBorderPadding(0, 0, 0, 0)
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _ =
+		createRequestDataTabs(bodyViewPanel,
+			bodyEditPanel,
+			backgroundColor,
+			borderColor,
+			borderFocusColor,
+			titleColor,
+			foregroundColor,
+			activeTabColor,
+			selectionBackgroundColor,
+			buttonSelectedColor,
+			saveCurrentRequest,
+			func(p tview.Primitive) { app.SetFocus(p) },
+			func(tabIndex int) { currentTabIndex = tabIndex },
+			panelFocusSetter,
+		)
 
 	// Set up TreeView-specific input capture for h/l navigation
 	collectionsTreeView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -210,26 +235,43 @@ func runTUI(cmd *cobra.Command, args []string) {
 	})
 
 	var lastSelectedRequestNode *tview.TreeNode
-	var currentSelectedNode *tview.TreeNode
-	var currentRequest *workspace.Request
-	var originalRequestSnapshot workspace.Request // Store original state for matching
-	var currentRequestCollectionIndex int
-	var currentRequestIndex int
-	var programmaticallyUpdatingMethod bool // Track programmatic updates
-	var programmaticallyUpdatingURL bool    // Track programmatic URL updates
 
 	// Track body editing mode and current body content
-	var bodyEditMode bool = false
-	var currentBodyContent string = ""
+	bodyEditMode := false
+	currentBodyContent := ""
 
-	// Helper function to save current request changes
-	saveCurrentRequest := func() {
-		if currentRequest != nil && currentRequestCollectionIndex >= 0 && currentRequestIndex >= 0 {
-			if err := workspace.SaveCollections(collectionsData); err != nil {
-				// Handle error (could show in status or log)
-				return
-			}
-		}
+	// Create unified Request panel containing method+URL+send and tabs
+	var requestPanel *tview.Flex
+	var rightSide *tview.Flex
+
+	// Create main panels
+	mainPanels := []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
+
+	// Create request panel and right side layout
+	requestPanel = setupRequestPanel(methodURLBar, requestDataTabs, backgroundColor)
+	rightSide = setupRightSide(requestPanel, response)
+
+	// Create main grid layout
+	grid := setupLayout(header, footer, collectionsTreeView, rightSide)
+
+	// Initialize cycles
+	mainCycle = &MainCycle{
+		panels:   mainPanels,
+		current:  0, // start with collections
+		children: nil,
+	}
+
+	requestCycle = &RequestCycle{
+		elements: []tview.Primitive{methodDropdown, urlInput, sendButton},
+		current:  0,
+		parent:   mainCycle,
+	}
+
+	headersCycle = &HeadersCycle{
+		inputs:   []tview.Primitive{},
+		current:  0,
+		parent:   mainCycle,
+		children: nil,
 	}
 
 	// Helper function to sync body content between view and edit panels
@@ -401,45 +443,28 @@ func runTUI(cmd *cobra.Command, args []string) {
 			programmaticallyUpdatingURL = false
 
 			syncBodyContent(req.Body)
+			setHeadersInUI(req.Headers, saveCurrentRequest, func(p tview.Primitive) { app.SetFocus(p) })
 
 			// Set current request for persistence
 			currentSelectedNode = node
 			lastSelectedRequestNode = node
 
-			// Store original request snapshot for accurate matching
-			originalRequestSnapshot = req
-
-			// Find the request in collectionsData to get indices for saving
-			// Match by all original fields (Name, Method, URL, Body)
-			currentRequestCollectionIndex = -1
-			currentRequestIndex = -1
-			for i, collection := range collectionsData {
-				for j, collectionReq := range collection.Requests {
-					// Match by all original request fields for uniqueness
-					if collectionReq.Name == originalRequestSnapshot.Name &&
-						collectionReq.Method == originalRequestSnapshot.Method &&
-						collectionReq.URL == originalRequestSnapshot.URL &&
-						collectionReq.Body == originalRequestSnapshot.Body {
-						currentRequestCollectionIndex = i
-						currentRequestIndex = j
-						// Update the reference to point to the actual data
-						currentRequest = &collectionsData[i].Requests[j]
-						break
-					}
-				}
-				if currentRequestCollectionIndex >= 0 {
-					break
-				}
-			}
+			// Find the request pointer in collectionsData
+			currentRequest = findRequestPtr(collectionsData, req)
 
 			// Set method in dropdown AFTER currentRequest is set
-			syncMethodDropdown()
+			if currentRequest != nil {
+				syncMethodDropdown()
+			}
 		} else if col, ok := reference.(workspace.Collection); ok {
+			// Save current request headers before clearing
+			if currentRequest != nil {
+				currentRequest.Headers = getHeadersFromUI()
+			}
+
 			// Clear current request when a collection is selected
 			currentRequest = nil
 			currentSelectedNode = nil
-			currentRequestCollectionIndex = -1
-			currentRequestIndex = -1
 
 			// Handle collection expansion
 			expanded := !node.IsExpanded()
@@ -487,19 +512,24 @@ func runTUI(cmd *cobra.Command, args []string) {
 	grid.AddItem(collectionsTreeView, 1, 0, 1, 1, 0, 0, true)
 	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
 
+	// Initial focus is on requestPanel (panels[1])
 	currentFocus := 0
-	panels := []tview.Primitive{collectionsTreeView, methodUrlBar, requestDataTabs, response}
 
 	// Custom focus handler that knows about special containers
 	setPanelFocus := func(panelIndex int, focused bool) {
-		if panelIndex == 1 { // Method+URL bar index
-			setMethodUrlBarFocusStyle(methodUrlBar, focused, borderColor, borderFocusColor)
-		} else if panelIndex == 2 { // Request data tabs index (Body/Auth/Query/Headers)
-			setBodyContainerFocusStyle(bodyViewPanel, bodyEditPanel, bodyEditMode, focused, borderColor, borderFocusColor)
-		} else {
-			setFocusStyle(panels[panelIndex], focused, borderColor, borderFocusColor)
-		}
+		setFocusStyle(mainPanels[panelIndex], focused, borderColor, borderFocusColor)
 	}
+
+	setActiveBorder := func(element tview.Primitive) {
+		setFocusStyle(element, true, borderColor, borderFocusColor)
+	}
+
+	setInactiveBorder := func(element tview.Primitive) {
+		setFocusStyle(element, false, borderColor, borderFocusColor)
+	}
+
+	// Update the panel focus setter now that setPanelFocus is defined
+	panelFocusSetter = setPanelFocus
 
 	// Update the original switchBodyMode with proper focus handling
 	switchBodyMode = func() {
@@ -510,6 +540,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			// Switch to edit mode
 			bodyContainer.AddItem(bodyEditPanel, 0, 1, false)
 			bodyEditPanel.SetText(currentBodyContent, false)
+			bodyEditPanel.SetBorderColor(backgroundColor)
 		} else {
 			// Switch to view mode
 			bodyContainer.AddItem(bodyViewPanel, 0, 1, false)
@@ -524,23 +555,12 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 			syncBodyContent(currentBodyContent)
 		}
-
-		// Update focus styling for the current mode if body container is focused
-		if currentFocus == 2 { // Body container index (now at index 2 instead of 3)
-			setPanelFocus(currentFocus, true)
-			// Also switch the actual focus to the newly active panel
-			if bodyEditMode {
-				app.SetFocus(bodyEditPanel)
-			} else {
-				app.SetFocus(bodyViewPanel)
-			}
-		}
 	}
 
 	// Now that switchBodyMode is defined, set up the input capture for bodyEditPanel
 	bodyEditPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// Esc key to exit insert mode back to view mode
-		if event.Key() == tcell.KeyEscape {
+		// Esc key to exit insert mode back to view mode (only when in body tab)
+		if event.Key() == tcell.KeyEscape && currentTabIndex == 0 {
 			switchBodyMode() // Switch back to view mode
 			return nil
 		}
@@ -560,6 +580,17 @@ func runTUI(cmd *cobra.Command, args []string) {
 			case 'l':
 				// Move cursor right
 				return tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone)
+			case 's':
+				// Save without leaving edit mode (Ctrl+s)
+				if currentRequest != nil && currentSelectedNode != nil {
+					currentBodyContent = bodyEditPanel.GetText()
+					currentRequest.Body = currentBodyContent
+					currentSelectedNode.SetReference(*currentRequest)
+					saveCurrentRequest()
+					// Show save confirmation
+					// footer.SetText(" ✓ Saved - Changes saved while staying in edit mode")
+				}
+				return nil
 			}
 		}
 		return event
@@ -573,22 +604,16 @@ func runTUI(cmd *cobra.Command, args []string) {
 	// Add main page
 	pages.AddPage("main", grid, true, true)
 
-	// Helper function to center modals
-	createModal := func(p tview.Primitive, width, height int) tview.Primitive {
-		return tview.NewFlex().
-			AddItem(nil, 0, 1, false).
-			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-				AddItem(nil, 0, 1, false).
-				AddItem(p, height, 1, true).
-				AddItem(nil, 0, 1, false), width, 1, false).
-			AddItem(nil, 0, 1, false)
-	}
-
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		// Check if we're on a modal page (not main)
 		currentPage, _ := pages.GetFrontPage()
 		if currentPage != "main" {
 			// Let the form handle its own input
+			return event
+		}
+
+		// When in body edit mode and focused on bodyEditPanel, pass all input through to allow pasting
+		if bodyEditMode && app.GetFocus() == bodyEditPanel {
 			return event
 		}
 
@@ -602,65 +627,241 @@ func runTUI(cmd *cobra.Command, args []string) {
 			app.Stop()
 			return nil
 		}
+
 		if event.Key() == tcell.KeyTab {
-			setPanelFocus(currentFocus, false)
-			currentFocus = (currentFocus + 1) % len(panels)
-			if currentFocus == 1 { // Method+URL bar
-				app.SetFocus(urlInput) // Focus the URL input by default
-			} else if currentFocus == 2 { // Request data tabs (Body/Auth/Query/Headers)
-				// Focus the active panel within the body tab (default tab)
-				if bodyEditMode {
-					app.SetFocus(bodyEditPanel)
-				} else {
-					app.SetFocus(bodyViewPanel)
-				}
-			} else {
-				app.SetFocus(panels[currentFocus])
+
+			// collections panel
+			if mainCycle.current == 0 {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				// It can advance to the next panel
+				nextElement := mainCycle.Next()
+				requestCycle.current = 0
+				setActiveBorder(nextElement)
+
+				app.SetFocus(methodDropdown)
+				currentFocus = mainCycle.current
+
+				return nil
 			}
-			setPanelFocus(currentFocus, true)
+
+			// urlbar panel & dropdown
+			if mainCycle.current == 1 && requestCycle.current == 0 {
+				next := requestCycle.Next()
+				app.SetFocus(next)
+				currentFocus = mainCycle.current
+
+				return nil
+			}
+
+			// urlbar panel & url input
+			if mainCycle.current == 1 && requestCycle.current == 1 {
+				next := requestCycle.Next()
+				app.SetFocus(next)
+				currentFocus = mainCycle.current
+
+				return nil
+			}
+
+			// urlbar panel & send button
+			if mainCycle.current == 1 && requestCycle.current == 2 {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				nextElement := mainCycle.Next()
+				setActiveBorder(nextElement)
+				app.SetFocus(bodyViewPanel)
+				currentFocus = mainCycle.current
+
+				return nil
+			}
+
+			// requests editor/viewer panel
+			if mainCycle.current == 2 && currentTabIndex == 0 && !bodyEditMode {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				nextElement := mainCycle.Next()
+				setActiveBorder(nextElement)
+				app.SetFocus(nextElement)
+				currentFocus = mainCycle.current
+
+				return nil
+			}
+
+			// requests headers panel - cycle through header inputs
+			if mainCycle.current == 2 && currentTabIndex == 3 {
+				// Cycle through header key/value/delete inputs, then jump to next panel
+				currentFocusedElement := app.GetFocus()
+
+				// Find current focused header input
+				found := false
+				for i, row := range currentHeaderRows {
+					if row.KeyInput == currentFocusedElement {
+						// Currently on key input, move to value input of same row
+						app.SetFocus(row.ValueInput)
+						found = true
+						break
+					} else if row.ValueInput == currentFocusedElement {
+						// Currently on value input, move to delete button of same row
+						app.SetFocus(row.DeleteButton)
+						found = true
+						break
+					} else if row.DeleteButton == currentFocusedElement {
+						// Currently on delete button, move to next row's key input or next panel
+						if i < len(currentHeaderRows)-1 {
+							// Move to next row's key input
+							app.SetFocus(currentHeaderRows[i+1].KeyInput)
+						} else {
+							// Last delete button, move to next main panel (response)
+							setInactiveBorder(mainCycle.panels[mainCycle.current])
+							nextElement := mainCycle.Next()
+							setActiveBorder(nextElement)
+							app.SetFocus(nextElement)
+						}
+						found = true
+						break
+					}
+				}
+
+				// If no header input was focused, focus the first key input
+				if !found && len(currentHeaderRows) > 0 {
+					app.SetFocus(currentHeaderRows[0].KeyInput)
+				}
+
+				return nil
+			}
+
+			// response panel
+			if mainCycle.current == 3 {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				nextElement := mainCycle.Next()
+				setActiveBorder(nextElement)
+				app.SetFocus(nextElement)
+				currentFocus = mainCycle.current
+
+				return nil
+			}
+
 			return nil
 		}
+
+		// Shift+KeyTab (Backtab) for backward navigation
 		if event.Key() == tcell.KeyBacktab {
-			setPanelFocus(currentFocus, false)
-			currentFocus = (currentFocus - 1 + len(panels)) % len(panels)
-			if currentFocus == 1 { // Method+URL bar
-				app.SetFocus(urlInput) // Focus the URL input by default
-			} else if currentFocus == 2 { // Request data tabs (Body/Auth/Query/Headers)
-				// Focus the active panel within the body tab (default tab)
-				if bodyEditMode {
-					app.SetFocus(bodyEditPanel)
-				} else {
-					app.SetFocus(bodyViewPanel)
-				}
-			} else {
-				app.SetFocus(panels[currentFocus])
+			// collections panel
+			if mainCycle.current == 0 {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				prevElement := mainCycle.Prev()
+				setActiveBorder(prevElement)
+				app.SetFocus(prevElement)
+				currentFocus = mainCycle.current
+				return nil
 			}
-			setPanelFocus(currentFocus, true)
+
+			// urlbar panel & dropdown
+			if mainCycle.current == 1 && requestCycle.current == 0 {
+				prev := requestCycle.Prev()
+				if prev != nil {
+					app.SetFocus(prev)
+				} else {
+					// Wrap to previous main panel
+					setInactiveBorder(mainCycle.panels[mainCycle.current])
+					prevElement := mainCycle.Prev()
+					setActiveBorder(prevElement)
+					app.SetFocus(prevElement)
+					currentFocus = mainCycle.current
+				}
+				return nil
+			}
+
+			// urlbar panel & url input
+			if mainCycle.current == 1 && requestCycle.current == 1 {
+				prev := requestCycle.Prev()
+				app.SetFocus(prev)
+				currentFocus = mainCycle.current
+				return nil
+			}
+
+			// urlbar panel & send button
+			if mainCycle.current == 1 && requestCycle.current == 2 {
+				prev := requestCycle.Prev()
+				app.SetFocus(prev)
+				currentFocus = mainCycle.current
+				return nil
+			}
+
+			// requests editor/viewer panel
+			if mainCycle.current == 2 && currentTabIndex == 0 && !bodyEditMode {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				prevElement := mainCycle.Prev()
+				setActiveBorder(prevElement)
+				app.SetFocus(sendButton)
+				requestCycle.current = 2
+				currentFocus = mainCycle.current
+				return nil
+			}
+
+			// requests headers panel - cycle backward through header inputs
+			if mainCycle.current == 2 && currentTabIndex == 3 {
+				// Cycle backward through header key/value/delete inputs
+				currentFocusedElement := app.GetFocus()
+
+				// Find current focused header input
+				found := false
+				for i, row := range currentHeaderRows {
+					if row.KeyInput == currentFocusedElement {
+						// Currently on key input, move to previous row's delete button or previous panel
+						if i > 0 {
+							// Move to previous row's delete button
+							app.SetFocus(currentHeaderRows[i-1].DeleteButton)
+						} else {
+							// First key input, move to previous main panel (request panel)
+							setInactiveBorder(mainCycle.panels[mainCycle.current])
+							prevElement := mainCycle.Prev()
+							setActiveBorder(prevElement)
+							app.SetFocus(sendButton)
+							requestCycle.current = 2
+						}
+						found = true
+						break
+					} else if row.ValueInput == currentFocusedElement {
+						// Currently on value input, move to key input of same row
+						app.SetFocus(row.KeyInput)
+						found = true
+						break
+					} else if row.DeleteButton == currentFocusedElement {
+						// Currently on delete button, move to value input of same row
+						app.SetFocus(row.ValueInput)
+						found = true
+						break
+					}
+				}
+
+				// If no header input was focused, focus the last delete button
+				if !found && len(currentHeaderRows) > 0 {
+					app.SetFocus(currentHeaderRows[len(currentHeaderRows)-1].DeleteButton)
+				}
+
+				return nil
+			}
+
+			// response panel
+			if mainCycle.current == 3 {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				prevElement := mainCycle.Prev()
+				setActiveBorder(prevElement)
+				app.SetFocus(bodyViewPanel)
+				currentFocus = mainCycle.current
+				return nil
+			}
+
 			return nil
 		}
 
-		if event.Rune() == 'n' {
-			// New collection - check if we're adding to root or nested
-			node := collectionsTreeView.GetCurrentNode()
-			var parentCollection *workspace.Collection = nil
-			var parentNode *tview.TreeNode = rootNode
-
-			if node != nil {
-				if col, ok := node.GetReference().(workspace.Collection); ok {
-					// Find the actual collection in the data to get a proper pointer
-					parentCollection = findCollectionByName(&collectionsData, col.Name)
-					parentNode = node
-				}
-			}
-
-			form := createCollectionForm(app, pages, &collectionsData, rootNode, parentNode, collectionsTreeView, parentCollection)
-			modal := createModal(form, 40, 10)
+		if mainCycle.current == 0 && event.Rune() == 'n' {
+			form := createCollectionFormWithLocation(app, pages, &collectionsData, rootNode, collectionsTreeView)
+			modal := createModal(form, 50, 12)
 			pages.AddPage("newCollection", modal, true, true)
 			app.SetFocus(form)
 			return nil
 		}
 
-		if event.Rune() == 'r' {
+		if mainCycle.current == 0 && event.Rune() == 'r' {
 			// New request - check if a collection or request is selected
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
@@ -685,7 +886,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// Rename functionality (Shift+R)
-		if event.Rune() == 'R' {
+		if mainCycle.current == 0 && event.Rune() == 'R' {
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()
@@ -693,14 +894,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 				if col, ok := reference.(workspace.Collection); ok {
 					// Rename collection
 					form := createRenameCollectionForm(app, pages, &col, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 40, 10)
+					modal := createModal(form, 25, 10)
 					pages.AddPage("renameCollection", modal, true, true)
 					app.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Rename request - need to find parent collection
 					form := createRenameRequestForm(app, pages, &req, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 40, 10)
+					modal := createModal(form, 47, 10)
 					pages.AddPage("renameRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -709,7 +910,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// Move collection/request functionality (M)
-		if event.Rune() == 'm' {
+		if mainCycle.current == 0 && event.Rune() == 'm' {
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
 				if col, ok := node.GetReference().(workspace.Collection); ok {
@@ -731,7 +932,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// Delete functionality (d)
-		if event.Rune() == 'd' {
+		if mainCycle.current == 0 && event.Rune() == 'd' {
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()
@@ -755,7 +956,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// F4 to open body in external editor
-		if event.Key() == tcell.KeyF4 {
+		if mainCycle.current == 2 && event.Key() == tcell.KeyF4 {
 			if currentRequest != nil {
 				// Suspend TUI to open external editor
 				app.Suspend(func() {
@@ -781,37 +982,155 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// Tab switching with number keys (1-4) when request data tabs are focused
-		if currentFocus == 2 { // Request data tabs focused
-			switch event.Rune() {
-			case '1':
-				tabPages.SwitchToPage("body")
-				updateTabHeader(tabHeader, 0, backgroundColor, foregroundColor, activeTabColor)
-				return nil
-			case '2':
-				tabPages.SwitchToPage("auth")
-				updateTabHeader(tabHeader, 1, backgroundColor, foregroundColor, activeTabColor)
-				return nil
-			case '3':
-				tabPages.SwitchToPage("query")
-				updateTabHeader(tabHeader, 2, backgroundColor, foregroundColor, activeTabColor)
-				return nil
-			case '4':
-				tabPages.SwitchToPage("headers")
-				updateTabHeader(tabHeader, 3, backgroundColor, foregroundColor, activeTabColor)
-				return nil
+		// Request data tabs focused and not on an input field
+		if currentFocus == 2 {
+			// Check if focus is on an input field (don't switch tabs if typing)
+			currentFocusedElement := app.GetFocus()
+			isOnInputField := false
+
+			// Check if focused on method dropdown
+			if currentFocusedElement == methodDropdown {
+				isOnInputField = true
+			}
+			// Check if focused on URL input
+			if currentFocusedElement == urlInput {
+				isOnInputField = true
+			}
+			// Check if focused on body edit panel
+			if currentFocusedElement == bodyEditPanel {
+				isOnInputField = true
+			}
+			// Check if focused on any header input fields
+			for _, row := range currentHeaderRows {
+				if currentFocusedElement == row.KeyInput || currentFocusedElement == row.ValueInput {
+					isOnInputField = true
+					break
+				}
+			}
+
+			// Only switch tabs if not focused on an input field
+			if !isOnInputField {
+				switch event.Rune() {
+				case '1':
+					tabPages.SwitchToPage("body")
+					updateTabHeader(tabHeader, 0, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					currentTabIndex = 0
+					return nil
+				case '2':
+					tabPages.SwitchToPage("auth")
+					updateTabHeader(tabHeader, 1, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					currentTabIndex = 1
+					return nil
+				case '3':
+					tabPages.SwitchToPage("query")
+					updateTabHeader(tabHeader, 2, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					currentTabIndex = 2
+					return nil
+				case '4':
+					tabPages.SwitchToPage("headers")
+					updateTabHeader(tabHeader, 3, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					currentTabIndex = 3
+					return nil
+				}
 			}
 		}
 
-		// Vim-style modal editing: 'i' to enter insert mode (only when body is focused and in view mode)
-		if event.Rune() == 'i' && currentFocus == 2 && !bodyEditMode {
+		// Vim-style modal editing: 'i' to enter insert mode (only when request panel is active, tabs are focused, body tab is selected, and in view mode)
+		// if event.Rune() == 'i' && currentFocus == 1 && currentRequestSubFocus == 3 && currentTabIndex == 0 && !bodyEditMode {
+		if event.Rune() == 'i' && mainCycle.current == 2 && currentTabIndex == 0 && !bodyEditMode {
 			switchBodyMode() // Switch to edit mode
+			app.SetFocus(bodyEditPanel)
 			return nil
+		}
+
+		// Arrow key navigation for tabs when request panel tabs are focused and not in body edit mode
+		if mainCycle.current == 2 && !bodyEditMode {
+			if event.Key() == tcell.KeyLeft {
+				currentTabIndex = (currentTabIndex - 1 + 4) % 4
+				tabNames := []string{"body", "auth", "query", "headers"}
+				tabPages.SwitchToPage(tabNames[currentTabIndex])
+				updateTabHeader(tabHeader, currentTabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+				// Focus the appropriate tab content
+				switch currentTabIndex {
+				case 0: // Body tab
+					if bodyEditMode {
+						app.SetFocus(bodyEditPanel)
+					} else {
+						app.SetFocus(bodyViewPanel)
+					}
+				case 3: // Headers tab
+					if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
+						app.SetFocus(currentHeaderRows[0].KeyInput)
+					} else {
+						app.SetFocus(requestDataTabs)
+					}
+				default:
+					app.SetFocus(requestDataTabs)
+				}
+				return nil
+			} else if event.Key() == tcell.KeyRight {
+				currentTabIndex = (currentTabIndex + 1) % 4
+				tabNames := []string{"body", "auth", "query", "headers"}
+				tabPages.SwitchToPage(tabNames[currentTabIndex])
+				updateTabHeader(tabHeader, currentTabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+				// Focus the appropriate tab content
+				switch currentTabIndex {
+				case 0: // Body tab
+					if bodyEditMode {
+						app.SetFocus(bodyEditPanel)
+					} else {
+						app.SetFocus(bodyViewPanel)
+					}
+				case 3: // Headers tab
+					if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
+						app.SetFocus(currentHeaderRows[0].KeyInput)
+					} else {
+						app.SetFocus(requestDataTabs)
+					}
+				default:
+					app.SetFocus(requestDataTabs)
+				}
+				return nil
+			}
 		}
 
 		return event
 	})
 
-	if err := app.SetRoot(pages, true).SetFocus(collectionsTreeView).Run(); err != nil {
+	// Add send button functionality
+	sendButton.SetSelectedFunc(func() {
+		// Get current request data from UI
+		_, method := methodDropdown.GetCurrentOption()
+		url := urlInput.GetText()
+		body := ""
+		if currentRequest != nil {
+			body = currentRequest.Body
+		}
+		headers := getHeadersFromUI()
+
+		// Validate URL
+		if url == "" {
+			response.SetText("Error: URL is required")
+			return
+		}
+
+		// Send the request
+		response.SetText("Sending request...")
+		resp, err := SendRequest(method, url, body, headers)
+		if err != nil {
+			response.SetText(fmt.Sprintf("Error: %v", err))
+			return
+		}
+
+		// Format and display the response
+		formattedResponse := FormatResponse(resp)
+		response.SetText(formattedResponse)
+	})
+
+	if err := app.
+		SetRoot(pages, true).
+		SetFocus(collectionsTreeView).
+		Run(); err != nil {
 		panic(err)
 	}
 }
