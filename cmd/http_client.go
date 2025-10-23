@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -103,27 +104,40 @@ func SendRequest(method, url, body string, headers map[string]string) (*HTTPResp
 func FormatResponse(response *HTTPResponse) string {
 	var result strings.Builder
 
-	// Status line
-	result.WriteString(fmt.Sprintf("Status: %d %s\n", response.StatusCode, response.Status))
-	result.WriteString(fmt.Sprintf("Time: %v\n\n", response.Duration.Round(time.Millisecond)))
+	// Status line - hidden for now
+	// result.WriteString(fmt.Sprintf("Status: %d %s\n", response.StatusCode, response.Status))
+	// result.WriteString(fmt.Sprintf("Time: %v\n\n", response.Duration.Round(time.Millisecond)))
 
-	// Headers
-	if len(response.Headers) > 0 {
-		result.WriteString("Headers:\n")
-		for key, values := range response.Headers {
-			for _, value := range values {
-				result.WriteString(fmt.Sprintf("  %s: %s\n", key, value))
-			}
-		}
-		result.WriteString("\n")
-	}
+	// Headers - hidden for now
+	// if len(response.Headers) > 0 {
+	// 	result.WriteString("Headers:\n")
+	// 	for key, values := range response.Headers {
+	// 		for _, value := range values {
+	// 			result.WriteString(fmt.Sprintf("  %s: %s\n", key, value))
+	// 		}
+	// 	}
+	// 	result.WriteString("\n")
+	// }
 
 	// Body
 	if response.Body != "" {
-		result.WriteString("Body:\n")
-		result.WriteString(response.Body)
+		// Pretty-print JSON if it's valid JSON
+		bodyToFormat := response.Body
+		if strings.TrimSpace(response.Body)[0] == '{' || strings.TrimSpace(response.Body)[0] == '[' {
+			var jsonData interface{}
+			if err := json.Unmarshal([]byte(response.Body), &jsonData); err == nil {
+				// It's valid JSON, pretty-print it
+				prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
+				if err == nil {
+					bodyToFormat = string(prettyJSON)
+				}
+			}
+		}
+
+		formattedBody := formatBodyContent(bodyToFormat)
+		result.WriteString(formattedBody)
 	} else {
-		result.WriteString("Body: (empty)")
+		result.WriteString("(empty response)")
 	}
 
 	return result.String()
