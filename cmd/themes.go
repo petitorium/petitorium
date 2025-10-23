@@ -12,7 +12,7 @@ import (
 var themesCmd = &cobra.Command{
 	Use:   "themes",
 	Short: "List available syntax highlighting themes",
-	Long: `List all available Chroma syntax highlighting themes that can be used 
+	Long: `List all available Chroma syntax highlighting themes that can be used
 in the configuration file's syntaxTheme setting.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available syntax highlighting themes:")
@@ -22,17 +22,54 @@ in the configuration file's syntaxTheme setting.`,
 		allThemes := styles.Names()
 		sort.Strings(allThemes)
 
+		// Get supported unified theming themes
+		supportedThemes := getSupportedUnifiedThemes()
+		supportedMap := make(map[string]bool)
+		for _, theme := range supportedThemes {
+			supportedMap[theme] = true
+		}
+
 		// Current theme
 		currentTheme := getSyntaxTheme()
 
-		// Print themes
-		for i, theme := range allThemes {
+		fmt.Println("\nUnified Theming Supported Themes (★):")
+		fmt.Println("=====================================")
+
+		// Print supported themes first
+		for i, theme := range supportedThemes {
 			marker := "  "
 			if theme == currentTheme {
 				marker = "* " // Mark current theme
 			}
 
-			fmt.Printf("%s%-20s", marker, theme)
+			fmt.Printf("%s★ %-18s", marker, theme)
+
+			// Print 3 themes per line
+			if (i+1)%3 == 0 {
+				fmt.Println()
+			}
+		}
+
+		if len(supportedThemes)%3 != 0 {
+			fmt.Println()
+		}
+
+		fmt.Println("\nAll Available Themes:")
+		fmt.Println("====================")
+
+		// Print all themes
+		for i, theme := range allThemes {
+			marker := "  "
+			if theme == currentTheme {
+				marker = "* " // Mark current theme
+			}
+			if supportedMap[theme] {
+				marker += "★" // Mark supported themes
+			} else {
+				marker += " " // Space for alignment
+			}
+
+			fmt.Printf("%s%-19s", marker, theme)
 
 			// Print 3 themes per line
 			if (i+1)%3 == 0 {
@@ -46,6 +83,7 @@ in the configuration file's syntaxTheme setting.`,
 
 		fmt.Printf("\nCurrent theme: %s\n", currentTheme)
 		fmt.Println("\nTo change theme, update 'syntaxTheme' in your config file.")
+		fmt.Println("★ = Supported for unified theming (applies theme colors to entire UI)")
 		fmt.Println("Popular themes: github-dark, dracula, monokai, solarized-dark, nord, one-dark")
 	},
 }
