@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -455,6 +456,24 @@ func runTUI(cmd *cobra.Command, args []string) {
 			// Set method in dropdown AFTER currentRequest is set
 			if currentRequest != nil {
 				syncMethodDropdown()
+
+				// Show last response if available
+				if len(currentRequest.ResponseHistory) > 0 {
+					lastResponse := currentRequest.ResponseHistory[len(currentRequest.ResponseHistory)-1]
+					// Convert workspace.HTTPResponse to cmd.HTTPResponse for formatting
+					cmdResp := &HTTPResponse{
+						StatusCode: lastResponse.StatusCode,
+						Status:     lastResponse.Status,
+						Headers:    lastResponse.Headers,
+						Body:       lastResponse.Body,
+						Duration:   lastResponse.Duration,
+					}
+					formattedResponse := FormatResponse(cmdResp)
+					response.SetText(formattedResponse)
+				} else {
+					// Clear response if no history
+					response.SetText("")
+				}
 			}
 		} else if col, ok := reference.(workspace.Collection); ok {
 			// Save current request headers before clearing
@@ -1120,6 +1139,25 @@ func runTUI(cmd *cobra.Command, args []string) {
 		if err != nil {
 			response.SetText(fmt.Sprintf("Error: %v", err))
 			return
+		}
+
+		// Store the response in the current request's history
+		if currentRequest != nil {
+			workspaceResp := workspace.HTTPResponse{
+				StatusCode: resp.StatusCode,
+				Status:     resp.Status,
+				Headers:    resp.Headers,
+				Body:       resp.Body,
+				Duration:   resp.Duration,
+				Timestamp:  time.Now(),
+			}
+			currentRequest.ResponseHistory = append(currentRequest.ResponseHistory, workspaceResp)
+
+			// Update the node's reference with the new response history
+			if currentSelectedNode != nil {
+				currentSelectedNode.SetReference(*currentRequest)
+				saveCurrentRequest()
+			}
 		}
 
 		// Format and display the response
