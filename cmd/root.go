@@ -1071,22 +1071,26 @@ func runTUI(cmd *cobra.Command, args []string) {
 				switch event.Rune() {
 				case '1':
 					tabPages.SwitchToPage("body")
-					updateTabHeader(tabHeader, 0, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+					updateTabHeader(requestTabs, tabHeader, 0, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 					currentTabIndex = 0
 					return nil
 				case '2':
 					tabPages.SwitchToPage("auth")
-					updateTabHeader(tabHeader, 1, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+					updateTabHeader(requestTabs, tabHeader, 1, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 					currentTabIndex = 1
 					return nil
 				case '3':
 					tabPages.SwitchToPage("query")
-					updateTabHeader(tabHeader, 2, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+					updateTabHeader(requestTabs, tabHeader, 2, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 					currentTabIndex = 2
 					return nil
 				case '4':
 					tabPages.SwitchToPage("headers")
-					updateTabHeader(tabHeader, 3, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+					updateTabHeader(requestTabs, tabHeader, 3, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 					currentTabIndex = 3
 					return nil
 				}
@@ -1107,7 +1111,8 @@ func runTUI(cmd *cobra.Command, args []string) {
 				currentTabIndex = (currentTabIndex - 1 + 4) % 4
 				tabNames := []string{"body", "auth", "query", "headers"}
 				tabPages.SwitchToPage(tabNames[currentTabIndex])
-				updateTabHeader(tabHeader, currentTabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+				requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+				updateTabHeader(requestTabs, tabHeader, currentTabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 				// Focus the appropriate tab content
 				switch currentTabIndex {
 				case 0: // Body tab
@@ -1130,7 +1135,8 @@ func runTUI(cmd *cobra.Command, args []string) {
 				currentTabIndex = (currentTabIndex + 1) % 4
 				tabNames := []string{"body", "auth", "query", "headers"}
 				tabPages.SwitchToPage(tabNames[currentTabIndex])
-				updateTabHeader(tabHeader, currentTabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+				requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+				updateTabHeader(requestTabs, tabHeader, currentTabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 				// Focus the appropriate tab content
 				switch currentTabIndex {
 				case 0: // Body tab

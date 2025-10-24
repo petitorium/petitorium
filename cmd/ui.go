@@ -266,6 +266,7 @@ func createTabHeader(tabs []string, backgroundColor,
 
 // updateTabHeader updates the active tab indicator in the tab header
 func updateTabHeader(
+	tabs []string,
 	tabHeader *tview.Flex,
 	activeTabIndex int,
 	backgroundColor,
@@ -273,8 +274,6 @@ func updateTabHeader(
 	activeTabColor,
 	selectionBackgroundColor tcell.Color,
 ) {
-	// Tab titles
-	tabs := []string{"Body", "Auth", "Query", "Headers"}
 
 	// Update each tab's appearance based on whether it's active
 	for i := 0; i < len(tabs); i++ {
@@ -800,13 +799,10 @@ func createRequestDataTabs(
 		tabNames := []string{"body", "auth", "query", "headers"}
 		if tabIndex >= 0 && tabIndex < len(tabNames) {
 			tabPages.SwitchToPage(tabNames[tabIndex])
-			// Update current tab index
-			if tabIndexSetter != nil {
-				tabIndexSetter(tabIndex)
-			}
 			// Update the tab header to show the new active tab
 			if tabHeader != nil {
-				updateTabHeader(tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+				tabs := []string{"Body", "Auth", "Query", "Headers"}
+				updateTabHeader(tabs, tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 			}
 
 			// Ensure only the request panel is focused
@@ -1024,7 +1020,8 @@ func createResponseTabs(
 			tabPages.SwitchToPage(tabNames[tabIndex])
 			// Update the tab header to show the new active tab
 			if tabHeader != nil {
-				updateTabHeader(tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+				responseTabs := []string{"Preview", "Headers", "Cookies", "Timeline"}
+				updateTabHeader(responseTabs, tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
 			}
 		}
 	}
