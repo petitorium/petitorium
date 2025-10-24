@@ -856,7 +856,7 @@ func createResponseInfoBar(
 	// Status
 	statusText := "No response"
 	if response != nil {
-		statusText = fmt.Sprintf("Status: %d %s", response.StatusCode, response.Status)
+		statusText = fmt.Sprintf("Status: %s", response.Status)
 	}
 	statusView := tview.NewTextView()
 	statusView.SetText(statusText)
