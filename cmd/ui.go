@@ -840,6 +840,39 @@ func createRequestDataTabs(
 	return tabContainer, tabPages, bodyContainer, tabHeader, authTab, queryTab, headersTab, switchToTab
 }
 
+// getStatusCodeColors returns appropriate background and foreground colors for HTTP status codes
+func getStatusCodeColors(statusCode int, defaultBg, defaultFg tcell.Color) (tcell.Color, tcell.Color) {
+	var bgColorHex, fgColorHex string
+
+	switch {
+	case statusCode >= 200 && statusCode < 300:
+		// 2xx Success
+		bgColorHex = config.C.StatusColors.Success
+		fgColorHex = config.C.StatusColors.SuccessText
+	case statusCode >= 300 && statusCode < 400:
+		// 3xx Redirection
+		bgColorHex = config.C.StatusColors.Redirection
+		fgColorHex = config.C.StatusColors.RedirectionText
+	case statusCode >= 400 && statusCode < 500:
+		// 4xx Client Error
+		bgColorHex = config.C.StatusColors.ClientError
+		fgColorHex = config.C.StatusColors.ClientErrorText
+	case statusCode >= 500:
+		// 5xx Server Error
+		bgColorHex = config.C.StatusColors.ServerError
+		fgColorHex = config.C.StatusColors.ServerErrorText
+	default:
+		// Unknown/other - Use default from config or fallback to default colors
+		if config.C.StatusColors.Default != "" {
+			return hexToColor(config.C.StatusColors.Default), hexToColor(config.C.StatusColors.DefaultText)
+		}
+		return defaultBg, defaultFg
+	}
+
+	// Convert hex colors
+	return hexToColor(bgColorHex), hexToColor(fgColorHex)
+}
+
 // createResponseInfoBar creates the info bar showing status, time, bytes, and last request time
 func createResponseInfoBar(
 	backgroundColor, foregroundColor, titleColor tcell.Color,
@@ -850,15 +883,25 @@ func createResponseInfoBar(
 	infoBar.SetBackgroundColor(backgroundColor)
 
 	// Status
-	statusText := "No response"
+	statusText := " --- "
+	statusViewWidth := 5
+	statusBgColor := backgroundColor
+	statusFgColor := foregroundColor
 	if response != nil {
-		statusText = fmt.Sprintf("Status: %s", response.Status)
+		statusText = fmt.Sprintf(" %d ", response.StatusCode)
+		statusBgColor, statusFgColor = getStatusCodeColors(response.StatusCode, backgroundColor, foregroundColor)
 	}
+	// Create status container with fixed width
+	statusContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	statusContainer.SetBackgroundColor(statusBgColor)
+
 	statusView := tview.NewTextView()
 	statusView.SetText(statusText)
-	statusView.SetTextColor(foregroundColor)
-	statusView.SetBackgroundColor(backgroundColor)
+	statusView.SetTextColor(statusFgColor)
+	statusView.SetBackgroundColor(statusBgColor)
 	statusView.SetBorder(false)
+
+	statusContainer.AddItem(statusView, statusViewWidth, 0, false) // Fixed width for status code
 
 	// Duration
 	durationText := "Time: -"
@@ -893,7 +936,7 @@ func createResponseInfoBar(
 	lastView.SetBackgroundColor(backgroundColor)
 	lastView.SetBorder(false)
 
-	infoBar.AddItem(statusView, 0, 1, false)
+	infoBar.AddItem(statusContainer, statusViewWidth, 0, false)
 	infoBar.AddItem(durationView, 0, 1, false)
 	infoBar.AddItem(sizeView, 0, 1, false)
 	infoBar.AddItem(lastView, 0, 1, false)
