@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -206,7 +208,7 @@ func createMethodURLBar(
 }
 
 // createTabHeader creates a clickable tab header bar
-func createTabHeader(backgroundColor,
+func createTabHeader(tabs []string, backgroundColor,
 	borderColor,
 	titleColor,
 	foregroundColor,
@@ -216,9 +218,6 @@ func createTabHeader(backgroundColor,
 ) *tview.Flex {
 	tabHeader := tview.NewFlex().SetDirection(tview.FlexColumn)
 	tabHeader.SetBackgroundColor(backgroundColor)
-
-	// Tab titles and their active states
-	tabs := []string{"Body", "Auth", "Query", "Headers"}
 	activeTab := 0 // Default to first tab
 
 	// Create tab buttons
@@ -829,7 +828,8 @@ func createRequestDataTabs(
 	}
 
 	// Create tab header
-	tabHeader = createTabHeader(backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, switchToTab)
+	tabs := []string{"Body", "Auth", "Query", "Headers"}
+	tabHeader = createTabHeader(tabs, backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, switchToTab)
 
 	// Create main container with header and content
 	tabContainer := tview.NewFlex().SetDirection(tview.FlexRow)
@@ -842,6 +842,216 @@ func createRequestDataTabs(
 	tabContainer.SetBackgroundColor(backgroundColor)
 
 	return tabContainer, tabPages, bodyContainer, tabHeader, authTab, queryTab, headersTab, switchToTab
+}
+
+// createResponseInfoBar creates the info bar showing status, time, bytes, and last request time
+func createResponseInfoBar(
+	backgroundColor, foregroundColor, titleColor tcell.Color,
+	response *HTTPResponse,
+	lastRequestTime *time.Time,
+) *tview.Flex {
+	infoBar := tview.NewFlex().SetDirection(tview.FlexColumn)
+	infoBar.SetBackgroundColor(backgroundColor)
+
+	// Status
+	statusText := "No response"
+	if response != nil {
+		statusText = fmt.Sprintf("Status: %d %s", response.StatusCode, response.Status)
+	}
+	statusView := tview.NewTextView()
+	statusView.SetText(statusText)
+	statusView.SetTextColor(foregroundColor)
+	statusView.SetBackgroundColor(backgroundColor)
+	statusView.SetBorder(false)
+
+	// Duration
+	durationText := "Time: -"
+	if response != nil {
+		durationText = fmt.Sprintf("Time: %v", response.Duration.Round(time.Millisecond))
+	}
+	durationView := tview.NewTextView()
+	durationView.SetText(durationText)
+	durationView.SetTextColor(foregroundColor)
+	durationView.SetBackgroundColor(backgroundColor)
+	durationView.SetBorder(false)
+
+	// Size
+	sizeText := "Size: -"
+	if response != nil {
+		sizeText = fmt.Sprintf("Size: %d bytes", response.BodySize)
+	}
+	sizeView := tview.NewTextView()
+	sizeView.SetText(sizeText)
+	sizeView.SetTextColor(foregroundColor)
+	sizeView.SetBackgroundColor(backgroundColor)
+	sizeView.SetBorder(false)
+
+	// Last request time
+	lastTimeText := "Last: never"
+	if lastRequestTime != nil {
+		lastTimeText = fmt.Sprintf("Last: %s ago", timeSinceHuman(*lastRequestTime))
+	}
+	lastView := tview.NewTextView()
+	lastView.SetText(lastTimeText)
+	lastView.SetTextColor(foregroundColor)
+	lastView.SetBackgroundColor(backgroundColor)
+	lastView.SetBorder(false)
+
+	infoBar.AddItem(statusView, 0, 1, false)
+	infoBar.AddItem(durationView, 0, 1, false)
+	infoBar.AddItem(sizeView, 0, 1, false)
+	infoBar.AddItem(lastView, 0, 1, false)
+
+	return infoBar
+}
+
+// timeSinceHuman returns a human-readable time since the given time
+func timeSinceHuman(t time.Time) string {
+	duration := time.Since(t)
+
+	if duration < time.Minute {
+		return fmt.Sprintf("%ds", int(duration.Seconds()))
+	} else if duration < time.Hour {
+		return fmt.Sprintf("%dm", int(duration.Minutes()))
+	} else if duration < 24*time.Hour {
+		return fmt.Sprintf("%dh", int(duration.Hours()))
+	} else {
+		return fmt.Sprintf("%dd", int(duration.Hours()/24))
+	}
+}
+
+// createResponseTabs creates the tabbed interface for response data
+func createResponseTabs(
+	backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor tcell.Color,
+	response *HTTPResponse,
+	lastRequestTime *time.Time,
+) (*tview.Flex, *tview.Pages, *tview.Flex, func(int)) {
+	// Create info bar
+	infoBar := createResponseInfoBar(backgroundColor, foregroundColor, titleColor, response, lastRequestTime)
+
+	// Create the tab content pages
+	tabPages := tview.NewPages()
+
+	// Preview tab - shows formatted response body
+	previewPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
+	if response != nil && response.Body != "" {
+		// Pretty-print JSON if it's valid JSON
+		bodyToFormat := response.Body
+		if strings.TrimSpace(response.Body)[0] == '{' || strings.TrimSpace(response.Body)[0] == '[' {
+			var jsonData interface{}
+			if err := json.Unmarshal([]byte(response.Body), &jsonData); err == nil {
+				// It's valid JSON, pretty-print it
+				prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
+				if err == nil {
+					bodyToFormat = string(prettyJSON)
+				}
+			}
+		}
+		formattedBody := formatBodyContent(bodyToFormat)
+		previewPanel.SetText(formattedBody)
+	} else {
+		previewPanel.SetText("(empty response)")
+	}
+
+	// Headers tab
+	headersPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
+	if response != nil && len(response.Headers) > 0 {
+		var headersText strings.Builder
+		headersText.WriteString("Response Headers:\n\n")
+		for key, values := range response.Headers {
+			for _, value := range values {
+				headersText.WriteString(fmt.Sprintf("%s: %s\n", key, value))
+			}
+		}
+		headersPanel.SetText(headersText.String())
+	} else {
+		headersPanel.SetText("No response headers")
+	}
+
+	// Cookies tab
+	cookiesPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
+	if response != nil && len(response.Cookies) > 0 {
+		var cookiesText strings.Builder
+		cookiesText.WriteString("Response Cookies:\n\n")
+		for _, cookie := range response.Cookies {
+			cookiesText.WriteString(fmt.Sprintf("Name: %s\n", cookie.Name))
+			cookiesText.WriteString(fmt.Sprintf("Value: %s\n", cookie.Value))
+			if cookie.Domain != "" {
+				cookiesText.WriteString(fmt.Sprintf("Domain: %s\n", cookie.Domain))
+			}
+			if cookie.Path != "" {
+				cookiesText.WriteString(fmt.Sprintf("Path: %s\n", cookie.Path))
+			}
+			if !cookie.Expires.IsZero() {
+				cookiesText.WriteString(fmt.Sprintf("Expires: %s\n", cookie.Expires.Format("2006-01-02 15:04:05")))
+			}
+			cookiesText.WriteString(fmt.Sprintf("Secure: %t\n", cookie.Secure))
+			cookiesText.WriteString(fmt.Sprintf("HttpOnly: %t\n\n", cookie.HttpOnly))
+		}
+		cookiesPanel.SetText(cookiesText.String())
+	} else {
+		cookiesPanel.SetText("No response cookies")
+	}
+
+	// Timeline tab - timing information
+	timelinePanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
+	if response != nil {
+		var timelineText strings.Builder
+		timelineText.WriteString("Request Timeline:\n\n")
+		timelineText.WriteString(fmt.Sprintf("Request sent: %s\n", response.Timestamp.Format("2006-01-02 15:04:05")))
+		timelineText.WriteString(fmt.Sprintf("Response received: %s\n", response.Timestamp.Add(response.Duration).Format("2006-01-02 15:04:05")))
+		timelineText.WriteString(fmt.Sprintf("Total duration: %v\n", response.Duration.Round(time.Millisecond)))
+		timelineText.WriteString(fmt.Sprintf("Response size: %d bytes\n", response.BodySize))
+		timelinePanel.SetText(timelineText.String())
+	} else {
+		timelinePanel.SetText("No request timeline available")
+	}
+
+	// Add all tabs to pages
+	tabPages.AddPage("preview", previewPanel, true, true)
+	tabPages.AddPage("headers", headersPanel, true, false)
+	tabPages.AddPage("cookies", cookiesPanel, true, false)
+	tabPages.AddPage("timeline", timelinePanel, true, false)
+	tabPages.SetBackgroundColor(backgroundColor)
+
+	// Create tab header
+	var tabHeader *tview.Flex
+
+	// Create tab switching function
+	switchToTab := func(tabIndex int) {
+		tabNames := []string{"preview", "headers", "cookies", "timeline"}
+		if tabIndex >= 0 && tabIndex < len(tabNames) {
+			tabPages.SwitchToPage(tabNames[tabIndex])
+			// Update the tab header to show the new active tab
+			if tabHeader != nil {
+				updateTabHeader(tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+			}
+		}
+	}
+
+	// Create tab header
+	responseTabs := []string{"Preview", "Headers", "Cookies", "Timeline"}
+	tabHeader = createTabHeader(responseTabs, backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, switchToTab)
+
+	// Create combined top row: tabs on left, spacer, info bar on right
+	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	topRow.SetBackgroundColor(backgroundColor)
+	topRow.AddItem(tabHeader, 0, 1, false) // Tabs take minimal space on left
+	spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
+	topRow.AddItem(spacer, 0, 1, false)  // Spacer takes flexible space in middle
+	topRow.AddItem(infoBar, 0, 1, false) // Info bar takes flexible space on right
+
+	// Create main container with combined row and content
+	tabContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	tabContainer.AddItem(topRow, 1, 0, false)
+	tabContainer.AddItem(tabPages, 0, 1, false)
+	tabContainer.SetBorder(true)
+	tabContainer.SetBorderColor(borderColor)
+	tabContainer.SetTitle(" Response ")
+	tabContainer.SetTitleColor(titleColor)
+	tabContainer.SetBackgroundColor(backgroundColor)
+
+	return tabContainer, tabPages, tabHeader, switchToTab
 }
 
 // createModal creates a centered modal dialog

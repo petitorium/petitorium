@@ -87,6 +87,17 @@ func runTUI(cmd *cobra.Command, args []string) {
 	var requestDataTabs *tview.Flex
 	var bodyContainer *tview.Flex
 
+	// Response tracking variables
+	var currentResponse *HTTPResponse
+	var lastRequestTime *time.Time
+	var responsePages *tview.Pages
+	var responseTabHeader *tview.Flex
+
+	// Suppress unused variable warnings (variables used for future enhancements)
+	_ = currentResponse
+	_ = responsePages
+	_ = responseTabHeader
+
 	// Set up vim-style navigation for body view panel (TextView)
 	bodyViewPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
@@ -247,6 +258,31 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 	// Create main panels
 	mainPanels := []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
+
+	// Function to update response tabs with new response data
+	updateResponseTabs := func(resp *HTTPResponse, lastTime *time.Time) {
+		// Recreate the response tabs with the new data
+		// newResponseTabs,  newResponsePages, newResponseTabHeader
+		newResponseTabs, _, _, _ := createResponseTabs(
+			backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor,
+			resp, lastTime,
+		)
+
+		// Replace the old response panel with the new one in rightSide
+		rightSide.Clear()
+		rightSide.AddItem(requestPanel, 0, 1, false)
+		rightSide.AddItem(newResponseTabs, 0, 1, false)
+
+		// Update references
+		response = newResponseTabs
+		// responsePages = newResponsePages
+		// responseTabHeader = newResponseTabHeader
+		// currentResponse = resp
+		lastRequestTime = lastTime
+
+		// Update the mainPanels array for focus cycling
+		mainPanels = []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
+	}
 
 	// Create request panel and right side layout
 	requestPanel = setupRequestPanel(methodURLBar, requestDataTabs, backgroundColor)
@@ -458,21 +494,24 @@ func runTUI(cmd *cobra.Command, args []string) {
 				syncMethodDropdown()
 
 				// Show last response if available
-				if len(currentRequest.ResponseHistory) > 0 {
-					lastResponse := currentRequest.ResponseHistory[len(currentRequest.ResponseHistory)-1]
+				if len((*currentRequest).ResponseHistory) > 0 {
+					lastResponse := (*currentRequest).ResponseHistory[len((*currentRequest).ResponseHistory)-1]
 					// Convert workspace.HTTPResponse to cmd.HTTPResponse for formatting
 					cmdResp := &HTTPResponse{
 						StatusCode: lastResponse.StatusCode,
 						Status:     lastResponse.Status,
 						Headers:    lastResponse.Headers,
+						Cookies:    nil, // No cookies in stored history
 						Body:       lastResponse.Body,
 						Duration:   lastResponse.Duration,
+						Timestamp:  lastResponse.Timestamp,
+						BodySize:   len(lastResponse.Body),
 					}
-					formattedResponse := FormatResponse(cmdResp)
-					response.SetText(formattedResponse)
+					// For historical responses, show when that specific request was made
+					updateResponseTabs(cmdResp, &lastResponse.Timestamp)
 				} else {
 					// Clear response if no history
-					response.SetText("")
+					updateResponseTabs(nil, lastRequestTime)
 				}
 			}
 		} else if col, ok := reference.(workspace.Collection); ok {
@@ -1129,15 +1168,15 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 		// Validate URL
 		if url == "" {
-			response.SetText("Error: URL is required")
+			updateResponseTabs(nil, lastRequestTime)
 			return
 		}
 
 		// Send the request
-		response.SetText("Sending request...")
+		updateResponseTabs(nil, lastRequestTime) // Show loading state
 		resp, err := SendRequest(method, url, body, headers)
 		if err != nil {
-			response.SetText(fmt.Sprintf("Error: %v", err))
+			updateResponseTabs(nil, lastRequestTime) // Show error state
 			return
 		}
 
@@ -1149,9 +1188,9 @@ func runTUI(cmd *cobra.Command, args []string) {
 				Headers:    resp.Headers,
 				Body:       resp.Body,
 				Duration:   resp.Duration,
-				Timestamp:  time.Now(),
+				Timestamp:  resp.Timestamp,
 			}
-			currentRequest.ResponseHistory = append(currentRequest.ResponseHistory, workspaceResp)
+			(*currentRequest).ResponseHistory = append((*currentRequest).ResponseHistory, workspaceResp)
 
 			// Update the node's reference with the new response history
 			if currentSelectedNode != nil {
@@ -1160,9 +1199,10 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		// Format and display the response
-		formattedResponse := FormatResponse(resp)
-		response.SetText(formattedResponse)
+		// Update the response tabs with the new response
+		now := time.Now()
+		lastRequestTime = &now // Update global last request time for future "Last: X ago" calculations
+		updateResponseTabs(resp, &now)
 	})
 
 	if err := app.
