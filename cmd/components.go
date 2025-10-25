@@ -56,6 +56,10 @@ func setupUIComponents(
 	footer := createPanel("", backgroundColor, borderColor, titleColor, foregroundColor)
 	footer.SetText(" (Tab) Cycle Focus | Body Tab: (i) Insert (Esc) Normal (hjkl) Nav | (F4) External Editor | (q) Quit | Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move Item | (d) Delete")
 
+	// Create environment panel (placeholder)
+	environmentPanel := createPanel(" Environment ", backgroundColor, borderColor, titleColor, foregroundColor)
+	environmentPanel.SetText("No environment selected")
+
 	// Create collections tree view
 	collectionsTreeView := tview.NewTreeView().
 		SetRoot(rootNode).
@@ -73,7 +77,7 @@ func setupUIComponents(
 		SetTitleColor(titleColor).
 		SetBorderPadding(0, 0, 0, 0)
 
-	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel
+	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, environmentPanel
 }
 
 // setupRequestPanel creates the unified request panel
@@ -99,7 +103,13 @@ func setupRightSide(requestPanel *tview.Flex, response *tview.Flex) *tview.Flex 
 }
 
 // setupLayout creates the main grid layout
-func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, rightSide *tview.Flex) *tview.Grid {
+func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.TextView, rightSide *tview.Flex) *tview.Grid {
+	// Create vertical flex for left side: environment (15%) + collections (85%)
+	leftSide := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(environmentPanel, 0, 7, false).
+		AddItem(collectionsTreeView, 0, 93, true)
+
 	grid := tview.NewGrid().
 		SetRows(3, 0, 3).
 		SetColumns(30, 0).
@@ -107,7 +117,7 @@ func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.Tree
 
 	grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
-	grid.AddItem(collectionsTreeView, 1, 0, 1, 1, 0, 0, true)
+	grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, true)
 	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
 
 	return grid
