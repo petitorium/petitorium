@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -119,6 +120,152 @@ func createButton(text string, backgroundColor, borderColor, titleColor, foregro
 	return button
 }
 
+// CustomButton is a custom button primitive with full control over styling
+type CustomButton struct {
+	*tview.Box
+	text                string
+	textAlignment       string // "left", "center", "right"
+	onSelected          func()
+	backgroundColor     tcell.Color
+	activatedColor      tcell.Color
+	labelColor          tcell.Color
+	labelActivatedColor tcell.Color
+	isActivated         bool
+}
+
+// NewCustomButton creates a new custom button
+func NewCustomButton(text string) *CustomButton {
+	box := tview.NewBox()
+	box.SetBorder(false)
+
+	return &CustomButton{
+		Box:                 box,
+		text:                text,
+		textAlignment:       "center",
+		backgroundColor:     tcell.ColorDefault,
+		activatedColor:      tcell.ColorDefault,
+		labelColor:          tcell.ColorDefault,
+		labelActivatedColor: tcell.ColorDefault,
+		isActivated:         false,
+	}
+}
+
+// SetBackgroundColor sets the normal background color
+func (cb *CustomButton) SetBackgroundColor(color tcell.Color) *CustomButton {
+	cb.backgroundColor = color
+	cb.updateBackground()
+	return cb
+}
+
+// SetBackgroundColorActivated sets the activated background color
+func (cb *CustomButton) SetBackgroundColorActivated(color tcell.Color) *CustomButton {
+	cb.activatedColor = color
+	cb.updateBackground()
+	return cb
+}
+
+// SetLabelColor sets the normal label color
+func (cb *CustomButton) SetLabelColor(color tcell.Color) *CustomButton {
+	cb.labelColor = color
+	return cb
+}
+
+// SetLabelColorActivated sets the activated label color
+func (cb *CustomButton) SetLabelColorActivated(color tcell.Color) *CustomButton {
+	cb.labelActivatedColor = color
+	return cb
+}
+
+// SetSelectedFunc sets the function to call when the button is selected
+func (cb *CustomButton) SetSelectedFunc(handler func()) *CustomButton {
+	cb.onSelected = handler
+	return cb
+}
+
+// SetText sets the button text
+func (cb *CustomButton) SetText(text string) *CustomButton {
+	cb.text = text
+	return cb
+}
+
+// SetTextAlignment sets the text alignment ("left", "center", "right")
+func (cb *CustomButton) SetTextAlignment(alignment string) *CustomButton {
+	cb.textAlignment = alignment
+	return cb
+}
+
+// updateBackground updates the background color based on activation state
+func (cb *CustomButton) updateBackground() {
+	if cb.isActivated && cb.activatedColor != tcell.ColorDefault {
+		cb.Box.SetBackgroundColor(cb.activatedColor)
+	} else if cb.backgroundColor != tcell.ColorDefault {
+		cb.Box.SetBackgroundColor(cb.backgroundColor)
+	}
+}
+
+// Draw implements the Primitive interface
+func (cb *CustomButton) Draw(screen tcell.Screen) {
+	cb.Box.Draw(screen)
+
+	x, y, width, height := cb.Box.GetRect()
+	if width <= 0 || height <= 0 {
+		return
+	}
+
+	// Calculate text X position based on alignment
+	textLen := utf8.RuneCountInString(cb.text)
+	var textX int
+	switch cb.textAlignment {
+	case "left":
+		textX = x
+	case "right":
+		textX = x + width - textLen
+	default: // "center"
+		textX = x + (width-textLen)/2
+	}
+	textY := y + height/2
+
+	labelColor := cb.labelColor
+	if cb.isActivated && cb.labelActivatedColor != tcell.ColorDefault {
+		labelColor = cb.labelActivatedColor
+	}
+
+	// Draw each character of the text
+	for i, ch := range cb.text {
+		if textX+i >= x && textX+i < x+width && textY >= y && textY < y+height {
+			screen.SetContent(textX+i, textY, ch, nil, tcell.StyleDefault.Background(cb.Box.GetBackgroundColor()).Foreground(labelColor))
+		}
+	}
+}
+
+// InputHandler implements the Primitive interface
+func (cb *CustomButton) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+		if event.Key() == tcell.KeyEnter && cb.onSelected != nil {
+			cb.isActivated = true
+			cb.updateBackground()
+			cb.onSelected()
+			// Reset activation after a short delay
+			go func() {
+				// Small delay to show activated state
+				time.Sleep(100 * time.Millisecond)
+				cb.isActivated = false
+				cb.updateBackground()
+			}()
+		}
+	}
+}
+
+// createCustomButton creates a custom button with full styling control
+func createCustomButton(text string, backgroundColor, activatedColor, labelColor, labelActivatedColor tcell.Color) *CustomButton {
+	button := NewCustomButton(text)
+	button.SetBackgroundColor(backgroundColor)
+	button.SetBackgroundColorActivated(activatedColor)
+	button.SetLabelColor(labelColor)
+	button.SetLabelColorActivated(labelActivatedColor)
+	return button
+}
+
 // setFocusStyle sets the border color based on focus state
 func setFocusStyle(p tview.Primitive, focused bool, borderColor, borderFocusColor tcell.Color) {
 	type borderStyler interface {
@@ -218,6 +365,9 @@ func createTabHeader(tabs []string, backgroundColor,
 ) *tview.Flex {
 	tabHeader := tview.NewFlex().SetDirection(tview.FlexColumn)
 	tabHeader.SetBackgroundColor(backgroundColor)
+
+	// Tab titles and their active states
+	tabs := []string{"Body", "Auth", "Query", "Headers"}
 	activeTab := 0 // Default to first tab
 
 	// Create tab buttons
@@ -274,6 +424,8 @@ func updateTabHeader(
 	activeTabColor,
 	selectionBackgroundColor tcell.Color,
 ) {
+	// Tab titles
+	tabs := []string{"Body", "Auth", "Query", "Headers"}
 
 	// Update each tab's appearance based on whether it's active
 	for i := 0; i < len(tabs); i++ {
@@ -799,6 +951,10 @@ func createRequestDataTabs(
 		tabNames := []string{"body", "auth", "query", "headers"}
 		if tabIndex >= 0 && tabIndex < len(tabNames) {
 			tabPages.SwitchToPage(tabNames[tabIndex])
+			// Update current tab index
+			if tabIndexSetter != nil {
+				tabIndexSetter(tabIndex)
+			}
 			// Update the tab header to show the new active tab
 			if tabHeader != nil {
 				tabs := []string{"Body", "Auth", "Query", "Headers"}

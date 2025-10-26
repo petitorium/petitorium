@@ -7,6 +7,62 @@ import (
 	"github.com/hbarral/petitorium/workspace"
 )
 
+// createEnvironmentPanel creates the environment panel with dropdown and config button
+func createEnvironmentPanel(
+	backgroundColor,
+	borderColor,
+	borderFocusColor,
+	titleColor,
+	foregroundColor,
+	selectionBackgroundColor,
+	activeTabColor,
+	buttonSelectedColor,
+	dropdownFocusedBackgroundColor tcell.Color,
+) (*tview.Flex, *tview.DropDown, *CustomButton, *CustomButton) {
+	// Create environment dropdown
+	envDropdown := createDropDown(
+		"",
+		[]string{"No Environment ", "Development ", "Staging ", "Production "},
+		backgroundColor,
+		backgroundColor,
+		backgroundColor,
+		foregroundColor,
+		activeTabColor,
+		backgroundColor,
+		selectionBackgroundColor,
+		dropdownFocusedBackgroundColor,
+	)
+	envDropdown.SetBorder(false)
+	envDropdown.SetCurrentOption(0)
+
+	// Create config button
+	configButton := createCustomButton(" ⚙ ", backgroundColor, buttonSelectedColor, borderFocusColor, borderFocusColor).SetTextAlignment("right")
+
+	separator := tview.NewBox().
+		SetBackgroundColor(backgroundColor)
+
+	indicator := createCustomButton("▼", backgroundColor, backgroundColor, borderFocusColor, borderFocusColor)
+
+	// Create container
+	container := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(tview.NewFlex().
+			SetDirection(tview.FlexColumn).
+			AddItem(separator, 1, 0, false).
+			AddItem(envDropdown, 14, 0, false).
+			AddItem(indicator, 2, 0, false), 17, 0, false).
+		AddItem(separator, 0, 1, false).
+		AddItem(configButton, 3, 0, false)
+
+	container.SetBorder(true)
+	container.SetTitle(" Environment ")
+	container.SetBackgroundColor(backgroundColor)
+	container.SetBorderColor(borderColor)
+	container.SetTitleColor(titleColor)
+
+	return container, envDropdown, configButton, indicator
+}
+
 // setupUIComponents creates and configures all UI components
 func setupUIComponents(
 	backgroundColor,
@@ -20,8 +76,7 @@ func setupUIComponents(
 	dropdownFocusedBackgroundColor tcell.Color,
 ) (
 	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button,
-	*tview.TextView, *tview.TextArea, *tview.Flex, *tview.TextView, *tview.TreeView,
-	*tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView,
+	*tview.TextView, *tview.TextArea, *tview.TextView, *tview.TextView, *tview.TreeView, *tview.Flex, *tview.DropDown, *CustomButton, *CustomButton,
 ) {
 	// Create header panel
 	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
@@ -56,9 +111,18 @@ func setupUIComponents(
 	footer := createPanel("", backgroundColor, borderColor, titleColor, foregroundColor)
 	footer.SetText(" (Tab) Cycle Focus | Body Tab: (i) Insert (Esc) Normal (hjkl) Nav | (F4) External Editor | (q) Quit | Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move Item | (d) Delete")
 
-	// Create environment panel (placeholder)
-	environmentPanel := createPanel(" Environment ", backgroundColor, borderColor, titleColor, foregroundColor)
-	environmentPanel.SetText("No environment selected")
+	// Create environment panel with dropdown and config button
+	environmentPanel, envDropdown, envConfigButton, envIndicatorButton := createEnvironmentPanel(
+		backgroundColor,
+		borderColor,
+		borderFocusColor,
+		titleColor,
+		foregroundColor,
+		selectionBackgroundColor,
+		activeTabColor,
+		buttonSelectedColor,
+		dropdownFocusedBackgroundColor,
+	)
 
 	// Create collections tree view
 	collectionsTreeView := tview.NewTreeView().
@@ -77,7 +141,7 @@ func setupUIComponents(
 		SetTitleColor(titleColor).
 		SetBorderPadding(0, 0, 0, 0)
 
-	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, environmentPanel
+	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, environmentPanel 
 }
 
 // setupRequestPanel creates the unified request panel
@@ -103,12 +167,11 @@ func setupRightSide(requestPanel *tview.Flex, response *tview.Flex) *tview.Flex 
 }
 
 // setupLayout creates the main grid layout
-func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.TextView, rightSide *tview.Flex) *tview.Grid {
-	// Create vertical flex for left side: environment (15%) + collections (85%)
+func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.Flex, rightSide *tview.Flex) *tview.Grid {
 	leftSide := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(environmentPanel, 0, 7, false).
-		AddItem(collectionsTreeView, 0, 93, true)
+		AddItem(environmentPanel, 0, 6, false).
+		AddItem(collectionsTreeView, 0, 94, true)
 
 	grid := tview.NewGrid().
 		SetRows(3, 0, 3).
@@ -124,7 +187,7 @@ func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.Tree
 }
 
 // setupPanels creates the panels slice for cycling
-func setupPanels(collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.Flex) []tview.Primitive {
+func setupPanels(collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.TextView) []tview.Primitive {
 	return []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
 }
 
