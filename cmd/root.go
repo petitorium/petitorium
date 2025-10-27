@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +48,11 @@ func runTUI(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Failed to load collections: %v", err))
 	}
 
+	environmentsData, err := workspace.LoadEnvironments()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load environments: %v", err))
+	}
+
 	app := tview.NewApplication().
 		EnableMouse(true)
 
@@ -69,7 +75,10 @@ func runTUI(cmd *cobra.Command, args []string) {
 		responseHeadersPanel,
 		responseCookiesPanel,
 		responseTimelinePanel,
-		environmentPanel :=
+		environmentPanel,
+		envDropdown,
+		envConfigButton,
+		envIndicatorButton  :=
 		setupUIComponents(backgroundColor,
 			foregroundColor,
 			borderColor,
@@ -741,6 +750,69 @@ func runTUI(cmd *cobra.Command, args []string) {
 	// Add main page
 	pages.AddPage("main", grid, true, true)
 
+	// Set up environment indicator button click handler (opens dropdown)
+	envIndicatorButton.SetSelectedFunc(func() {
+		// app.SetFocus(envDropdown)
+		// // Simulate Enter to open the dropdown
+		// envDropdown.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone), func(p tview.Primitive) {
+		// 	app.SetFocus(p)
+		// })
+	})
+
+	// Set up environment config button click handler
+	envConfigButton.SetSelectedFunc(func() {
+		// // Get current selected environment
+		currentEnvIndex, _ := envDropdown.GetCurrentOption()
+		if currentEnvIndex <= 0 || currentEnvIndex > len(environmentsData) {
+			header.SetTitle(" NO ENV SELECTED ")
+			// No environment selected or invalid
+			return
+		}
+		// env := &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
+
+		header.SetTitle(" Config " + strconv.Itoa(currentEnvIndex))
+
+		// Create JSON editor for environment variables
+		env := &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
+
+		// Convert environment variables to JSON
+		jsonBytes, err := json.MarshalIndent(env.Variables, "", "  ")
+		if err != nil {
+			jsonBytes = []byte("{}")
+		}
+
+		// Create JSON editor
+		jsonEditor := createTextArea(" Environment Variables (JSON) ", backgroundColor, borderColor, titleColor, foregroundColor)
+		jsonEditor.SetText(string(jsonBytes), false)
+
+		modal := createModal(jsonEditor, 60, 20, backgroundColor)
+		pages.AddPage("envVariables", modal, true, true)
+		app.SetFocus(jsonEditor)
+
+		// Add keybinding to close modal with Escape, q, or Q
+		pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEscape || event.Key() == 'q' || event.Key() == 'Q' {
+				// Save the JSON back to environment variables
+				jsonText := jsonEditor.GetText()
+				var newVars map[string]string
+				if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
+					// If JSON is invalid, keep the original variables
+					// Could show an error message here
+				} else {
+					env.Variables = newVars
+					if saveErr := workspace.SaveEnvironments(environmentsData); saveErr != nil {
+						// Handle save error
+					}
+				}
+
+				pages.RemovePage("envVariables")
+				app.SetFocus(collectionsTreeView)
+				return nil
+			}
+			return event
+		})
+	})
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		// Check if we're on a modal page (not main)
 		currentPage, _ := pages.GetFrontPage()
@@ -1013,7 +1085,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 		if mainCycle.current == collectionsIndex && event.Rune() == 'n' {
 			form := createCollectionFormWithLocation(app, pages, &collectionsData, rootNode, collectionsTreeView)
-			modal := createModal(form, 50, 12)
+			modal := createModal(form, 50, 12, backgroundColor)
 			pages.AddPage("newCollection", modal, true, true)
 			app.SetFocus(form)
 			return nil
@@ -1035,7 +1107,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 				if selectedCollection != nil {
 					form := createRequestForm(app, pages, selectedCollection, &collectionsData, rootNode, collectionsTreeView)
-					modal := createModal(form, 60, 14)
+					modal := createModal(form, 60, 14, backgroundColor)
 					pages.AddPage("newRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1052,14 +1124,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 				if col, ok := reference.(workspace.Collection); ok {
 					// Rename collection
 					form := createRenameCollectionForm(app, pages, &col, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 25, 10)
+					modal := createModal(form, 25, 10, backgroundColor)
 					pages.AddPage("renameCollection", modal, true, true)
 					app.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Rename request - need to find parent collection
 					form := createRenameRequestForm(app, pages, &req, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 47, 10)
+					modal := createModal(form, 47, 10, backgroundColor)
 					pages.AddPage("renameRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1074,14 +1146,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 				if col, ok := node.GetReference().(workspace.Collection); ok {
 					// Move collection
 					form := createMoveCollectionForm(app, pages, &col, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 40, 12)
+					modal := createModal(form, 40, 12, backgroundColor)
 					pages.AddPage("moveCollection", modal, true, true)
 					app.SetFocus(form)
 					return nil
 				} else if req, ok := node.GetReference().(workspace.Request); ok {
 					// Move request
 					form := createMoveRequestForm(app, pages, &req, &collectionsData, rootNode, collectionsTreeView)
-					modal := createModal(form, 40, 10)
+					modal := createModal(form, 40, 10, backgroundColor)
 					pages.AddPage("moveRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1098,14 +1170,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 				if col, ok := reference.(workspace.Collection); ok {
 					// Delete collection with confirmation
 					form := createDeleteCollectionConfirm(app, pages, &col, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 50, 8)
+					modal := createModal(form, 50, 8, backgroundColor)
 					pages.AddPage("deleteCollection", modal, true, true)
 					app.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Delete request with confirmation
 					form := createDeleteRequestConfirm(app, pages, &req, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 50, 8)
+					modal := createModal(form, 50, 8, backgroundColor)
 					pages.AddPage("deleteRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1271,6 +1343,18 @@ func runTUI(cmd *cobra.Command, args []string) {
 			body = currentRequest.Body
 		}
 		headers := getHeadersFromUI()
+
+		// Get current environment variables
+		var envVars map[string]string
+		currentEnvIndex, _ := envDropdown.GetCurrentOption()
+		if currentEnvIndex > 0 && currentEnvIndex <= len(environmentsData) {
+			envVars = environmentsData[currentEnvIndex-1].Variables
+		}
+
+		// Substitute variables in URL, body, and headers
+		url = substituteVariables(url, envVars)
+		body = substituteVariables(body, envVars)
+		headers = substituteVariablesInHeaders(headers, envVars)
 
 		// Validate URL
 		if url == "" {

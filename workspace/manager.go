@@ -212,6 +212,84 @@ func SaveCollections(collections []Collection) error {
 }
 
 // Helper function to get expansion state file path
+func getEnvironmentsFilePath() (string, error) {
+	home, err := homedir.Dir()
+	if err != nil {
+		return "", err
+	}
+
+	configDir := filepath.Join(home, ".config", "petitorium")
+	return filepath.Join(configDir, "environments.yaml"), nil
+}
+
+func createDefaultEnvironments() []Environment {
+	return []Environment{
+		{
+			Name: "Development",
+			Variables: map[string]string{
+				"base_url": "http://localhost:3000",
+			},
+		},
+		{
+			Name: "Staging",
+			Variables: map[string]string{
+				"base_url": "https://staging.example.com",
+			},
+		},
+		{
+			Name: "Production",
+			Variables: map[string]string{
+				"base_url": "https://api.example.com",
+			},
+		},
+	}
+}
+
+func LoadEnvironments() ([]Environment, error) {
+	path, err := getEnvironmentsFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = os.Stat(path); os.IsNotExist(err) {
+		defaultEnvs := createDefaultEnvironments()
+		if err = SaveEnvironments(defaultEnvs); err != nil {
+			return nil, err
+		}
+		return defaultEnvs, nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var environments []Environment
+	if err := yaml.Unmarshal(data, &environments); err != nil {
+		return nil, err
+	}
+
+	return environments, nil
+}
+
+func SaveEnvironments(environments []Environment) error {
+	path, err := getEnvironmentsFilePath()
+	if err != nil {
+		return err
+	}
+
+	if err = os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+
+	data, err := yaml.Marshal(environments)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0o644)
+}
+
 func getExpansionStateFilePath() (string, error) {
 	home, err := homedir.Dir()
 	if err != nil {

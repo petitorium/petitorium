@@ -1,7 +1,9 @@
 // Package workspace provides models for managing collections of HTTP requests and responses.
 package workspace
 
-import "time"
+import (
+	"time"
+)
 
 // HTTPResponse represents a stored HTTP response
 // This is a simplified version for storage purposes
@@ -21,6 +23,11 @@ type Request struct {
 	Headers         map[string]string `yaml:"headers,omitempty"`
 	Body            string            `yaml:"body,omitempty"`
 	ResponseHistory []HTTPResponse    `yaml:"response_history,omitempty"`
+}
+
+type Environment struct {
+	Name      string            `yaml:"name"`
+	Variables map[string]string `yaml:"variables,omitempty"`
 }
 
 type Collection struct {

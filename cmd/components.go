@@ -18,11 +18,11 @@ func createEnvironmentPanel(
 	activeTabColor,
 	buttonSelectedColor,
 	dropdownFocusedBackgroundColor tcell.Color,
-) (*tview.Flex, *tview.DropDown, *CustomButton, *CustomButton) {
+) (*tview.Flex, *tview.DropDown, *tview.Button, *CustomButton) {
 	// Create environment dropdown
 	envDropdown := createDropDown(
 		"",
-		[]string{"No Environment ", "Development ", "Staging ", "Production "},
+		[]string{"No Environment", "Development", "Staging", "Production"},
 		backgroundColor,
 		backgroundColor,
 		backgroundColor,
@@ -36,7 +36,7 @@ func createEnvironmentPanel(
 	envDropdown.SetCurrentOption(0)
 
 	// Create config button
-	configButton := createCustomButton(" ⚙ ", backgroundColor, buttonSelectedColor, borderFocusColor, borderFocusColor).SetTextAlignment("right")
+	configButton := createButton("⚙", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
 
 	separator := tview.NewBox().
 		SetBackgroundColor(backgroundColor)
@@ -50,9 +50,9 @@ func createEnvironmentPanel(
 			SetDirection(tview.FlexColumn).
 			AddItem(separator, 1, 0, false).
 			AddItem(envDropdown, 14, 0, false).
-			AddItem(indicator, 2, 0, false), 17, 0, false).
+			AddItem(indicator, 2, 0, true), 17, 0, false).
 		AddItem(separator, 0, 1, false).
-		AddItem(configButton, 3, 0, false)
+		AddItem(configButton, 3, 0, true)
 
 	container.SetBorder(true)
 	container.SetTitle(" Environment ")
@@ -76,7 +76,7 @@ func setupUIComponents(
 	dropdownFocusedBackgroundColor tcell.Color,
 ) (
 	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button,
-	*tview.TextView, *tview.TextArea, *tview.TextView, *tview.TextView, *tview.TreeView, *tview.Flex, *tview.DropDown, *CustomButton, *CustomButton,
+	*tview.TextView, *tview.TextArea, *tview.TextView, *tview.TextView, *tview.TreeView, *tview.Flex, *tview.DropDown, *tview.Button, *CustomButton,
 ) {
 	// Create header panel
 	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
@@ -170,7 +170,7 @@ func setupRightSide(requestPanel *tview.Flex, response *tview.Flex) *tview.Flex 
 func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.Flex, rightSide *tview.Flex) *tview.Grid {
 	leftSide := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(environmentPanel, 0, 6, false).
+		AddItem(environmentPanel, 0, 6, true).
 		AddItem(collectionsTreeView, 0, 94, true)
 
 	grid := tview.NewGrid().
@@ -187,15 +187,15 @@ func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.Tree
 }
 
 // setupPanels creates the panels slice for cycling
-func setupPanels(collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.TextView) []tview.Primitive {
-	return []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
+func setupPanels(environmentPanel *tview.Flex, collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.TextView) []tview.Primitive {
+	return []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, response}
 }
 
 // setupCycles initializes the navigation cycles
 func setupCycles(panels []tview.Primitive) {
 	mainCycle = &MainCycle{
 		panels:  panels,
-		current: 0, // start with collections
+		current: 1, // start with collections
 	}
 
 	headersCycle = &HeadersCycle{
