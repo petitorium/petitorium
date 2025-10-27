@@ -24,6 +24,15 @@ var rootCmd = &cobra.Command{
 	Run:   runTUI,
 }
 
+// updateEnvironmentDropdown updates the environment dropdown with current environments
+func updateEnvironmentDropdown(dropdown *tview.DropDown, environments []workspace.Environment) {
+	options := []string{"No Environment"}
+	for _, env := range environments {
+		options = append(options, env.Name)
+	}
+	dropdown.SetOptions(options, nil)
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -92,6 +101,9 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 	// Dummy use to suppress unused variable warning
 	_ = responseInfoBar
+
+	// Update environment dropdown with loaded environments
+	updateEnvironmentDropdown(envDropdown, environmentsData)
 
 	// Variable declarations
 	var currentSelectedNode *tview.TreeNode
@@ -776,7 +788,8 @@ func runTUI(cmd *cobra.Command, args []string) {
 		env := &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
 
 		// Convert environment variables to JSON
-		jsonBytes, err := json.MarshalIndent(env.Variables, "", "  ")
+		effectiveVars := env.GetEffectiveVariables(environmentsData)
+		jsonBytes, err := json.MarshalIndent(effectiveVars, "", "  ")
 		if err != nil {
 			jsonBytes = []byte("{}")
 		}
@@ -786,12 +799,18 @@ func runTUI(cmd *cobra.Command, args []string) {
 		jsonEditor.SetText(string(jsonBytes), false)
 
 		// Create left panel (for environment creation)
-		leftPanel := tview.NewBox().
-			SetBackgroundColor(backgroundColor).
-			SetBorder(true).
-			SetTitle(" Manage Environment ").
-			SetTitleColor(titleColor).
-			SetBorderColor(borderColor)
+		leftPanel := createEnvironmentCreationPanel(
+			backgroundColor,
+			borderColor,
+			titleColor,
+			foregroundColor,
+			borderFocusColor,
+			environmentsData,
+			func() {
+				// Refresh dropdown after creating new environment
+				updateEnvironmentDropdown(envDropdown, environmentsData)
+			},
+		)
 
 		// Create split layout: left 30%, right 70%
 		content := tview.NewFlex().
@@ -1361,7 +1380,8 @@ func runTUI(cmd *cobra.Command, args []string) {
 		var envVars map[string]string
 		currentEnvIndex, _ := envDropdown.GetCurrentOption()
 		if currentEnvIndex > 0 && currentEnvIndex <= len(environmentsData) {
-			envVars = environmentsData[currentEnvIndex-1].Variables
+			env := &environmentsData[currentEnvIndex-1]
+			envVars = env.GetEffectiveVariables(environmentsData)
 		}
 
 		// Substitute variables in URL, body, and headers

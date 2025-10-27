@@ -1,11 +1,91 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
 	"github.com/hbarral/petitorium/workspace"
 )
+
+// createEnvironmentCreationPanel creates the left panel for environment creation
+func createEnvironmentCreationPanel(
+	backgroundColor,
+	borderColor,
+	borderFocusColor,
+	titleColor,
+	foregroundColor tcell.Color,
+	environments []workspace.Environment,
+	onEnvironmentCreated func(),
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(backgroundColor)
+	form.SetBorderColor(borderColor)
+	form.SetTitleColor(titleColor)
+	form.SetFieldBackgroundColor(backgroundColor)
+	form.SetFieldTextColor(foregroundColor)
+	form.SetLabelColor(foregroundColor)
+	form.SetButtonBackgroundColor(backgroundColor)
+	form.SetButtonTextColor(foregroundColor)
+
+	// Get base environment options
+	baseOptions := []string{"None"}
+	for _, env := range environments {
+		baseOptions = append(baseOptions, env.Name)
+	}
+
+	form.AddInputField("Name", "", 20, nil, nil)
+	form.AddDropDown("Base", baseOptions, 0, nil)
+
+	form.AddButton("Create", func() {
+		name := form.GetFormItem(0).(*tview.InputField).GetText()
+		baseIndex, _ := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+
+		if strings.TrimSpace(name) == "" {
+			return
+		}
+
+		// Check if environment name already exists
+		for _, env := range environments {
+			if env.Name == name {
+				return // Name already exists
+			}
+		}
+
+		// Create new environment
+		newEnv := workspace.Environment{
+			Name:      name,
+			Variables: make(map[string]string),
+		}
+
+		// Set base if selected
+		if baseIndex > 0 {
+			newEnv.Base = baseOptions[baseIndex]
+		}
+
+		// Add to environments
+		environments = append(environments, newEnv)
+
+		// Save environments
+		if err := workspace.SaveEnvironments(environments); err != nil {
+			// Handle error
+			return
+		}
+
+		// Clear form
+		form.GetFormItem(0).(*tview.InputField).SetText("")
+		form.GetFormItem(1).(*tview.DropDown).SetCurrentOption(0)
+
+		// Notify parent
+		if onEnvironmentCreated != nil {
+			onEnvironmentCreated()
+		}
+	})
+
+	form.SetBorder(true).SetTitle(" Create Environment ")
+	return form
+}
 
 // createEnvironmentPanel creates the environment panel with dropdown and config button
 func createEnvironmentPanel(

@@ -27,6 +27,7 @@ type Request struct {
 
 type Environment struct {
 	Name      string            `yaml:"name"`
+	Base      string            `yaml:"base,omitempty"` // Name of base environment to inherit from
 	Variables map[string]string `yaml:"variables,omitempty"`
 }
 

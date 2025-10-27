@@ -225,24 +225,39 @@ func getEnvironmentsFilePath() (string, error) {
 func createDefaultEnvironments() []Environment {
 	return []Environment{
 		{
-			Name: "Development",
-			Variables: map[string]string{
-				"base_url": "http://localhost:3000",
-			},
-		},
-		{
-			Name: "Staging",
-			Variables: map[string]string{
-				"base_url": "https://staging.example.com",
-			},
-		},
-		{
-			Name: "Production",
+			Name: "Base",
 			Variables: map[string]string{
 				"base_url": "https://api.example.com",
 			},
 		},
 	}
+}
+
+// GetEffectiveVariables returns the effective variables for an environment,
+// merging with base environment variables if specified
+func (e *Environment) GetEffectiveVariables(environments []Environment) map[string]string {
+	effective := make(map[string]string)
+
+	// First, inherit from base environment if specified
+	if e.Base != "" {
+		for _, env := range environments {
+			if env.Name == e.Base {
+				// Recursively get base variables (to handle multiple levels of inheritance)
+				baseVars := env.GetEffectiveVariables(environments)
+				for k, v := range baseVars {
+					effective[k] = v
+				}
+				break
+			}
+		}
+	}
+
+	// Then override with this environment's variables
+	for k, v := range e.Variables {
+		effective[k] = v
+	}
+
+	return effective
 }
 
 func LoadEnvironments() ([]Environment, error) {
