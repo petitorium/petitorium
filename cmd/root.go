@@ -785,7 +785,20 @@ func runTUI(cmd *cobra.Command, args []string) {
 		jsonEditor := createTextArea(" Environment Variables (JSON) ", backgroundColor, borderColor, titleColor, foregroundColor)
 		jsonEditor.SetText(string(jsonBytes), false)
 
-		modal := createModal(jsonEditor, 60, 20, backgroundColor)
+		// Create left panel (for environment creation)
+		leftPanel := tview.NewBox().
+			SetBackgroundColor(backgroundColor).
+			SetBorder(true).
+			SetTitle(" Manage Environment ").
+			SetTitleColor(titleColor).
+			SetBorderColor(borderColor)
+
+		// Create split layout: left 30%, right 70%
+		content := tview.NewFlex().
+			AddItem(leftPanel, 0, 3, false). // 30% for left panel
+			AddItem(jsonEditor, 0, 7, false) // 70% for JSON editor
+
+		modal := createModal(content, 80, 20, backgroundColor)
 		pages.AddPage("envVariables", modal, true, true)
 		app.SetFocus(jsonEditor)
 
