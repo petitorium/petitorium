@@ -20,7 +20,8 @@ func setupUIComponents(
 	dropdownFocusedBackgroundColor tcell.Color,
 ) (
 	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button,
-	*tview.TextView, *tview.TextArea, *tview.TextView, *tview.TextView, *tview.TreeView,
+	*tview.TextView, *tview.TextArea, *tview.Flex, *tview.TextView, *tview.TreeView,
+	*tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView,
 ) {
 	// Create header panel
 	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
@@ -45,8 +46,11 @@ func setupUIComponents(
 	bodyViewPanel := createPanel(" Body (VIEW) ", backgroundColor, backgroundColor, titleColor, foregroundColor)
 	bodyEditPanel := createTextArea(" Body (EDIT) ", backgroundColor, borderColor, titleColor, foregroundColor)
 
-	// Create response panel
-	response := createPanel(" Response ", backgroundColor, borderColor, titleColor, foregroundColor)
+	// Create response tabs panel
+	response, responsePages, responseTabHeader, _, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel := createResponseTabs(
+		backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor,
+		nil, nil, // No initial response or last request time
+	)
 
 	// Create footer panel
 	footer := createPanel("", backgroundColor, borderColor, titleColor, foregroundColor)
@@ -69,7 +73,7 @@ func setupUIComponents(
 		SetTitleColor(titleColor).
 		SetBorderPadding(0, 0, 0, 0)
 
-	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView
+	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel
 }
 
 // setupRequestPanel creates the unified request panel
@@ -85,7 +89,7 @@ func setupRequestPanel(methodURLBar, requestDataTabs *tview.Flex, backgroundColo
 }
 
 // setupRightSide creates the right side layout
-func setupRightSide(requestPanel *tview.Flex, response *tview.TextView) *tview.Flex {
+func setupRightSide(requestPanel *tview.Flex, response *tview.Flex) *tview.Flex {
 	rightSide := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(requestPanel, 0, 1, false).
@@ -110,7 +114,7 @@ func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.Tree
 }
 
 // setupPanels creates the panels slice for cycling
-func setupPanels(collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.TextView) []tview.Primitive {
+func setupPanels(collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.Flex) []tview.Primitive {
 	return []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
 }
 

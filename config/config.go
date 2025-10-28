@@ -14,6 +14,7 @@ type AppConfig struct {
 	Theme        ThemeConfig        `mapstructure:"theme"`
 	UI           UIConfig           `mapstructure:"ui"`
 	MethodColors MethodColorsConfig `mapstructure:"methodColors"`
+	StatusColors StatusColorsConfig `mapstructure:"statusColors"`
 	SyntaxTheme  string             `mapstructure:"syntaxTheme"`
 }
 
@@ -58,6 +59,19 @@ type MethodColorsConfig struct {
 	OPTIONS string `mapstructure:"OPTIONS"`
 	HEAD    string `mapstructure:"HEAD"`
 	Default string `mapstructure:"default"`
+}
+
+type StatusColorsConfig struct {
+	Success         string `mapstructure:"success"`         // 2xx background
+	SuccessText     string `mapstructure:"successText"`     // 2xx text
+	Redirection     string `mapstructure:"redirection"`     // 3xx background
+	RedirectionText string `mapstructure:"redirectionText"` // 3xx text
+	ClientError     string `mapstructure:"clientError"`     // 4xx background
+	ClientErrorText string `mapstructure:"clientErrorText"` // 4xx text
+	ServerError     string `mapstructure:"serverError"`     // 5xx background
+	ServerErrorText string `mapstructure:"serverErrorText"` // 5xx text
+	Default         string `mapstructure:"default"`         // Unknown background
+	DefaultText     string `mapstructure:"defaultText"`     // Unknown text
 }
 
 var C AppConfig
@@ -113,6 +127,18 @@ methodColors:
   OPTIONS: "#FFA500"
   HEAD: "#800080"
   default: "#888888"
+
+statusColors:
+  success: "#28a745"          # 2xx background - Green
+  successText: "#ffffff"      # 2xx text - White
+  redirection: "#fd7e14"      # 3xx background - Orange
+  redirectionText: "#ffffff"  # 3xx text - White
+  clientError: "#dc3545"      # 4xx background - Red
+  clientErrorText: "#ffffff"  # 4xx text - White
+  serverError: "#8b0000"      # 5xx background - Dark Red
+  serverErrorText: "#ffffff"  # 5xx text - White
+  default: "#636DA6"          # Unknown background - Default theme color
+  defaultText: "#ffffff"      # Unknown text - White
 `
 
 func LoadConfig() error {

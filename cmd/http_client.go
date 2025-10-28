@@ -19,8 +19,11 @@ type HTTPResponse struct {
 	StatusCode int
 	Status     string
 	Headers    map[string][]string
+	Cookies    []*http.Cookie
 	Body       string
 	Duration   time.Duration
+	Timestamp  time.Time
+	BodySize   int
 }
 
 // SendRequest sends an HTTP request with the given parameters
@@ -95,8 +98,11 @@ func SendRequest(method, url, body string, headers map[string]string) (*HTTPResp
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 		Headers:    headersMap,
+		Cookies:    resp.Cookies(),
 		Body:       string(respBody),
 		Duration:   duration,
+		Timestamp:  time.Now(),
+		BodySize:   len(respBody),
 	}, nil
 }
 
