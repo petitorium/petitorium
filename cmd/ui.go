@@ -964,7 +964,7 @@ func createResponseTabs(
 	backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor tcell.Color,
 	response *HTTPResponse,
 	lastRequestTime *time.Time,
-) (*tview.Flex, *tview.Pages, *tview.Flex, func(int)) {
+) (*tview.Flex, *tview.Pages, *tview.Flex, func(int), *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
 	// Create info bar
 	infoBar := createResponseInfoBar(backgroundColor, foregroundColor, titleColor, response, lastRequestTime)
 
@@ -1091,7 +1091,7 @@ func createResponseTabs(
 	tabContainer.SetTitleColor(titleColor)
 	tabContainer.SetBackgroundColor(backgroundColor)
 
-	return tabContainer, tabPages, tabHeader, switchToTab
+	return tabContainer, tabPages, tabHeader, switchToTab, infoBar, previewPanel, headersPanel, cookiesPanel, timelinePanel
 }
 
 // createModal creates a centered modal dialog

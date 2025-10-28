@@ -21,6 +21,7 @@ func setupUIComponents(
 ) (
 	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button,
 	*tview.TextView, *tview.TextArea, *tview.Flex, *tview.TextView, *tview.TreeView,
+	*tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView,
 ) {
 	// Create header panel
 	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
@@ -46,7 +47,7 @@ func setupUIComponents(
 	bodyEditPanel := createTextArea(" Body (EDIT) ", backgroundColor, borderColor, titleColor, foregroundColor)
 
 	// Create response tabs panel
-	response, _, _, _ := createResponseTabs(
+	response, responsePages, responseTabHeader, _, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel := createResponseTabs(
 		backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor,
 		nil, nil, // No initial response or last request time
 	)
@@ -72,7 +73,7 @@ func setupUIComponents(
 		SetTitleColor(titleColor).
 		SetBorderPadding(0, 0, 0, 0)
 
-	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView
+	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel
 }
 
 // setupRequestPanel creates the unified request panel

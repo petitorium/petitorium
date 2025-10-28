@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -60,7 +61,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 		bodyEditPanel,
 		response,
 		footer,
-		collectionsTreeView :=
+		collectionsTreeView,
+		responsePages,
+		responseTabHeader,
+		responseInfoBar,
+		responsePreviewPanel,
+		responseHeadersPanel,
+		responseCookiesPanel,
+		responseTimelinePanel :=
 		setupUIComponents(backgroundColor,
 			foregroundColor,
 			borderColor,
@@ -71,6 +79,9 @@ func runTUI(cmd *cobra.Command, args []string) {
 			buttonSelectedColor,
 			dropdownFocusedBackgroundColor,
 		)
+
+	// Dummy use to suppress unused variable warning
+	_ = responseInfoBar
 
 	// Variable declarations
 	var currentSelectedNode *tview.TreeNode
@@ -90,13 +101,10 @@ func runTUI(cmd *cobra.Command, args []string) {
 	// Response tracking variables
 	var currentResponse *HTTPResponse
 	var lastRequestTime *time.Time
-	var responsePages *tview.Pages
-	var responseTabHeader *tview.Flex
 
 	// Suppress unused variable warnings (variables used for future enhancements)
 	_ = currentResponse
 	_ = responsePages
-	_ = responseTabHeader
 
 	// Set up vim-style navigation for body view panel (TextView)
 	bodyViewPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -261,27 +269,90 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 	// Function to update response tabs with new response data
 	updateResponseTabs := func(resp *HTTPResponse, lastTime *time.Time) {
-		// Recreate the response tabs with the new data
-		// newResponseTabs,  newResponsePages, newResponseTabHeader
-		newResponseTabs, _, _, _ := createResponseTabs(
-			backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor,
-			resp, lastTime,
-		)
+		// Update the info bar - replace it in the top row
+		newInfoBar := createResponseInfoBar(backgroundColor, foregroundColor, titleColor, resp, lastTime)
+		// The response container has: topRow (item 0), tabPages (item 1)
+		// topRow has: tabHeader, spacer, infoBar
+		if topRow, ok := response.GetItem(0).(*tview.Flex); ok {
+			// Clear and rebuild the top row with the new info bar
+			topRow.Clear()
+			topRow.AddItem(responseTabHeader, 0, 1, false)
+			spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
+			topRow.AddItem(spacer, 0, 1, false)
+			topRow.AddItem(newInfoBar, 0, 1, false)
+			responseInfoBar = newInfoBar
+		}
 
-		// Replace the old response panel with the new one in rightSide
-		rightSide.Clear()
-		rightSide.AddItem(requestPanel, 0, 1, false)
-		rightSide.AddItem(newResponseTabs, 0, 1, false)
+		// Update preview tab
+		if resp != nil && resp.Body != "" {
+			// Pretty-print JSON if it's valid JSON
+			bodyToFormat := resp.Body
+			if strings.TrimSpace(resp.Body)[0] == '{' || strings.TrimSpace(resp.Body)[0] == '[' {
+				var jsonData interface{}
+				if err := json.Unmarshal([]byte(resp.Body), &jsonData); err == nil {
+					// It's valid JSON, pretty-print it
+					prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
+					if err == nil {
+						bodyToFormat = string(prettyJSON)
+					}
+				}
+			}
+			formattedBody := formatBodyContent(bodyToFormat)
+			responsePreviewPanel.SetText(formattedBody)
+		} else {
+			responsePreviewPanel.SetText("(empty response)")
+		}
 
-		// Update references
-		response = newResponseTabs
-		// responsePages = newResponsePages
-		// responseTabHeader = newResponseTabHeader
-		// currentResponse = resp
-		lastRequestTime = lastTime
+		// Update headers tab
+		if resp != nil && len(resp.Headers) > 0 {
+			var headersText strings.Builder
+			headersText.WriteString("Response Headers:\n\n")
+			for key, values := range resp.Headers {
+				for _, value := range values {
+					headersText.WriteString(fmt.Sprintf("%s: %s\n", key, value))
+				}
+			}
+			responseHeadersPanel.SetText(headersText.String())
+		} else {
+			responseHeadersPanel.SetText("No response headers")
+		}
 
-		// Update the mainPanels array for focus cycling
-		mainPanels = []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
+		// Update cookies tab
+		if resp != nil && len(resp.Cookies) > 0 {
+			var cookiesText strings.Builder
+			cookiesText.WriteString("Response Cookies:\n\n")
+			for _, cookie := range resp.Cookies {
+				cookiesText.WriteString(fmt.Sprintf("Name: %s\n", cookie.Name))
+				cookiesText.WriteString(fmt.Sprintf("Value: %s\n", cookie.Value))
+				if cookie.Domain != "" {
+					cookiesText.WriteString(fmt.Sprintf("Domain: %s\n", cookie.Domain))
+				}
+				if cookie.Path != "" {
+					cookiesText.WriteString(fmt.Sprintf("Path: %s\n", cookie.Path))
+				}
+				if !cookie.Expires.IsZero() {
+					cookiesText.WriteString(fmt.Sprintf("Expires: %s\n", cookie.Expires.Format("2006-01-02 15:04:05")))
+				}
+				cookiesText.WriteString(fmt.Sprintf("Secure: %t\n", cookie.Secure))
+				cookiesText.WriteString(fmt.Sprintf("HttpOnly: %t\n\n", cookie.HttpOnly))
+			}
+			responseCookiesPanel.SetText(cookiesText.String())
+		} else {
+			responseCookiesPanel.SetText("No response cookies")
+		}
+
+		// Update timeline tab
+		if resp != nil {
+			var timelineText strings.Builder
+			timelineText.WriteString("Request Timeline:\n\n")
+			timelineText.WriteString(fmt.Sprintf("Request sent: %s\n", resp.Timestamp.Format("2006-01-02 15:04:05")))
+			timelineText.WriteString(fmt.Sprintf("Response received: %s\n", resp.Timestamp.Add(resp.Duration).Format("2006-01-02 15:04:05")))
+			timelineText.WriteString(fmt.Sprintf("Total duration: %v\n", resp.Duration.Round(time.Millisecond)))
+			timelineText.WriteString(fmt.Sprintf("Response size: %d bytes\n", resp.BodySize))
+			responseTimelinePanel.SetText(timelineText.String())
+		} else {
+			responseTimelinePanel.SetText("No request timeline available")
+		}
 	}
 
 	// Create request panel and right side layout
