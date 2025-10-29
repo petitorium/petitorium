@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -772,24 +771,31 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 	// Set up environment config button click handler
 	envConfigButton.SetSelectedFunc(func() {
-		// // Get current selected environment
+		// Get current selected environment
 		currentEnvIndex, _ := envDropdown.GetCurrentOption()
-		if currentEnvIndex <= 0 || currentEnvIndex > len(environmentsData) {
-			header.SetTitle(" NO ENV SELECTED ")
-			// No environment selected or invalid
-			return
-		}
-		// env := &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
+		var env *workspace.Environment
+		var modalTitle string
 
-		header.SetTitle(" Config " + strconv.Itoa(currentEnvIndex))
+		if currentEnvIndex > 0 && currentEnvIndex <= len(environmentsData) {
+			// Environment is selected - edit existing environment
+			env = &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
+			modalTitle = " Environment: " + env.Name + " "
+		} else {
+			// No environment selected - create new environment
+			env = nil
+			modalTitle = " Create New Environment "
+		}
+
+		header.SetTitle(modalTitle)
 
 		// Create JSON editor for environment variables
-		env := &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
-
-		// Convert environment variables to JSON
-		effectiveVars := env.GetEffectiveVariables(environmentsData)
-		jsonBytes, err := json.MarshalIndent(effectiveVars, "", "  ")
-		if err != nil {
+		var jsonBytes []byte
+		if env != nil {
+			// Convert existing environment variables to JSON
+			effectiveVars := env.GetEffectiveVariables(environmentsData)
+			jsonBytes, _ = json.MarshalIndent(effectiveVars, "", "  ")
+		} else {
+			// Start with empty JSON for new environment
 			jsonBytes = []byte("{}")
 		}
 
@@ -806,6 +812,10 @@ func runTUI(cmd *cobra.Command, args []string) {
 			borderFocusColor,
 			environmentsData,
 			func() {
+				// Reload environments from disk after creating new environment
+				if reloadedEnvs, err := workspace.LoadEnvironments(); err == nil {
+					environmentsData = reloadedEnvs
+				}
 				// Refresh dropdown after creating new environment
 				updateEnvironmentDropdown(envDropdown, environmentsData)
 			},
@@ -823,16 +833,18 @@ func runTUI(cmd *cobra.Command, args []string) {
 		// Add keybinding to close modal with Escape, q, or Q
 		pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			if event.Key() == tcell.KeyEscape || event.Key() == 'q' || event.Key() == 'Q' {
-				// Save the JSON back to environment variables
-				jsonText := jsonEditor.GetText()
-				var newVars map[string]string
-				if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
-					// If JSON is invalid, keep the original variables
-					// Could show an error message here
-				} else {
-					env.Variables = newVars
-					if saveErr := workspace.SaveEnvironments(environmentsData); saveErr != nil {
-						// Handle save error
+				// Save the JSON back to environment variables if editing existing environment
+				if env != nil {
+					jsonText := jsonEditor.GetText()
+					var newVars map[string]string
+					if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
+						// If JSON is invalid, keep the original variables
+						// Could show an error message here
+					} else {
+						env.Variables = newVars
+						if saveErr := workspace.SaveEnvironments(environmentsData); saveErr != nil {
+							// Handle save error
+						}
 					}
 				}
 
