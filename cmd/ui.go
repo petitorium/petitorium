@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -119,6 +120,199 @@ func createButton(text string, backgroundColor, borderColor, titleColor, foregro
 	return button
 }
 
+// CustomButton is a custom button primitive with full control over styling
+type CustomButton struct {
+	*tview.Box
+	text                string
+	textAlignment       string // "left", "center", "right"
+	onSelected          func()
+	backgroundColor     tcell.Color
+	activatedColor      tcell.Color
+	labelColor          tcell.Color
+	labelActivatedColor tcell.Color
+	isActivated         bool
+}
+
+// NewCustomButton creates a new custom button
+func NewCustomButton(text string) *CustomButton {
+	box := tview.NewBox()
+	box.SetBorder(false)
+
+	cb := &CustomButton{
+		Box:                 box,
+		text:                text,
+		textAlignment:       "center",
+		backgroundColor:     tcell.ColorDefault,
+		activatedColor:      tcell.ColorDefault,
+		labelColor:          tcell.ColorDefault,
+		labelActivatedColor: tcell.ColorDefault,
+		isActivated:         false,
+	}
+
+	// Set mouse capture for click handling
+	// box.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+	// 	if action == tview.MouseLeftClick && cb.onSelected != nil {
+	// 		cb.isActivated = true
+	// 		cb.updateBackground()
+	// 		cb.onSelected()
+	// 		// Reset activation after a short delay
+	// 		go func() {
+	// 			// Small delay to show activated state
+	// 			time.Sleep(100 * time.Millisecond)
+	// 			cb.isActivated = false
+	// 			cb.updateBackground()
+	// 		}()
+	// 	}
+	// 	return action, event
+	// })
+
+	return cb
+}
+
+// SetBackgroundColor sets the normal background color
+func (cb *CustomButton) SetBackgroundColor(color tcell.Color) *CustomButton {
+	cb.backgroundColor = color
+	cb.updateBackground()
+	return cb
+}
+
+// SetBackgroundColorActivated sets the activated background color
+func (cb *CustomButton) SetBackgroundColorActivated(color tcell.Color) *CustomButton {
+	cb.activatedColor = color
+	cb.updateBackground()
+	return cb
+}
+
+// SetLabelColor sets the normal label color
+func (cb *CustomButton) SetLabelColor(color tcell.Color) *CustomButton {
+	cb.labelColor = color
+	return cb
+}
+
+// SetLabelColorActivated sets the activated label color
+func (cb *CustomButton) SetLabelColorActivated(color tcell.Color) *CustomButton {
+	cb.labelActivatedColor = color
+	return cb
+}
+
+// SetSelectedFunc sets the function to call when the button is selected
+func (cb *CustomButton) SetSelectedFunc(handler func()) *CustomButton {
+	cb.onSelected = handler
+	return cb
+}
+
+// SetText sets the button text
+func (cb *CustomButton) SetText(text string) *CustomButton {
+	cb.text = text
+	return cb
+}
+
+// SetTextAlignment sets the text alignment ("left", "center", "right")
+func (cb *CustomButton) SetTextAlignment(alignment string) *CustomButton {
+	cb.textAlignment = alignment
+	return cb
+}
+
+// updateBackground updates the background color based on activation state
+func (cb *CustomButton) updateBackground() {
+	if cb.isActivated && cb.activatedColor != tcell.ColorDefault {
+		cb.Box.SetBackgroundColor(cb.activatedColor)
+	} else if cb.backgroundColor != tcell.ColorDefault {
+		cb.Box.SetBackgroundColor(cb.backgroundColor)
+	}
+}
+
+// Draw implements the Primitive interface
+func (cb *CustomButton) Draw(screen tcell.Screen) {
+	cb.Box.Draw(screen)
+
+	x, y, width, height := cb.Box.GetRect()
+	if width <= 0 || height <= 0 {
+		return
+	}
+
+	// Calculate text X position based on alignment
+	textLen := utf8.RuneCountInString(cb.text)
+	var textX int
+	switch cb.textAlignment {
+	case "left":
+		textX = x
+	case "right":
+		textX = x + width - textLen
+	default: // "center"
+		textX = x + (width-textLen)/2
+	}
+	textY := y + height/2
+
+	labelColor := cb.labelColor
+	if cb.isActivated && cb.labelActivatedColor != tcell.ColorDefault {
+		labelColor = cb.labelActivatedColor
+	}
+
+	// Draw each character of the text
+	for i, ch := range cb.text {
+		if textX+i >= x && textX+i < x+width && textY >= y && textY < y+height {
+			screen.SetContent(textX+i, textY, ch, nil, tcell.StyleDefault.Background(cb.Box.GetBackgroundColor()).Foreground(labelColor))
+		}
+	}
+}
+
+// InputHandler implements the Primitive interface
+func (cb *CustomButton) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+		if event.Key() == tcell.KeyEnter && cb.onSelected != nil {
+			cb.isActivated = true
+			cb.updateBackground()
+			cb.onSelected()
+			// Reset activation after a short delay
+			go func() {
+				// Small delay to show activated state
+				time.Sleep(100 * time.Millisecond)
+				cb.isActivated = false
+				cb.updateBackground()
+			}()
+		}
+	}
+}
+
+// MouseHandler implements the Primitive interface for mouse events
+func (cb *CustomButton) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+	return func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+		if action == tview.MouseLeftClick {
+			x, y := event.Position()
+			bx, by, width, height := cb.Box.GetRect()
+
+			// Check if click is within button bounds
+			if x >= bx && x < bx+width && y >= by && y < by+height {
+				if cb.onSelected != nil {
+					cb.isActivated = true
+					cb.updateBackground()
+					cb.onSelected()
+					// Reset activation after a short delay
+					go func() {
+						// Small delay to show activated state
+						time.Sleep(100 * time.Millisecond)
+						cb.isActivated = false
+						cb.updateBackground()
+					}()
+				}
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+}
+
+// createCustomButton creates a custom button with full styling control
+func createCustomButton(text string, backgroundColor, activatedColor, labelColor, labelActivatedColor tcell.Color) *CustomButton {
+	button := NewCustomButton(text)
+	button.SetBackgroundColor(backgroundColor)
+	button.SetBackgroundColorActivated(activatedColor)
+	button.SetLabelColor(labelColor)
+	button.SetLabelColorActivated(labelActivatedColor)
+	return button
+}
+
 // setFocusStyle sets the border color based on focus state
 func setFocusStyle(p tview.Primitive, focused bool, borderColor, borderFocusColor tcell.Color) {
 	type borderStyler interface {
@@ -218,6 +412,9 @@ func createTabHeader(tabs []string, backgroundColor,
 ) *tview.Flex {
 	tabHeader := tview.NewFlex().SetDirection(tview.FlexColumn)
 	tabHeader.SetBackgroundColor(backgroundColor)
+
+	// Tab titles and their active states
+	tabs = []string{"Body", "Auth", "Query", "Headers"}
 	activeTab := 0 // Default to first tab
 
 	// Create tab buttons
@@ -274,6 +471,8 @@ func updateTabHeader(
 	activeTabColor,
 	selectionBackgroundColor tcell.Color,
 ) {
+	// Tab titles
+	tabs = []string{"Body", "Auth", "Query", "Headers"}
 
 	// Update each tab's appearance based on whether it's active
 	for i := 0; i < len(tabs); i++ {
@@ -321,6 +520,11 @@ var currentHeadersTab *tview.Flex
 var currentHeaderRows []*HeaderRow
 
 var currentHeadersList *tview.Flex
+
+// Global variables for environment variables management
+var currentEnvRows []*EnvVarRow
+
+var currentEnvVarsList *tview.Flex
 
 var rowHeight int = 1
 
@@ -799,6 +1003,10 @@ func createRequestDataTabs(
 		tabNames := []string{"body", "auth", "query", "headers"}
 		if tabIndex >= 0 && tabIndex < len(tabNames) {
 			tabPages.SwitchToPage(tabNames[tabIndex])
+			// Update current tab index
+			if tabIndexSetter != nil {
+				tabIndexSetter(tabIndex)
+			}
 			// Update the tab header to show the new active tab
 			if tabHeader != nil {
 				tabs := []string{"Body", "Auth", "Query", "Headers"}
@@ -1094,13 +1302,460 @@ func createResponseTabs(
 	return tabContainer, tabPages, tabHeader, switchToTab, infoBar, previewPanel, headersPanel, cookiesPanel, timelinePanel
 }
 
+// createEnvironmentVariablesTab creates a tab for editing environment variables
+func createEnvironmentVariablesTab(
+	backgroundColor,
+	borderColor,
+	titleColor,
+	foregroundColor,
+	buttonSelectedColor tcell.Color,
+	initialVariables map[string]string,
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+) *tview.Flex {
+	envContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	envContainer.SetBackgroundColor(backgroundColor)
+	envContainer.SetBorder(true)
+	envContainer.SetBorderColor(borderColor)
+	envContainer.SetTitle(" Environment Variables ")
+	envContainer.SetTitleColor(titleColor)
+	envContainer.SetBackgroundColor(backgroundColor)
+
+	// Scrollable area for variable entries
+	variablesList := tview.NewFlex().SetDirection(tview.FlexRow)
+	variablesList.SetBackgroundColor(backgroundColor)
+
+	// Store references for global access (similar to headers)
+	currentEnvVarsList = variablesList
+
+	// Function to refresh the UI
+	var refreshEnvUI func()
+	refreshEnvUI = func() {
+		variablesList.Clear()
+		for _, row := range currentEnvRows {
+			variablesList.AddItem(row.Row, rowHeight, 0, false)
+		}
+		// Always keep at least one empty row
+		if len(currentEnvRows) == 0 {
+			addEnvVarRow(variablesList, backgroundColor, foregroundColor, borderColor, refreshEnvUI, saveCallback, focusSetter)
+		}
+	}
+
+	// Initialize global env rows
+	currentEnvRows = []*EnvVarRow{}
+
+	// Add initial rows based on data
+	if initialVariables != nil && len(initialVariables) > 0 {
+		for key, value := range initialVariables {
+			addEnvVarRowWithData(variablesList, backgroundColor, foregroundColor, borderColor, key, value, refreshEnvUI, saveCallback, focusSetter)
+		}
+	}
+	// Always add at least one empty row
+	addEnvVarRow(variablesList, backgroundColor, foregroundColor, borderColor, refreshEnvUI, saveCallback, focusSetter)
+
+	// Add button row at the top
+	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonRow.SetBackgroundColor(backgroundColor)
+
+	addButton := createButton(" Add Variable ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+	addButton.SetBackgroundColorActivated(foregroundColor)
+	addButton.SetLabelColor(backgroundColor)
+	addButton.SetSelectedFunc(func() {
+		addEnvVarRow(variablesList, backgroundColor, foregroundColor, borderColor, refreshEnvUI, saveCallback, focusSetter)
+		refreshEnvUI()
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	// Delete all button
+	deleteAllButton := createButton(" Delete All ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+	deleteAllButton.SetBorder(false)
+	deleteAllButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	deleteAllButton.SetSelectedFunc(func() {
+		// Clear all variable rows
+		currentEnvRows = []*EnvVarRow{}
+		refreshEnvUI()
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	buttonRow.AddItem(addButton, 15, 0, false)
+	buttonRow.AddItem(deleteAllButton, 15, 0, false)
+	buttonRow.AddItem(nil, 0, 1, false)
+
+	envContainer.AddItem(buttonRow, 1, 0, false)
+
+	// Add visual spacing between buttons and variables
+	spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
+	envContainer.AddItem(spacer, 1, 0, false)
+
+	envContainer.AddItem(variablesList, 0, 1, false)
+
+	return envContainer
+}
+
+// EnvVarRow represents a single environment variable key-value pair in the UI
+type EnvVarRow struct {
+	KeyInput     *tview.InputField
+	ValueInput   *tview.InputField
+	DeleteButton *tview.Button
+	Row          *tview.Flex
+}
+
+// addEnvVarRow adds a new key-value environment variable input row
+func addEnvVarRow(variablesList *tview.Flex,
+	backgroundColor,
+	foregroundColor,
+	borderColor tcell.Color,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(backgroundColor)
+
+	keyInput := tview.NewInputField()
+	keyInput.SetBackgroundColor(backgroundColor)
+	keyInput.SetFieldBackgroundColor(backgroundColor)
+	keyInput.SetFieldTextColor(foregroundColor)
+	keyInput.SetLabelColor(foregroundColor)
+	keyInput.SetPlaceholder("Variable name")
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	keyInput.SetFieldBackgroundColor(backgroundColor)
+	keyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	keyInput.SetBlurFunc(func() {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	valueInput := tview.NewInputField()
+	valueInput.SetBackgroundColor(backgroundColor)
+	valueInput.SetFieldBackgroundColor(backgroundColor)
+	valueInput.SetFieldTextColor(foregroundColor)
+	valueInput.SetLabelColor(foregroundColor)
+	valueInput.SetPlaceholder("Variable value")
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	valueInput.SetFieldBackgroundColor(backgroundColor)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.SetBlurFunc(func() {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(backgroundColor)
+	removeButton.SetLabelColor(foregroundColor)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+
+	envVarRow := &EnvVarRow{
+		KeyInput:     keyInput,
+		ValueInput:   valueInput,
+		DeleteButton: removeButton,
+		Row:          row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		// Find and remove this row
+		for i, r := range currentEnvRows {
+			if r == envVarRow {
+				currentEnvRows = append(currentEnvRows[:i], currentEnvRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Handle Tab navigation for delete button
+	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Tab from delete button to next row's key input
+			// Simple implementation: cycle to first row's key input
+			if len(currentEnvRows) > 0 {
+				firstRow := currentEnvRows[0]
+				focusSetter(firstRow.KeyInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Handle Tab to add new variable row when on the last value input
+	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Check if this is the last value input
+			if len(currentEnvRows) > 0 && currentEnvRows[len(currentEnvRows)-1] == envVarRow {
+				// Cycle back to first key input
+				firstRow := currentEnvRows[0]
+				focusSetter(firstRow.KeyInput)
+				return nil
+			}
+		}
+		return event
+	})
+
+	// Wrap button in a container to match row height
+	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonContainer.SetBackgroundColor(backgroundColor)
+	buttonContainer.AddItem(nil, 0, 1, false)
+	buttonContainer.AddItem(removeButton, 1, 0, false)
+	buttonContainer.AddItem(nil, 0, 1, false)
+
+	row.AddItem(keyInput, 0, 1, false)
+	row.AddItem(valueInput, 0, 1, false)
+	row.AddItem(buttonContainer, 4, 0, false)
+
+	currentEnvRows = append(currentEnvRows, envVarRow)
+	variablesList.AddItem(row, rowHeight, 0, false)
+
+	// Add separator line between rows
+	separator := tview.NewBox().SetBackgroundColor(backgroundColor)
+	separator.SetBorder(false)
+	variablesList.AddItem(separator, 1, 0, false)
+
+	// Update cycles if needed
+	if headersCycle != nil {
+		headersCycle.UpdateInputs()
+	}
+}
+
+// addEnvVarRowWithData adds an environment variable row with pre-filled data
+func addEnvVarRowWithData(
+	variablesList *tview.Flex,
+	backgroundColor, foregroundColor, borderColor tcell.Color,
+	key, value string,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(backgroundColor)
+
+	keyInput := tview.NewInputField()
+	keyInput.SetBackgroundColor(backgroundColor)
+	keyInput.SetFieldBackgroundColor(backgroundColor)
+	keyInput.SetFieldTextColor(foregroundColor)
+	keyInput.SetLabelColor(foregroundColor)
+	keyInput.SetPlaceholder("Variable name")
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	keyInput.SetText(key)
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	if saveCallback != nil {
+		keyInput.SetChangedFunc(func(text string) {
+			saveCallback()
+		})
+		keyInput.SetBlurFunc(func() {
+			saveCallback()
+		})
+	}
+
+	valueInput := tview.NewInputField()
+	valueInput.SetBackgroundColor(backgroundColor)
+	valueInput.SetFieldBackgroundColor(backgroundColor)
+	valueInput.SetFieldTextColor(foregroundColor)
+	valueInput.SetLabelColor(foregroundColor)
+	valueInput.SetPlaceholder("Variable value")
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	valueInput.SetText(value)
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	if saveCallback != nil {
+		valueInput.SetChangedFunc(func(text string) {
+			saveCallback()
+		})
+		valueInput.SetBlurFunc(func() {
+			saveCallback()
+		})
+	}
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(backgroundColor)
+	removeButton.SetLabelColor(foregroundColor)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+
+	envVarRow := &EnvVarRow{
+		KeyInput:     keyInput,
+		ValueInput:   valueInput,
+		DeleteButton: removeButton,
+		Row:          row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		// Find and remove this row
+		for i, r := range currentEnvRows {
+			if r == envVarRow {
+				currentEnvRows = append(currentEnvRows[:i], currentEnvRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Handle Tab navigation for delete button
+	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Tab from delete button to next row's key input
+			// Simple implementation: cycle to first row's key input
+			if len(currentEnvRows) > 0 {
+				firstRow := currentEnvRows[0]
+				focusSetter(firstRow.KeyInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Handle Shift+Tab navigation between key/value inputs
+	keyInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyBacktab {
+			// Shift+Tab: Find current row index and move to previous row's value input
+			currentIndex := -1
+			for i, row := range currentEnvRows {
+				if row == envVarRow {
+					currentIndex = i
+					break
+				}
+			}
+
+			if currentIndex > 0 {
+				// Move to previous row's value input
+				prevRow := currentEnvRows[currentIndex-1]
+				focusSetter(prevRow.ValueInput)
+			} else {
+				// First row, cycle to last row's value input
+				lastRow := currentEnvRows[len(currentEnvRows)-1]
+				focusSetter(lastRow.ValueInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyBacktab {
+			// Shift+Tab: Move to key input of same row
+			focusSetter(keyInput)
+			return nil
+		}
+		return event
+	})
+
+	// Wrap button in a container to match row height
+	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonContainer.SetBackgroundColor(backgroundColor)
+	buttonContainer.AddItem(nil, 0, 1, false)
+	buttonContainer.AddItem(removeButton, 1, 0, false)
+	buttonContainer.AddItem(nil, 0, 1, false)
+
+	row.AddItem(keyInput, 0, 1, false)
+	row.AddItem(valueInput, 0, 1, false)
+	row.AddItem(buttonContainer, 4, 0, false)
+
+	currentEnvRows = append(currentEnvRows, envVarRow)
+	variablesList.AddItem(row, rowHeight, 0, false)
+
+	// Add separator line between rows
+	// separator := tview.NewBox().SetBackgroundColor(backgroundColor)
+	// separator.SetBorder(true)
+	// variablesList.AddItem(separator, 1, 0, false)
+
+	// Update cycles if needed
+	if headersCycle != nil {
+		headersCycle.UpdateInputs()
+	}
+}
+
+// getEnvVarsFromUI extracts environment variables from the current UI state
+func getEnvVarsFromUI() map[string]string {
+	variables := make(map[string]string)
+	for _, row := range currentEnvRows {
+		key := strings.TrimSpace(row.KeyInput.GetText())
+		value := strings.TrimSpace(row.ValueInput.GetText())
+		if key != "" {
+			variables[key] = value
+		}
+	}
+	return variables
+}
+
+// setEnvVarsInUI populates the UI with the given environment variables
+func setEnvVarsInUI(variables map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
+	// Clear existing rows
+	currentEnvRows = []*EnvVarRow{}
+
+	if currentEnvVarsList != nil {
+		currentEnvVarsList.Clear()
+
+		// Get current theme colors
+		theme := config.C.Theme
+		backgroundColor := hexToColor(theme.BackgroundColor)
+		foregroundColor := hexToColor(theme.ForegroundColor)
+		borderColor := hexToColor(theme.BorderColor)
+
+		// Add rows for each variable (sorted by key for consistent ordering)
+		var keys []string
+		for key := range variables {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			value := variables[key]
+			addEnvVarRowWithData(currentEnvVarsList, backgroundColor, foregroundColor, borderColor, key, value, func() {
+				// Refresh function - for now just rebuild the list
+				setEnvVarsInUI(getEnvVarsFromUI(), saveCallback, focusSetter)
+			}, saveCallback, focusSetter)
+		}
+
+		// Always add one empty row
+		addEnvVarRow(currentEnvVarsList, backgroundColor, foregroundColor, borderColor, func() {
+			setEnvVarsInUI(getEnvVarsFromUI(), saveCallback, focusSetter)
+		}, saveCallback, focusSetter)
+	}
+
+	// Update cycles if needed
+	if headersCycle != nil {
+		headersCycle.UpdateInputs()
+	}
+}
+
 // createModal creates a centered modal dialog
-func createModal(p tview.Primitive, width, height int) tview.Primitive {
-	return tview.NewFlex().
+func createModal(p tview.Primitive, width, height int, backgroundColor tcell.Color) tview.Primitive {
+	// Create a background box for the content area to ensure solid coverage
+	contentBackground := tview.NewBox().SetBackgroundColor(backgroundColor)
+
+	// Stack the content on top of the background box
+	contentArea := tview.NewFlex().SetDirection(tview.FlexRow)
+	contentArea.AddItem(contentBackground, 0, 1, false)
+	contentArea.AddItem(p, height, 1, true)
+
+	modal := tview.NewFlex().
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(p, height, 1, true).
+			AddItem(contentArea, height, 1, true).
 			AddItem(nil, 0, 1, false), width, 1, false).
 		AddItem(nil, 0, 1, false)
+	modal.SetBackgroundColor(backgroundColor)
+	return modal
 }

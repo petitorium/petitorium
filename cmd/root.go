@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +22,15 @@ var rootCmd = &cobra.Command{
 	Use:   "petitorium",
 	Short: "A powerful TUI for API interaction and testing.",
 	Run:   runTUI,
+}
+
+// updateEnvironmentDropdown updates the environment dropdown with current environments
+func updateEnvironmentDropdown(dropdown *tview.DropDown, environments []workspace.Environment) {
+	options := []string{"No Environment"}
+	for _, env := range environments {
+		options = append(options, env.Name)
+	}
+	dropdown.SetOptions(options, nil)
 }
 
 func Execute() {
@@ -47,41 +57,53 @@ func runTUI(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Failed to load collections: %v", err))
 	}
 
+	environmentsData, err := workspace.LoadEnvironments()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load environments: %v", err))
+	}
+
 	app := tview.NewApplication().
 		EnableMouse(true)
 
 	// Create all UI components
-	header,
-		rootNode,
-		methodURLBar,
-		methodDropdown,
-		urlInput,
-		sendButton,
-		bodyViewPanel,
-		bodyEditPanel,
-		response,
-		footer,
-		collectionsTreeView,
-		responsePages,
-		responseTabHeader,
-		responseInfoBar,
-		responsePreviewPanel,
-		responseHeadersPanel,
-		responseCookiesPanel,
-		responseTimelinePanel :=
-		setupUIComponents(backgroundColor,
-			foregroundColor,
-			borderColor,
-			borderFocusColor,
-			titleColor,
-			selectionBackgroundColor,
-			activeTabColor,
-			buttonSelectedColor,
-			dropdownFocusedBackgroundColor,
-		)
+	ui := setupUIComponents(backgroundColor,
+		foregroundColor,
+		borderColor,
+		borderFocusColor,
+		titleColor,
+		selectionBackgroundColor,
+		activeTabColor,
+		buttonSelectedColor,
+		dropdownFocusedBackgroundColor,
+	)
+
+	header := ui.Header
+	rootNode := ui.RootNode
+	methodURLBar := ui.MethodURLBar
+	methodDropdown := ui.MethodDropdown
+	urlInput := ui.URLInput
+	sendButton := ui.SendButton
+	bodyViewPanel := ui.BodyViewPanel
+	bodyEditPanel := ui.BodyEditPanel
+	response := ui.Response
+	footer := ui.Footer
+	collectionsTreeView := ui.CollectionsTreeView
+	responsePages := ui.ResponsePages
+	responseTabHeader := ui.ResponseTabHeader
+	responseInfoBar := ui.ResponseInfoBar
+	responsePreviewPanel := ui.ResponsePreviewPanel
+	responseHeadersPanel := ui.ResponseHeadersPanel
+	responseCookiesPanel := ui.ResponseCookiesPanel
+	responseTimelinePanel := ui.ResponseTimelinePanel
+	environmentPanel := ui.EnvironmentPanel
+	envDropdown := ui.EnvDropdown
+	envConfigButton := ui.EnvConfigButton
 
 	// Dummy use to suppress unused variable warning
 	_ = responseInfoBar
+
+	// Update environment dropdown with loaded environments
+	updateEnvironmentDropdown(envDropdown, environmentsData)
 
 	// Variable declarations
 	var currentSelectedNode *tview.TreeNode
@@ -93,6 +115,13 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 	// Track current tab index (0=body, 1=auth, 2=query, 3=headers)
 	currentTabIndex := 0
+
+	// Tab indices
+	enviromentIndex := 0
+	collectionsIndex := 1
+	urlBarIndex := 2
+	requestIndex := 3
+	responseIndex := 4
 
 	// Additional UI variables
 	var requestDataTabs *tview.Flex
@@ -265,7 +294,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 	var rightSide *tview.Flex
 
 	// Create main panels
-	mainPanels := []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
+	mainPanels := []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, response}
 
 	// Function to update response tabs with new response data
 	updateResponseTabs := func(resp *HTTPResponse, lastTime *time.Time) {
@@ -360,12 +389,12 @@ func runTUI(cmd *cobra.Command, args []string) {
 	rightSide = setupRightSide(requestPanel, response)
 
 	// Create main grid layout
-	grid := setupLayout(header, footer, collectionsTreeView, rightSide)
+	grid := setupLayout(header, footer, collectionsTreeView, environmentPanel, rightSide)
 
 	// Initialize cycles
 	mainCycle = &MainCycle{
 		panels:   mainPanels,
-		current:  0, // start with collections
+		current:  1, // start with collections
 		children: nil,
 	}
 
@@ -638,11 +667,10 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 	grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
-	grid.AddItem(collectionsTreeView, 1, 0, 1, 1, 0, 0, true)
 	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
 
 	// Initial focus is on requestPanel (panels[1])
-	currentFocus := 0
+	currentFocus := collectionsIndex
 
 	// Custom focus handler that knows about special containers
 	setPanelFocus := func(panelIndex int, focused bool) {
@@ -733,6 +761,89 @@ func runTUI(cmd *cobra.Command, args []string) {
 	// Add main page
 	pages.AddPage("main", grid, true, true)
 
+	// Set up environment indicator button click handler (opens dropdown)
+	// envIndicatorButton.SetSelectedFunc(func() {
+	// 	// app.SetFocus(envDropdown)
+	// 	// // Simulate Enter to open the dropdown
+	// 	// envDropdown.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone), func(p tview.Primitive) {
+	// 	// 	app.SetFocus(p)
+	// 	// })
+	// })
+
+	// Set up environment config button click handler
+	envConfigButton.SetSelectedFunc(func() {
+		// // Get current selected environment
+		currentEnvIndex, _ := envDropdown.GetCurrentOption()
+		if currentEnvIndex <= 0 || currentEnvIndex > len(environmentsData) {
+			header.SetTitle(" NO ENV SELECTED ")
+			// No environment selected or invalid
+			return
+		}
+		// env := &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
+
+		header.SetTitle(" Config " + strconv.Itoa(currentEnvIndex))
+
+		// Create JSON editor for environment variables
+		env := &environmentsData[currentEnvIndex-1] // -1 because dropdown has "No Environment" at index 0
+
+		// Convert environment variables to JSON
+		effectiveVars := env.GetEffectiveVariables(environmentsData)
+		jsonBytes, err := json.MarshalIndent(effectiveVars, "", "  ")
+		if err != nil {
+			jsonBytes = []byte("{}")
+		}
+
+		// Create JSON editor
+		jsonEditor := createTextArea(" Environment Variables (JSON) ", backgroundColor, borderColor, titleColor, foregroundColor)
+		jsonEditor.SetText(string(jsonBytes), false)
+
+		// Create left panel (for environment creation)
+		leftPanel := createEnvironmentCreationPanel(
+			backgroundColor,
+			borderColor,
+			titleColor,
+			foregroundColor,
+			borderFocusColor,
+			environmentsData,
+			func() {
+				// Refresh dropdown after creating new environment
+				updateEnvironmentDropdown(envDropdown, environmentsData)
+			},
+		)
+
+		// Create split layout: left 30%, right 70%
+		content := tview.NewFlex().
+			AddItem(leftPanel, 0, 3, false). // 30% for left panel
+			AddItem(jsonEditor, 0, 7, false) // 70% for JSON editor
+
+		modal := createModal(content, 80, 20, backgroundColor)
+		pages.AddPage("envVariables", modal, true, true)
+		app.SetFocus(jsonEditor)
+
+		// Add keybinding to close modal with Escape, q, or Q
+		pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEscape || event.Key() == 'q' || event.Key() == 'Q' {
+				// Save the JSON back to environment variables
+				jsonText := jsonEditor.GetText()
+				var newVars map[string]string
+				if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
+					// If JSON is invalid, keep the original variables
+					// Could show an error message here
+				} else {
+					env.Variables = newVars
+					if saveErr := workspace.SaveEnvironments(environmentsData); saveErr != nil {
+						// Handle save error
+					}
+				}
+
+				pages.RemovePage("envVariables")
+				app.SetFocus(collectionsTreeView)
+				return nil
+			}
+			return event
+		})
+	})
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		// Check if we're on a modal page (not main)
 		currentPage, _ := pages.GetFrontPage()
@@ -758,9 +869,20 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		if event.Key() == tcell.KeyTab {
+			// environment panel
+			if mainCycle.current == enviromentIndex {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				nextElement := mainCycle.Next()
+				setActiveBorder(nextElement)
+
+				app.SetFocus(nextElement)
+				currentFocus = mainCycle.current
+
+				return nil
+			}
 
 			// collections panel
-			if mainCycle.current == 0 {
+			if mainCycle.current == collectionsIndex {
 				setInactiveBorder(mainCycle.panels[mainCycle.current])
 				// It can advance to the next panel
 				nextElement := mainCycle.Next()
@@ -774,7 +896,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// urlbar panel & dropdown
-			if mainCycle.current == 1 && requestCycle.current == 0 {
+			if mainCycle.current == urlBarIndex && requestCycle.current == 0 {
 				next := requestCycle.Next()
 				app.SetFocus(next)
 				currentFocus = mainCycle.current
@@ -783,7 +905,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// urlbar panel & url input
-			if mainCycle.current == 1 && requestCycle.current == 1 {
+			if mainCycle.current == urlBarIndex && requestCycle.current == 1 {
 				next := requestCycle.Next()
 				app.SetFocus(next)
 				currentFocus = mainCycle.current
@@ -792,7 +914,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// urlbar panel & send button
-			if mainCycle.current == 1 && requestCycle.current == 2 {
+			if mainCycle.current == urlBarIndex && requestCycle.current == 2 {
 				setInactiveBorder(mainCycle.panels[mainCycle.current])
 				nextElement := mainCycle.Next()
 				setActiveBorder(nextElement)
@@ -803,7 +925,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// requests editor/viewer panel
-			if mainCycle.current == 2 && currentTabIndex == 0 && !bodyEditMode {
+			if mainCycle.current == requestIndex && currentTabIndex == 0 && !bodyEditMode {
 				setInactiveBorder(mainCycle.panels[mainCycle.current])
 				nextElement := mainCycle.Next()
 				setActiveBorder(nextElement)
@@ -814,7 +936,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// requests headers panel - cycle through header inputs
-			if mainCycle.current == 2 && currentTabIndex == 3 {
+			if mainCycle.current == requestIndex && currentTabIndex == 3 {
 				// Cycle through header key/value/delete inputs, then jump to next panel
 				currentFocusedElement := app.GetFocus()
 
@@ -857,7 +979,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// response panel
-			if mainCycle.current == 3 {
+			if mainCycle.current == responseIndex {
 				setInactiveBorder(mainCycle.panels[mainCycle.current])
 				nextElement := mainCycle.Next()
 				setActiveBorder(nextElement)
@@ -872,8 +994,18 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 		// Shift+KeyTab (Backtab) for backward navigation
 		if event.Key() == tcell.KeyBacktab {
+			// environment panel
+			if mainCycle.current == enviromentIndex {
+				setInactiveBorder(mainCycle.panels[mainCycle.current])
+				prevElement := mainCycle.Prev()
+				setActiveBorder(prevElement)
+				app.SetFocus(prevElement)
+				currentFocus = mainCycle.current
+				return nil
+			}
+
 			// collections panel
-			if mainCycle.current == 0 {
+			if mainCycle.current == collectionsIndex {
 				setInactiveBorder(mainCycle.panels[mainCycle.current])
 				prevElement := mainCycle.Prev()
 				setActiveBorder(prevElement)
@@ -883,7 +1015,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// urlbar panel & dropdown
-			if mainCycle.current == 1 && requestCycle.current == 0 {
+			if mainCycle.current == urlBarIndex && requestCycle.current == 0 {
 				prev := requestCycle.Prev()
 				if prev != nil {
 					app.SetFocus(prev)
@@ -899,7 +1031,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// urlbar panel & url input
-			if mainCycle.current == 1 && requestCycle.current == 1 {
+			if mainCycle.current == urlBarIndex && requestCycle.current == 1 {
 				prev := requestCycle.Prev()
 				app.SetFocus(prev)
 				currentFocus = mainCycle.current
@@ -907,7 +1039,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// urlbar panel & send button
-			if mainCycle.current == 1 && requestCycle.current == 2 {
+			if mainCycle.current == urlBarIndex && requestCycle.current == 2 {
 				prev := requestCycle.Prev()
 				app.SetFocus(prev)
 				currentFocus = mainCycle.current
@@ -915,7 +1047,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// requests editor/viewer panel
-			if mainCycle.current == 2 && currentTabIndex == 0 && !bodyEditMode {
+			if mainCycle.current == requestIndex && currentTabIndex == 0 && !bodyEditMode {
 				setInactiveBorder(mainCycle.panels[mainCycle.current])
 				prevElement := mainCycle.Prev()
 				setActiveBorder(prevElement)
@@ -926,7 +1058,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// requests headers panel - cycle backward through header inputs
-			if mainCycle.current == 2 && currentTabIndex == 3 {
+			if mainCycle.current == requestIndex && currentTabIndex == 3 {
 				// Cycle backward through header key/value/delete inputs
 				currentFocusedElement := app.GetFocus()
 
@@ -970,7 +1102,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 			}
 
 			// response panel
-			if mainCycle.current == 3 {
+			if mainCycle.current == responseIndex {
 				setInactiveBorder(mainCycle.panels[mainCycle.current])
 				prevElement := mainCycle.Prev()
 				setActiveBorder(prevElement)
@@ -982,15 +1114,15 @@ func runTUI(cmd *cobra.Command, args []string) {
 			return nil
 		}
 
-		if mainCycle.current == 0 && event.Rune() == 'n' {
+		if mainCycle.current == collectionsIndex && event.Rune() == 'n' {
 			form := createCollectionFormWithLocation(app, pages, &collectionsData, rootNode, collectionsTreeView)
-			modal := createModal(form, 50, 12)
+			modal := createModal(form, 50, 12, backgroundColor)
 			pages.AddPage("newCollection", modal, true, true)
 			app.SetFocus(form)
 			return nil
 		}
 
-		if mainCycle.current == 0 && event.Rune() == 'r' {
+		if mainCycle.current == collectionsIndex && event.Rune() == 'r' {
 			// New request - check if a collection or request is selected
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
@@ -1006,7 +1138,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 				if selectedCollection != nil {
 					form := createRequestForm(app, pages, selectedCollection, &collectionsData, rootNode, collectionsTreeView)
-					modal := createModal(form, 60, 14)
+					modal := createModal(form, 60, 14, backgroundColor)
 					pages.AddPage("newRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1015,7 +1147,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// Rename functionality (Shift+R)
-		if mainCycle.current == 0 && event.Rune() == 'R' {
+		if mainCycle.current == collectionsIndex && event.Rune() == 'R' {
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()
@@ -1023,14 +1155,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 				if col, ok := reference.(workspace.Collection); ok {
 					// Rename collection
 					form := createRenameCollectionForm(app, pages, &col, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 25, 10)
+					modal := createModal(form, 25, 10, backgroundColor)
 					pages.AddPage("renameCollection", modal, true, true)
 					app.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Rename request - need to find parent collection
 					form := createRenameRequestForm(app, pages, &req, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 47, 10)
+					modal := createModal(form, 47, 10, backgroundColor)
 					pages.AddPage("renameRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1039,20 +1171,20 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// Move collection/request functionality (M)
-		if mainCycle.current == 0 && event.Rune() == 'm' {
+		if mainCycle.current == collectionsIndex && event.Rune() == 'm' {
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
 				if col, ok := node.GetReference().(workspace.Collection); ok {
 					// Move collection
 					form := createMoveCollectionForm(app, pages, &col, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 40, 12)
+					modal := createModal(form, 40, 12, backgroundColor)
 					pages.AddPage("moveCollection", modal, true, true)
 					app.SetFocus(form)
 					return nil
 				} else if req, ok := node.GetReference().(workspace.Request); ok {
 					// Move request
 					form := createMoveRequestForm(app, pages, &req, &collectionsData, rootNode, collectionsTreeView)
-					modal := createModal(form, 40, 10)
+					modal := createModal(form, 40, 10, backgroundColor)
 					pages.AddPage("moveRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1061,7 +1193,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// Delete functionality (d)
-		if mainCycle.current == 0 && event.Rune() == 'd' {
+		if mainCycle.current == collectionsIndex && event.Rune() == 'd' {
 			node := collectionsTreeView.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()
@@ -1069,14 +1201,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 				if col, ok := reference.(workspace.Collection); ok {
 					// Delete collection with confirmation
 					form := createDeleteCollectionConfirm(app, pages, &col, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 50, 8)
+					modal := createModal(form, 50, 8, backgroundColor)
 					pages.AddPage("deleteCollection", modal, true, true)
 					app.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Delete request with confirmation
 					form := createDeleteRequestConfirm(app, pages, &req, &collectionsData, rootNode, collectionsTreeView, node)
-					modal := createModal(form, 50, 8)
+					modal := createModal(form, 50, 8, backgroundColor)
 					pages.AddPage("deleteRequest", modal, true, true)
 					app.SetFocus(form)
 					return nil
@@ -1085,7 +1217,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		}
 
 		// F4 to open body in external editor
-		if mainCycle.current == 2 && event.Key() == tcell.KeyF4 {
+		if mainCycle.current == requestIndex && event.Key() == tcell.KeyF4 {
 			if currentRequest != nil {
 				// Suspend TUI to open external editor
 				app.Suspend(func() {
@@ -1170,14 +1302,14 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 		// Vim-style modal editing: 'i' to enter insert mode (only when request panel is active, tabs are focused, body tab is selected, and in view mode)
 		// if event.Rune() == 'i' && currentFocus == 1 && currentRequestSubFocus == 3 && currentTabIndex == 0 && !bodyEditMode {
-		if event.Rune() == 'i' && mainCycle.current == 2 && currentTabIndex == 0 && !bodyEditMode {
+		if event.Rune() == 'i' && mainCycle.current == requestIndex && currentTabIndex == 0 && !bodyEditMode {
 			switchBodyMode() // Switch to edit mode
 			app.SetFocus(bodyEditPanel)
 			return nil
 		}
 
 		// Arrow key navigation for tabs when request panel tabs are focused and not in body edit mode
-		if mainCycle.current == 2 && !bodyEditMode {
+		if mainCycle.current == requestIndex && !bodyEditMode {
 			if event.Key() == tcell.KeyLeft {
 				currentTabIndex = (currentTabIndex - 1 + 4) % 4
 				tabNames := []string{"body", "auth", "query", "headers"}
@@ -1242,6 +1374,19 @@ func runTUI(cmd *cobra.Command, args []string) {
 			body = currentRequest.Body
 		}
 		headers := getHeadersFromUI()
+
+		// Get current environment variables
+		var envVars map[string]string
+		currentEnvIndex, _ := envDropdown.GetCurrentOption()
+		if currentEnvIndex > 0 && currentEnvIndex <= len(environmentsData) {
+			env := &environmentsData[currentEnvIndex-1]
+			envVars = env.GetEffectiveVariables(environmentsData)
+		}
+
+		// Substitute variables in URL, body, and headers
+		url = substituteVariables(url, envVars)
+		body = substituteVariables(body, envVars)
+		headers = substituteVariablesInHeaders(headers, envVars)
 
 		// Validate URL
 		if url == "" {

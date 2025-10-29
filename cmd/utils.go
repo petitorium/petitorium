@@ -396,3 +396,30 @@ func openInExternalEditor(content string) (string, error) {
 
 	return string(modifiedContent), nil
 }
+
+// substituteVariables replaces {{variable}} placeholders with values from the environment variables map
+func substituteVariables(text string, variables map[string]string) string {
+	if variables == nil {
+		return text
+	}
+
+	result := text
+	for key, value := range variables {
+		placeholder := "{{" + key + "}}"
+		result = strings.ReplaceAll(result, placeholder, value)
+	}
+	return result
+}
+
+// substituteVariablesInHeaders replaces {{variable}} placeholders in header values
+func substituteVariablesInHeaders(headers map[string]string, variables map[string]string) map[string]string {
+	if variables == nil {
+		return headers
+	}
+
+	result := make(map[string]string)
+	for key, value := range headers {
+		result[key] = substituteVariables(value, variables)
+	}
+	return result
+}

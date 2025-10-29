@@ -1,11 +1,173 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
 	"github.com/hbarral/petitorium/workspace"
 )
+
+// UIComponents holds all UI components for the application
+type UIComponents struct {
+	Header                *tview.TextView
+	RootNode              *tview.TreeNode
+	MethodURLBar          *tview.Flex
+	MethodDropdown        *tview.DropDown
+	URLInput              *tview.InputField
+	SendButton            *tview.Button
+	BodyViewPanel         *tview.TextView
+	BodyEditPanel         *tview.TextArea
+	Response              *tview.Flex
+	Footer                *tview.TextView
+	CollectionsTreeView   *tview.TreeView
+	ResponsePages         *tview.Pages
+	ResponseTabHeader     *tview.Flex
+	ResponseInfoBar       *tview.Flex
+	ResponsePreviewPanel  *tview.TextView
+	ResponseHeadersPanel  *tview.TextView
+	ResponseCookiesPanel  *tview.TextView
+	ResponseTimelinePanel *tview.TextView
+	EnvironmentPanel      *tview.Flex
+	EnvDropdown           *tview.DropDown
+	EnvConfigButton       *tview.Button
+	EnvIndicatorButton    *CustomButton
+}
+
+// createEnvironmentCreationPanel creates the left panel for environment creation
+func createEnvironmentCreationPanel(
+	backgroundColor,
+	borderColor,
+	borderFocusColor,
+	titleColor,
+	foregroundColor tcell.Color,
+	environments []workspace.Environment,
+	onEnvironmentCreated func(),
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(backgroundColor)
+	form.SetBorderColor(borderColor)
+	form.SetTitleColor(titleColor)
+	form.SetFieldBackgroundColor(backgroundColor)
+	form.SetFieldTextColor(foregroundColor)
+	form.SetLabelColor(foregroundColor)
+	form.SetButtonBackgroundColor(backgroundColor)
+	form.SetButtonTextColor(foregroundColor)
+
+	// Get base environment options
+	baseOptions := []string{"None"}
+	for _, env := range environments {
+		baseOptions = append(baseOptions, env.Name)
+	}
+
+	form.AddInputField("Name", "", 20, nil, nil)
+	form.AddDropDown("Base", baseOptions, 0, nil)
+
+	form.AddButton("Create", func() {
+		name := form.GetFormItem(0).(*tview.InputField).GetText()
+		baseIndex, _ := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+
+		if strings.TrimSpace(name) == "" {
+			return
+		}
+
+		// Check if environment name already exists
+		for _, env := range environments {
+			if env.Name == name {
+				return // Name already exists
+			}
+		}
+
+		// Create new environment
+		newEnv := workspace.Environment{
+			Name:      name,
+			Variables: make(map[string]string),
+		}
+
+		// Set base if selected
+		if baseIndex > 0 {
+			newEnv.Base = baseOptions[baseIndex]
+		}
+
+		// Add to environments
+		environments = append(environments, newEnv)
+
+		// Save environments
+		if err := workspace.SaveEnvironments(environments); err != nil {
+			// Handle error
+			return
+		}
+
+		// Clear form
+		form.GetFormItem(0).(*tview.InputField).SetText("")
+		form.GetFormItem(1).(*tview.DropDown).SetCurrentOption(0)
+
+		// Notify parent
+		if onEnvironmentCreated != nil {
+			onEnvironmentCreated()
+		}
+	})
+
+	form.SetBorder(true).SetTitle(" Create Environment ")
+	return form
+}
+
+// createEnvironmentPanel creates the environment panel with dropdown and config button
+func createEnvironmentPanel(
+	backgroundColor,
+	borderColor,
+	borderFocusColor,
+	titleColor,
+	foregroundColor,
+	selectionBackgroundColor,
+	activeTabColor,
+	buttonSelectedColor,
+	dropdownFocusedBackgroundColor tcell.Color,
+) (*tview.Flex, *tview.DropDown, *tview.Button, *CustomButton) {
+	// Create environment dropdown
+	envDropdown := createDropDown(
+		"",
+		[]string{"No Environment", "Development", "Staging", "Production"},
+		backgroundColor,
+		backgroundColor,
+		backgroundColor,
+		foregroundColor,
+		activeTabColor,
+		backgroundColor,
+		selectionBackgroundColor,
+		dropdownFocusedBackgroundColor,
+	)
+	envDropdown.SetBorder(false)
+	envDropdown.SetCurrentOption(0)
+
+	// Create config button
+	configButton := createButton("⚙", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+
+	separator := tview.NewBox().
+		SetBackgroundColor(backgroundColor)
+
+	indicator := createCustomButton("▼", backgroundColor, backgroundColor, borderFocusColor, borderFocusColor)
+
+	// Create container
+	container := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(tview.NewFlex().
+			SetDirection(tview.FlexColumn).
+			AddItem(separator, 1, 0, false).
+			AddItem(envDropdown, 14, 0, false).
+			AddItem(indicator, 2, 0, true), 17, 0, false).
+		AddItem(separator, 0, 1, false).
+		AddItem(configButton, 3, 0, true)
+
+	container.SetBorder(true)
+	container.SetTitle(" Environment ")
+	container.SetBackgroundColor(backgroundColor)
+	container.SetBorderColor(borderColor)
+	container.SetTitleColor(titleColor)
+
+	return container, envDropdown, configButton, indicator
+}
 
 // setupUIComponents creates and configures all UI components
 func setupUIComponents(
@@ -18,11 +180,7 @@ func setupUIComponents(
 	activeTabColor,
 	buttonSelectedColor,
 	dropdownFocusedBackgroundColor tcell.Color,
-) (
-	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button,
-	*tview.TextView, *tview.TextArea, *tview.Flex, *tview.TextView, *tview.TreeView,
-	*tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView,
-) {
+) *UIComponents {
 	// Create header panel
 	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
 
@@ -56,6 +214,19 @@ func setupUIComponents(
 	footer := createPanel("", backgroundColor, borderColor, titleColor, foregroundColor)
 	footer.SetText(" (Tab) Cycle Focus | Body Tab: (i) Insert (Esc) Normal (hjkl) Nav | (F4) External Editor | (q) Quit | Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move Item | (d) Delete")
 
+	// Create environment panel with dropdown and config button
+	environmentPanel, envDropdown, envConfigButton, envIndicatorButton := createEnvironmentPanel(
+		backgroundColor,
+		borderColor,
+		borderFocusColor,
+		titleColor,
+		foregroundColor,
+		selectionBackgroundColor,
+		activeTabColor,
+		buttonSelectedColor,
+		dropdownFocusedBackgroundColor,
+	)
+
 	// Create collections tree view
 	collectionsTreeView := tview.NewTreeView().
 		SetRoot(rootNode).
@@ -73,7 +244,30 @@ func setupUIComponents(
 		SetTitleColor(titleColor).
 		SetBorderPadding(0, 0, 0, 0)
 
-	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel
+	return &UIComponents{
+		Header:                header,
+		RootNode:              rootNode,
+		MethodURLBar:          methodURLBar,
+		MethodDropdown:        methodDropdown,
+		URLInput:              urlInput,
+		SendButton:            sendButton,
+		BodyViewPanel:         bodyViewPanel,
+		BodyEditPanel:         bodyEditPanel,
+		Response:              response,
+		Footer:                footer,
+		CollectionsTreeView:   collectionsTreeView,
+		ResponsePages:         responsePages,
+		ResponseTabHeader:     responseTabHeader,
+		ResponseInfoBar:       responseInfoBar,
+		ResponsePreviewPanel:  responsePreviewPanel,
+		ResponseHeadersPanel:  responseHeadersPanel,
+		ResponseCookiesPanel:  responseCookiesPanel,
+		ResponseTimelinePanel: responseTimelinePanel,
+		EnvironmentPanel:      environmentPanel,
+		EnvDropdown:           envDropdown,
+		EnvConfigButton:       envConfigButton,
+		EnvIndicatorButton:    envIndicatorButton,
+	}
 }
 
 // setupRequestPanel creates the unified request panel
@@ -99,7 +293,12 @@ func setupRightSide(requestPanel *tview.Flex, response *tview.Flex) *tview.Flex 
 }
 
 // setupLayout creates the main grid layout
-func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, rightSide *tview.Flex) *tview.Grid {
+func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.Flex, rightSide *tview.Flex) *tview.Grid {
+	leftSide := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(environmentPanel, 3, 0, false).
+		AddItem(collectionsTreeView, 0, 1, false)
+
 	grid := tview.NewGrid().
 		SetRows(3, 0, 3).
 		SetColumns(30, 0).
@@ -107,22 +306,22 @@ func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.Tree
 
 	grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
-	grid.AddItem(collectionsTreeView, 1, 0, 1, 1, 0, 0, true)
+	grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, true)
 	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
 
 	return grid
 }
 
 // setupPanels creates the panels slice for cycling
-func setupPanels(collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.Flex) []tview.Primitive {
-	return []tview.Primitive{collectionsTreeView, methodURLBar, requestDataTabs, response}
+func setupPanels(environmentPanel *tview.Flex, collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.TextView) []tview.Primitive {
+	return []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, response}
 }
 
 // setupCycles initializes the navigation cycles
 func setupCycles(panels []tview.Primitive) {
 	mainCycle = &MainCycle{
 		panels:  panels,
-		current: 0, // start with collections
+		current: 1, // start with collections
 	}
 
 	headersCycle = &HeadersCycle{
