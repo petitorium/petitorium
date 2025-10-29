@@ -66,38 +66,38 @@ func runTUI(cmd *cobra.Command, args []string) {
 		EnableMouse(true)
 
 	// Create all UI components
-	header,
-		rootNode,
-		methodURLBar,
-		methodDropdown,
-		urlInput,
-		sendButton,
-		bodyViewPanel,
-		bodyEditPanel,
-		response,
-		footer,
-		collectionsTreeView,
-		responsePages,
-		responseTabHeader,
-		responseInfoBar,
-		responsePreviewPanel,
-		responseHeadersPanel,
-		responseCookiesPanel,
-		responseTimelinePanel,
-		environmentPanel,
-		envDropdown,
-		envConfigButton,
-		_ :=
-		setupUIComponents(backgroundColor,
-			foregroundColor,
-			borderColor,
-			borderFocusColor,
-			titleColor,
-			selectionBackgroundColor,
-			activeTabColor,
-			buttonSelectedColor,
-			dropdownFocusedBackgroundColor,
-		)
+	ui := setupUIComponents(backgroundColor,
+		foregroundColor,
+		borderColor,
+		borderFocusColor,
+		titleColor,
+		selectionBackgroundColor,
+		activeTabColor,
+		buttonSelectedColor,
+		dropdownFocusedBackgroundColor,
+	)
+
+	header := ui.Header
+	rootNode := ui.RootNode
+	methodURLBar := ui.MethodURLBar
+	methodDropdown := ui.MethodDropdown
+	urlInput := ui.URLInput
+	sendButton := ui.SendButton
+	bodyViewPanel := ui.BodyViewPanel
+	bodyEditPanel := ui.BodyEditPanel
+	response := ui.Response
+	footer := ui.Footer
+	collectionsTreeView := ui.CollectionsTreeView
+	responsePages := ui.ResponsePages
+	responseTabHeader := ui.ResponseTabHeader
+	responseInfoBar := ui.ResponseInfoBar
+	responsePreviewPanel := ui.ResponsePreviewPanel
+	responseHeadersPanel := ui.ResponseHeadersPanel
+	responseCookiesPanel := ui.ResponseCookiesPanel
+	responseTimelinePanel := ui.ResponseTimelinePanel
+	environmentPanel := ui.EnvironmentPanel
+	envDropdown := ui.EnvDropdown
+	envConfigButton := ui.EnvConfigButton
 
 	// Dummy use to suppress unused variable warning
 	_ = responseInfoBar

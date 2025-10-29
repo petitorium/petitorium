@@ -9,6 +9,32 @@ import (
 	"github.com/hbarral/petitorium/workspace"
 )
 
+// UIComponents holds all UI components for the application
+type UIComponents struct {
+	Header                *tview.TextView
+	RootNode              *tview.TreeNode
+	MethodURLBar          *tview.Flex
+	MethodDropdown        *tview.DropDown
+	URLInput              *tview.InputField
+	SendButton            *tview.Button
+	BodyViewPanel         *tview.TextView
+	BodyEditPanel         *tview.TextArea
+	Response              *tview.Flex
+	Footer                *tview.TextView
+	CollectionsTreeView   *tview.TreeView
+	ResponsePages         *tview.Pages
+	ResponseTabHeader     *tview.Flex
+	ResponseInfoBar       *tview.Flex
+	ResponsePreviewPanel  *tview.TextView
+	ResponseHeadersPanel  *tview.TextView
+	ResponseCookiesPanel  *tview.TextView
+	ResponseTimelinePanel *tview.TextView
+	EnvironmentPanel      *tview.Flex
+	EnvDropdown           *tview.DropDown
+	EnvConfigButton       *tview.Button
+	EnvIndicatorButton    *CustomButton
+}
+
 // createEnvironmentCreationPanel creates the left panel for environment creation
 func createEnvironmentCreationPanel(
 	backgroundColor,
@@ -154,9 +180,7 @@ func setupUIComponents(
 	activeTabColor,
 	buttonSelectedColor,
 	dropdownFocusedBackgroundColor tcell.Color,
-) (
-	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button, *tview.TextView, *tview.TextArea, *tview.Flex, *tview.TextView, *tview.TreeView, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex, *tview.DropDown, *tview.Button, *CustomButton,
-) {
+) *UIComponents {
 	// Create header panel
 	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
 
@@ -220,7 +244,30 @@ func setupUIComponents(
 		SetTitleColor(titleColor).
 		SetBorderPadding(0, 0, 0, 0)
 
-	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, environmentPanel, envDropdown, envConfigButton, envIndicatorButton
+	return &UIComponents{
+		Header:                header,
+		RootNode:              rootNode,
+		MethodURLBar:          methodURLBar,
+		MethodDropdown:        methodDropdown,
+		URLInput:              urlInput,
+		SendButton:            sendButton,
+		BodyViewPanel:         bodyViewPanel,
+		BodyEditPanel:         bodyEditPanel,
+		Response:              response,
+		Footer:                footer,
+		CollectionsTreeView:   collectionsTreeView,
+		ResponsePages:         responsePages,
+		ResponseTabHeader:     responseTabHeader,
+		ResponseInfoBar:       responseInfoBar,
+		ResponsePreviewPanel:  responsePreviewPanel,
+		ResponseHeadersPanel:  responseHeadersPanel,
+		ResponseCookiesPanel:  responseCookiesPanel,
+		ResponseTimelinePanel: responseTimelinePanel,
+		EnvironmentPanel:      environmentPanel,
+		EnvDropdown:           envDropdown,
+		EnvConfigButton:       envConfigButton,
+		EnvIndicatorButton:    envIndicatorButton,
+	}
 }
 
 // setupRequestPanel creates the unified request panel
