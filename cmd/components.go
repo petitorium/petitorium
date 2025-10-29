@@ -155,8 +155,7 @@ func setupUIComponents(
 	buttonSelectedColor,
 	dropdownFocusedBackgroundColor tcell.Color,
 ) (
-	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button,
-	*tview.TextView, *tview.TextArea, *tview.TextView, *tview.TextView, *tview.TreeView, *tview.Flex, *tview.DropDown, *tview.Button, *CustomButton,
+	*tview.TextView, *tview.TreeNode, *tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button, *tview.TextView, *tview.TextArea, *tview.Flex, *tview.TextView, *tview.TreeView, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex, *tview.DropDown, *tview.Button, *CustomButton,
 ) {
 	// Create header panel
 	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
@@ -221,7 +220,7 @@ func setupUIComponents(
 		SetTitleColor(titleColor).
 		SetBorderPadding(0, 0, 0, 0)
 
-	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, environmentPanel 
+	return header, rootNode, methodURLBar, methodDropdown, urlInput, sendButton, bodyViewPanel, bodyEditPanel, response, footer, collectionsTreeView, responsePages, responseTabHeader, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, environmentPanel, envDropdown, envConfigButton, envIndicatorButton
 }
 
 // setupRequestPanel creates the unified request panel
@@ -250,8 +249,8 @@ func setupRightSide(requestPanel *tview.Flex, response *tview.Flex) *tview.Flex 
 func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.Flex, rightSide *tview.Flex) *tview.Grid {
 	leftSide := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(environmentPanel, 0, 6, true).
-		AddItem(collectionsTreeView, 0, 94, true)
+		AddItem(environmentPanel, 3, 0, false).
+		AddItem(collectionsTreeView, 0, 1, false)
 
 	grid := tview.NewGrid().
 		SetRows(3, 0, 3).

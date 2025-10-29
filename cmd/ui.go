@@ -138,7 +138,7 @@ func NewCustomButton(text string) *CustomButton {
 	box := tview.NewBox()
 	box.SetBorder(false)
 
-	return &CustomButton{
+	cb := &CustomButton{
 		Box:                 box,
 		text:                text,
 		textAlignment:       "center",
@@ -414,7 +414,7 @@ func createTabHeader(tabs []string, backgroundColor,
 	tabHeader.SetBackgroundColor(backgroundColor)
 
 	// Tab titles and their active states
-	tabs := []string{"Body", "Auth", "Query", "Headers"}
+	tabs = []string{"Body", "Auth", "Query", "Headers"}
 	activeTab := 0 // Default to first tab
 
 	// Create tab buttons
@@ -472,7 +472,7 @@ func updateTabHeader(
 	selectionBackgroundColor tcell.Color,
 ) {
 	// Tab titles
-	tabs := []string{"Body", "Auth", "Query", "Headers"}
+	tabs = []string{"Body", "Auth", "Query", "Headers"}
 
 	// Update each tab's appearance based on whether it's active
 	for i := 0; i < len(tabs); i++ {

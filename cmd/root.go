@@ -87,7 +87,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 		environmentPanel,
 		envDropdown,
 		envConfigButton,
-		envIndicatorButton  :=
+		_ :=
 		setupUIComponents(backgroundColor,
 			foregroundColor,
 			borderColor,
@@ -667,7 +667,6 @@ func runTUI(cmd *cobra.Command, args []string) {
 
 	grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
-	grid.AddItem(collectionsTreeView, 1, 0, 1, 1, 0, 0, true)
 	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
 
 	// Initial focus is on requestPanel (panels[1])
@@ -763,13 +762,13 @@ func runTUI(cmd *cobra.Command, args []string) {
 	pages.AddPage("main", grid, true, true)
 
 	// Set up environment indicator button click handler (opens dropdown)
-	envIndicatorButton.SetSelectedFunc(func() {
-		// app.SetFocus(envDropdown)
-		// // Simulate Enter to open the dropdown
-		// envDropdown.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone), func(p tview.Primitive) {
-		// 	app.SetFocus(p)
-		// })
-	})
+	// envIndicatorButton.SetSelectedFunc(func() {
+	// 	// app.SetFocus(envDropdown)
+	// 	// // Simulate Enter to open the dropdown
+	// 	// envDropdown.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone), func(p tview.Primitive) {
+	// 	// 	app.SetFocus(p)
+	// 	// })
+	// })
 
 	// Set up environment config button click handler
 	envConfigButton.SetSelectedFunc(func() {
