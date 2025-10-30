@@ -35,15 +35,15 @@ type UIComponents struct {
 	EnvIndicatorButton    *CustomButton
 }
 
-// createEnvironmentCreationPanel creates the left panel for environment creation
-func createEnvironmentCreationPanel(
+// createRenameEnvironmentPanel creates a simple panel for renaming environments
+func createRenameEnvironmentPanel(
 	backgroundColor,
 	borderColor,
 	borderFocusColor,
 	titleColor,
 	foregroundColor tcell.Color,
-	environments []workspace.Environment,
-	onEnvironmentCreated func(),
+	currentName string,
+	onRename func(string),
 ) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(backgroundColor)
@@ -55,62 +55,92 @@ func createEnvironmentCreationPanel(
 	form.SetButtonBackgroundColor(backgroundColor)
 	form.SetButtonTextColor(foregroundColor)
 
-	// Get base environment options
-	baseOptions := []string{"None"}
-	for _, env := range environments {
-		baseOptions = append(baseOptions, env.Name)
-	}
+	form.AddInputField("New Name", currentName, 20, nil, nil)
 
-	form.AddInputField("Name", "", 20, nil, nil)
-	form.AddDropDown("Base", baseOptions, 0, nil)
-
-	form.AddButton("Create", func() {
-		name := form.GetFormItem(0).(*tview.InputField).GetText()
-		baseIndex, _ := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
-
-		if strings.TrimSpace(name) == "" {
-			return
-		}
-
-		// Check if environment name already exists
-		for _, env := range environments {
-			if env.Name == name {
-				return // Name already exists
-			}
-		}
-
-		// Create new environment
-		newEnv := workspace.Environment{
-			Name:      name,
-			Variables: make(map[string]string),
-		}
-
-		// Set base if selected
-		if baseIndex > 0 {
-			newEnv.Base = baseOptions[baseIndex]
-		}
-
-		// Add to environments
-		environments = append(environments, newEnv)
-
-		// Save environments
-		if err := workspace.SaveEnvironments(environments); err != nil {
-			// Handle error
-			return
-		}
-
-		// Clear form
-		form.GetFormItem(0).(*tview.InputField).SetText("")
-		form.GetFormItem(1).(*tview.DropDown).SetCurrentOption(0)
-
-		// Notify parent
-		if onEnvironmentCreated != nil {
-			onEnvironmentCreated()
+	form.AddButton("Rename", func() {
+		newName := form.GetFormItem(0).(*tview.InputField).GetText()
+		if strings.TrimSpace(newName) != "" && newName != currentName {
+			onRename(newName)
 		}
 	})
 
-	form.SetBorder(true).SetTitle(" Create Environment ")
+	form.AddButton("Cancel", func() {
+		// Just close the form - handled by parent
+	})
+
+	form.SetBorder(true).SetTitle(" Rename Environment ")
 	return form
+}
+
+// createEnvironmentListPanel creates a list panel for selecting and managing environments
+func createEnvironmentListPanel(
+	backgroundColor,
+	borderColor,
+	borderFocusColor,
+	titleColor,
+	foregroundColor,
+	buttonSelectedColor tcell.Color,
+	environments []workspace.Environment,
+	onEnvironmentSelected func(*workspace.Environment),
+	onCreateNew func(),
+	onRenameEnvironment func(*workspace.Environment),
+	onRemoveEnvironment func(*workspace.Environment),
+) *tview.Flex {
+	list := tview.NewFlex().SetDirection(tview.FlexRow)
+	list.SetBackgroundColor(backgroundColor)
+	list.SetBorderColor(borderColor)
+	list.SetTitleColor(titleColor)
+
+	// Add "Create New Environment" option at the top
+	createNewButton := createButton("➕ Create New Environment", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+	createNewButton.SetSelectedFunc(onCreateNew)
+	list.AddItem(createNewButton, 1, 0, false)
+
+	// Add separator
+	separator := tview.NewBox().SetBackgroundColor(backgroundColor)
+	list.AddItem(separator, 1, 0, false)
+
+	// Add all existing environments
+	for i, env := range environments {
+		env := env // Capture loop variable
+
+		// Create a container for each environment with buttons
+		envContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+
+		// Create the main environment button
+		var buttonText string
+		if env.Name == "Base" {
+			buttonText = env.Name + " (base environment)"
+		} else {
+			buttonText = env.Name
+		}
+
+		envButton := createButton(buttonText, backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+		envButton.SetSelectedFunc(func() {
+			onEnvironmentSelected(&environments[i])
+		})
+		envContainer.AddItem(envButton, 0, 1, false)
+
+		// Add rename and remove buttons for non-base environments
+		if env.Name != "Base" {
+			renameButton := createButton("✏", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+			renameButton.SetSelectedFunc(func() {
+				onRenameEnvironment(&environments[i])
+			})
+			envContainer.AddItem(renameButton, 3, 0, false)
+
+			removeButton := createButton("✕", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+			removeButton.SetSelectedFunc(func() {
+				onRemoveEnvironment(&environments[i])
+			})
+			envContainer.AddItem(removeButton, 3, 0, false)
+		}
+
+		list.AddItem(envContainer, 1, 0, false)
+	}
+
+	list.SetBorder(true).SetTitle(" Environments ")
+	return list
 }
 
 // createEnvironmentPanel creates the environment panel with dropdown and config button
@@ -128,7 +158,7 @@ func createEnvironmentPanel(
 	// Create environment dropdown
 	envDropdown := createDropDown(
 		"",
-		[]string{"No Environment", "Development", "Staging", "Production"},
+		[]string{"Base Environment"},
 		backgroundColor,
 		backgroundColor,
 		backgroundColor,
