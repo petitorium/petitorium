@@ -74,7 +74,7 @@ func createRenameEnvironmentPanel(
 	return form
 }
 
-// createEnvironmentListPanel creates a list panel for selecting and managing environments
+// createEnvironmentListPanel creates a list panel for selecting environments using tview.NewList
 func createEnvironmentListPanel(
 	backgroundColor,
 	borderColor,
@@ -85,153 +85,43 @@ func createEnvironmentListPanel(
 	environments []workspace.Environment,
 	onEnvironmentSelected func(*workspace.Environment),
 	onCreateNew func(),
-	onRenameEnvironment func(*workspace.Environment),
-	onRemoveEnvironment func(*workspace.Environment),
-) *tview.Flex {
-	list := tview.NewFlex().SetDirection(tview.FlexRow)
+) *tview.List {
+	list := tview.NewList()
 	list.SetBackgroundColor(backgroundColor)
 	list.SetBorderColor(borderColor)
 	list.SetTitleColor(titleColor)
+	list.SetBorder(true).SetTitle(" Environments ")
 
 	// Add "Create New Environment" option at the top
-	createNewButton := createButton("➕ Create New Environment", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-	createNewButton.SetSelectedFunc(onCreateNew)
-	list.AddItem(createNewButton, 1, 0, false)
-
-	// Add separator
-	separator := tview.NewBox().SetBackgroundColor(backgroundColor)
-	list.AddItem(separator, 1, 0, false)
+	list.AddItem("➕ Create New Environment", "", 0, onCreateNew)
 
 	// Add all existing environments
 	for i, env := range environments {
 		env := env // Capture loop variable
 
-		// Create a container for each environment with buttons
-		envContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-
-		// Create the main environment button
-		var buttonText string
+		var itemText string
 		if env.Name == "Base" {
-			buttonText = env.Name + " (base environment)"
+			itemText = env.Name + " (base environment)"
 		} else {
-			buttonText = env.Name
+			itemText = env.Name
 		}
 
-		envButton := createButton(buttonText, backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-		envButton.SetSelectedFunc(func() {
+		list.AddItem(itemText, "", 0, func() {
 			onEnvironmentSelected(&environments[i])
 		})
-		envContainer.AddItem(envButton, 0, 1, false)
-
-		// Add rename and remove buttons for non-base environments
-		if env.Name != "Base" {
-			renameButton := createButton("✏", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-			renameButton.SetSelectedFunc(func() {
-				// Start inline editing - replace button with input field
-				envContainer.Clear()
-
-				editInput := createInlineEditInput(
-					backgroundColor,
-					borderColor,
-					titleColor,
-					foregroundColor,
-					env.Name,
-					func(newName string) {
-						// Update the environment name
-						environments[i].Name = newName
-						onRenameEnvironment(&environments[i])
-						// Revert to button view will be handled by onCancel
-					},
-					func() {
-						// Revert to button view
-						envContainer.Clear()
-
-						// Recreate the environment button with current name
-						var buttonText string
-						if environments[i].Name == "Base" {
-							buttonText = environments[i].Name + " (base environment)"
-						} else {
-							buttonText = environments[i].Name
-						}
-
-						envButton := createButton(buttonText, backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-						envButton.SetSelectedFunc(func() {
-							onEnvironmentSelected(&environments[i])
-						})
-						envContainer.AddItem(envButton, 0, 1, false)
-
-						// Re-add rename and remove buttons
-						renameBtn := createButton("✏", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-						renameBtn.SetSelectedFunc(func() {
-							// Recursively start inline editing again
-							envContainer.Clear()
-
-							editInput2 := createInlineEditInput(
-								backgroundColor,
-								borderColor,
-								titleColor,
-								foregroundColor,
-								environments[i].Name,
-								func(newName string) {
-									environments[i].Name = newName
-									onRenameEnvironment(&environments[i])
-								},
-								func() {
-									// This will be called to revert
-									envContainer.Clear()
-
-									var btnText string
-									if environments[i].Name == "Base" {
-										btnText = environments[i].Name + " (base environment)"
-									} else {
-										btnText = environments[i].Name
-									}
-
-									finalEnvButton := createButton(btnText, backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-									finalEnvButton.SetSelectedFunc(func() {
-										onEnvironmentSelected(&environments[i])
-									})
-									envContainer.AddItem(finalEnvButton, 0, 1, false)
-
-									finalRenameButton := createButton("✏", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-									finalRenameButton.SetSelectedFunc(func() {
-										onRenameEnvironment(&environments[i])
-									})
-									envContainer.AddItem(finalRenameButton, 3, 0, false)
-
-									finalRemoveButton := createButton("✕", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-									finalRemoveButton.SetSelectedFunc(func() {
-										onRemoveEnvironment(&environments[i])
-									})
-									envContainer.AddItem(finalRemoveButton, 3, 0, false)
-								},
-							)
-							envContainer.AddItem(editInput2, 0, 1, false)
-						})
-						envContainer.AddItem(renameBtn, 3, 0, false)
-
-						removeBtn := createButton("✕", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-						removeBtn.SetSelectedFunc(func() {
-							onRemoveEnvironment(&environments[i])
-						})
-						envContainer.AddItem(removeBtn, 3, 0, false)
-					},
-				)
-				envContainer.AddItem(editInput, 0, 1, false)
-			})
-			envContainer.AddItem(renameButton, 3, 0, false)
-
-			removeButton := createButton("✕", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-			removeButton.SetSelectedFunc(func() {
-				onRemoveEnvironment(&environments[i])
-			})
-			envContainer.AddItem(removeButton, 3, 0, false)
-		}
-
-		list.AddItem(envContainer, 1, 0, false)
 	}
 
-	list.SetBorder(true).SetTitle(" Environments ")
+	// Add vim-style navigation (j/k for down/up)
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j':
+			return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+		case 'k':
+			return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+		}
+		return event
+	})
+
 	return list
 }
 

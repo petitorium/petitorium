@@ -297,7 +297,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	updateFooterFunc := func() {
 		switch uiOrchestrator.MainCycle.current {
 		case uiOrchestrator.EnviromentIndex:
-			uiOrchestrator.Footer.SetText(" Environment: (R) Rename | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.Footer.SetText(" Environment: (j/k) Navigate List | (R) Rename | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.CollectionsIndex:
 			uiOrchestrator.Footer.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.URLBarIndex:
