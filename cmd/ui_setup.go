@@ -74,7 +74,6 @@ func setupUIComponents(
 
 	// Create footer panel
 	footer := createPanel("", backgroundColor, borderColor, titleColor, foregroundColor)
-	footer.SetText(" (Tab) Cycle Focus | Body: (i) Insert (Esc) Normal (hjkl) Nav | (F4) External Editor | (q) Quit\n Collections: (n) New | (r) Request | (R) Rename | (m) Move | (d) Delete | Environment: (R) Rename")
 
 	// Create environment panel with dropdown and config button
 	environmentPanel, envDropdown, envConfigButton, envIndicatorButton := createEnvironmentPanel(

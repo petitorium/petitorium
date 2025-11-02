@@ -669,6 +669,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 		ui.App.SetFocus(nextElement)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 
 		return nil
 	}
@@ -683,6 +684,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 		ui.App.SetFocus(ui.MethodDropdown)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 
 		return nil
 	}
@@ -712,6 +714,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		ui.SetActiveBorder(nextElement)
 		ui.App.SetFocus(ui.BodyViewPanel)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 
 		return nil
 	}
@@ -723,6 +726,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		ui.SetActiveBorder(nextElement)
 		ui.App.SetFocus(nextElement)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 
 		return nil
 	}
@@ -756,6 +760,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					nextElement := ui.MainCycle.Next()
 					ui.SetActiveBorder(nextElement)
 					ui.App.SetFocus(nextElement)
+					ui.UpdateFooter()
 				}
 				found = true
 				break
@@ -777,6 +782,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		ui.SetActiveBorder(nextElement)
 		ui.App.SetFocus(nextElement)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 
 		return nil
 	}
@@ -793,6 +799,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.SetActiveBorder(prevElement)
 		ui.App.SetFocus(prevElement)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 		return nil
 	}
 
@@ -803,6 +810,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.SetActiveBorder(prevElement)
 		ui.App.SetFocus(prevElement)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 		return nil
 	}
 
@@ -818,6 +826,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			ui.SetActiveBorder(prevElement)
 			ui.App.SetFocus(prevElement)
 			ui.CurrentFocus = ui.MainCycle.current
+			ui.UpdateFooter()
 		}
 		return nil
 	}
@@ -846,6 +855,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.App.SetFocus(ui.SendButton)
 		ui.RequestCycle.current = 2
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 		return nil
 	}
 
@@ -869,6 +879,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					ui.SetActiveBorder(prevElement)
 					ui.App.SetFocus(ui.SendButton)
 					ui.RequestCycle.current = 2
+					ui.UpdateFooter()
 				}
 				found = true
 				break
@@ -900,6 +911,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.SetActiveBorder(prevElement)
 		ui.App.SetFocus(ui.BodyViewPanel)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 		return nil
 	}
 

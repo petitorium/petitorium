@@ -67,6 +67,7 @@ type UIOrchestrator struct {
 	SetInactiveBorder              func(element tview.Primitive)
 	SyncBodyContent                func(content string)
 	SwitchBodyMode                 func()
+	UpdateFooter                   func()
 }
 
 // SetupUI initializes all UI components and layout
@@ -288,8 +289,31 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		SetInactiveBorder:              setInactiveBorder,
 		SyncBodyContent:                syncBodyContent,
 		SwitchBodyMode:                 switchBodyMode,
+		UpdateFooter:                   func() {}, // Will be set below
 		KeyManager:                     NewKeyBindingManager(),
 	}
+
+	// Function to update footer based on current focus
+	updateFooterFunc := func() {
+		switch uiOrchestrator.MainCycle.current {
+		case uiOrchestrator.EnviromentIndex:
+			uiOrchestrator.Footer.SetText(" Environment: (R) Rename | (Tab) Next Panel | (q) Quit")
+		case uiOrchestrator.CollectionsIndex:
+			uiOrchestrator.Footer.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (Tab) Next Panel | (q) Quit")
+		case uiOrchestrator.URLBarIndex:
+			uiOrchestrator.Footer.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
+		case uiOrchestrator.RequestIndex:
+			uiOrchestrator.Footer.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
+		case uiOrchestrator.ResponseIndex:
+			uiOrchestrator.Footer.SetText(" Response: (Tab) Next Panel | (q) Quit")
+		default:
+			uiOrchestrator.Footer.SetText(" (Tab) Cycle Focus | (q) Quit")
+		}
+	}
+	uiOrchestrator.UpdateFooter = updateFooterFunc
+
+	// Set initial footer content
+	uiOrchestrator.UpdateFooter()
 
 	return uiOrchestrator, nil
 }
