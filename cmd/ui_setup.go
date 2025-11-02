@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -32,19 +31,9 @@ type UIComponents struct {
 }
 
 // setupUIComponents creates and configures all UI components
-func setupUIComponents(
-	backgroundColor,
-	foregroundColor,
-	borderColor,
-	borderFocusColor,
-	titleColor,
-	selectionBackgroundColor,
-	activeTabColor,
-	buttonSelectedColor,
-	dropdownFocusedBackgroundColor tcell.Color,
-) *UIComponents {
+func setupUIComponents(colors *ColorManager) *UIComponents {
 	// Create header panel
-	header := createPanel(" Petitorium ", backgroundColor, borderColor, titleColor, foregroundColor)
+	header := createPanel(" Petitorium ", colors.Background, colors.Border, colors.Title, colors.Foreground)
 
 	// Create root node for tree
 	rootNode := tview.NewTreeNode("").SetSelectable(false)
@@ -52,40 +41,40 @@ func setupUIComponents(
 	// Create unified method+URL+Send bar
 	methodURLBar, methodDropdown, urlInput, sendButton := createMethodURLBar(
 		"",
-		backgroundColor,
-		borderColor,
-		titleColor,
-		foregroundColor,
-		selectionBackgroundColor,
-		activeTabColor,
-		buttonSelectedColor,
-		dropdownFocusedBackgroundColor,
+		colors.Background,
+		colors.Border,
+		colors.Title,
+		colors.Foreground,
+		colors.Selection,
+		colors.ActiveTab,
+		colors.ButtonSelect,
+		colors.DropdownFocus,
 	)
 
 	// Create both view and edit panels for body
-	bodyViewPanel := createPanel(" Body (VIEW) ", backgroundColor, backgroundColor, titleColor, foregroundColor)
-	bodyEditPanel := createTextArea(" Body (EDIT) ", backgroundColor, borderColor, titleColor, foregroundColor)
+	bodyViewPanel := createPanel(" Body (VIEW) ", colors.Background, colors.Background, colors.Title, colors.Foreground)
+	bodyEditPanel := createTextArea(" Body (EDIT) ", colors.Background, colors.Border, colors.Title, colors.Foreground)
 
 	// Create response tabs panel
 	response, responsePages, responseTabHeader, _, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel := createResponseTabs(
-		backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor,
+		colors.Background, colors.Border, colors.BorderFocus, colors.Title, colors.Foreground, colors.ActiveTab, colors.Selection,
 		nil, nil, // No initial response or last request time
 	)
 
 	// Create footer panel
-	footer := createPanel("", backgroundColor, borderColor, titleColor, foregroundColor)
+	footer := createPanel("", colors.Background, colors.Border, colors.Title, colors.Foreground)
 
 	// Create environment panel with dropdown and config button
 	environmentPanel, envDropdown, envConfigButton, envIndicatorButton := createEnvironmentPanel(
-		backgroundColor,
-		borderColor,
-		borderFocusColor,
-		titleColor,
-		foregroundColor,
-		selectionBackgroundColor,
-		activeTabColor,
-		buttonSelectedColor,
-		dropdownFocusedBackgroundColor,
+		colors.Background,
+		colors.Border,
+		colors.BorderFocus,
+		colors.Title,
+		colors.Foreground,
+		colors.Selection,
+		colors.ActiveTab,
+		colors.ButtonSelect,
+		colors.DropdownFocus,
 	)
 
 	// Create collections tree view
@@ -100,9 +89,9 @@ func setupUIComponents(
 	collectionsTreeView.
 		SetBorder(true).
 		SetTitle(" Collections ").
-		SetBackgroundColor(backgroundColor).
-		SetBorderColor(borderColor).
-		SetTitleColor(titleColor).
+		SetBackgroundColor(colors.Background).
+		SetBorderColor(colors.Border).
+		SetTitleColor(colors.Title).
 		SetBorderPadding(0, 0, 0, 0)
 
 	return &UIComponents{
@@ -132,13 +121,13 @@ func setupUIComponents(
 }
 
 // setupRequestPanel creates the unified request panel
-func setupRequestPanel(methodURLBar, requestDataTabs *tview.Flex, backgroundColor tcell.Color) *tview.Flex {
+func setupRequestPanel(methodURLBar, requestDataTabs *tview.Flex, colors *ColorManager) *tview.Flex {
 	requestPanel := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(methodURLBar, 3, 0, false).
 		AddItem(requestDataTabs, 0, 1, false)
 	requestPanel.SetBorder(false)
-	requestPanel.SetBackgroundColor(backgroundColor)
+	requestPanel.SetBackgroundColor(colors.Background)
 
 	return requestPanel
 }

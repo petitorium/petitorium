@@ -968,7 +968,7 @@ func addHeaderRowWithData(
 func createRequestDataTabs(
 	bodyViewPanel *tview.TextView,
 	bodyEditPanel *tview.TextArea,
-	backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, buttonSelectedColor tcell.Color,
+	colors *ColorManager,
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 	tabIndexSetter func(int),
@@ -978,21 +978,21 @@ func createRequestDataTabs(
 	tabPages := tview.NewPages()
 
 	// Create placeholder tabs
-	authTab := createAuthTab(backgroundColor, borderColor, titleColor, foregroundColor)
-	queryTab := createQueryTab(backgroundColor, borderColor, titleColor, foregroundColor)
-	headersTab := createHeadersTabWithData(backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor, nil, saveCallback, focusSetter)
+	authTab := createAuthTab(colors.Background, colors.Border, colors.Title, colors.Foreground)
+	queryTab := createQueryTab(colors.Background, colors.Border, colors.Title, colors.Foreground)
+	headersTab := createHeadersTabWithData(colors.Background, colors.Border, colors.Title, colors.Foreground, colors.ButtonSelect, nil, saveCallback, focusSetter)
 
 	// Body tab uses the existing dual-mode container
 	bodyContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	bodyContainer.AddItem(bodyViewPanel, 0, 1, false)
-	bodyContainer.SetBorderColor(backgroundColor)
+	bodyContainer.SetBorderColor(colors.Background)
 
 	// Add all tabs to pages
 	tabPages.AddPage("body", bodyContainer, true, true)
 	tabPages.AddPage("auth", authTab, true, false)
 	tabPages.AddPage("query", queryTab, true, false)
 	tabPages.AddPage("headers", headersTab, true, false)
-	tabPages.SetBackgroundColor(backgroundColor)
+	tabPages.SetBackgroundColor(colors.Background)
 
 	// Create tab header first
 	var tabHeader *tview.Flex
@@ -1010,7 +1010,7 @@ func createRequestDataTabs(
 			// Update the tab header to show the new active tab
 			if tabHeader != nil {
 				tabs := []string{"Body", "Auth", "Query", "Headers"}
-				updateTabHeader(tabs, tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
+				updateTabHeader(tabs, tabHeader, tabIndex, colors.Background, colors.Foreground, colors.ActiveTab, colors.Selection)
 			}
 
 			// Ensure only the request panel is focused
@@ -1033,17 +1033,17 @@ func createRequestDataTabs(
 
 	// Create tab header
 	tabs := []string{"Body", "Auth", "Query", "Headers"}
-	tabHeader = createTabHeader(tabs, backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, switchToTab)
+	tabHeader = createTabHeader(tabs, colors.Background, colors.Border, colors.Title, colors.Foreground, colors.ActiveTab, colors.Selection, switchToTab)
 
 	// Create main container with header and content
 	tabContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	tabContainer.AddItem(tabHeader, 1, 0, false)
 	tabContainer.AddItem(tabPages, 0, 1, false)
 	tabContainer.SetBorder(true)
-	tabContainer.SetBorderColor(borderColor)
+	tabContainer.SetBorderColor(colors.Border)
 	tabContainer.SetTitle(" Request ")
-	tabContainer.SetTitleColor(titleColor)
-	tabContainer.SetBackgroundColor(backgroundColor)
+	tabContainer.SetTitleColor(colors.Title)
+	tabContainer.SetBackgroundColor(colors.Background)
 
 	return tabContainer, tabPages, bodyContainer, tabHeader, authTab, queryTab, headersTab, switchToTab
 }

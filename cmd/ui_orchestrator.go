@@ -76,30 +76,10 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	// Initialize centralized color management
 	colors := NewColorManager()
 
-	// Extract individual colors for backward compatibility during Phase 1
-	backgroundColor := colors.Background
-	foregroundColor := colors.Foreground
-	borderColor := colors.Border
-	borderFocusColor := colors.BorderFocus
-	titleColor := colors.Title
-	selectionBackgroundColor := colors.Selection
-	activeTabColor := colors.ActiveTab
-	buttonSelectedColor := colors.ButtonSelect
-	dropdownFocusedBackgroundColor := colors.DropdownFocus
-
 	app := tview.NewApplication().EnableMouse(true)
 
 	// Create all UI components
-	ui := setupUIComponents(backgroundColor,
-		foregroundColor,
-		borderColor,
-		borderFocusColor,
-		titleColor,
-		selectionBackgroundColor,
-		activeTabColor,
-		buttonSelectedColor,
-		dropdownFocusedBackgroundColor,
-	)
+	ui := setupUIComponents(colors)
 
 	header := ui.Header
 	rootNode := ui.RootNode
@@ -152,14 +132,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _ =
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
-			backgroundColor,
-			borderColor,
-			borderFocusColor,
-			titleColor,
-			foregroundColor,
-			activeTabColor,
-			selectionBackgroundColor,
-			buttonSelectedColor,
+			colors,
 			func() { saveCurrentRequest(currentRequest, *collectionsData) },
 			func(p tview.Primitive) { app.SetFocus(p) },
 			func(tabIndex int) { currentTabIndex = tabIndex },
@@ -167,7 +140,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		)
 
 	// Create unified Request panel containing method+URL+send and tabs
-	requestPanel := setupRequestPanel(methodURLBar, requestDataTabs, backgroundColor)
+	requestPanel := setupRequestPanel(methodURLBar, requestDataTabs, colors)
 	rightSide := setupRightSide(requestPanel, response)
 
 	requestCycle = &RequestCycle{
@@ -214,15 +187,15 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 
 	// Custom focus handler that knows about special containers
 	setPanelFocus := func(panelIndex int, focused bool) {
-		setFocusStyle(mainPanels[panelIndex], focused, borderColor, borderFocusColor)
+		setFocusStyle(mainPanels[panelIndex], focused, colors.Border, colors.BorderFocus)
 	}
 
 	setActiveBorder := func(element tview.Primitive) {
-		setFocusStyle(element, true, borderColor, borderFocusColor)
+		setFocusStyle(element, true, colors.Border, colors.BorderFocus)
 	}
 
 	setInactiveBorder := func(element tview.Primitive) {
-		setFocusStyle(element, false, borderColor, borderFocusColor)
+		setFocusStyle(element, false, colors.Border, colors.BorderFocus)
 	}
 
 	// Helper function to sync body content between view and edit panels
