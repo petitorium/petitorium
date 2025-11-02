@@ -12,6 +12,7 @@ type UIOrchestrator struct {
 	CollectionsData       *[]workspace.Collection
 	DataManager           *DataManager
 	EnvironmentsData      *[]workspace.Environment
+	Colors                *ColorManager
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
@@ -72,7 +73,19 @@ type UIOrchestrator struct {
 
 // SetupUI initializes all UI components and layout
 func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, environmentsData *[]workspace.Environment) (*UIOrchestrator, error) {
-	backgroundColor, foregroundColor, borderColor, borderFocusColor, titleColor, selectionBackgroundColor, activeTabColor, buttonSelectedColor, dropdownFocusedBackgroundColor := setupTheme()
+	// Initialize centralized color management
+	colors := NewColorManager()
+
+	// Extract individual colors for backward compatibility during Phase 1
+	backgroundColor := colors.Background
+	foregroundColor := colors.Foreground
+	borderColor := colors.Border
+	borderFocusColor := colors.BorderFocus
+	titleColor := colors.Title
+	selectionBackgroundColor := colors.Selection
+	activeTabColor := colors.ActiveTab
+	buttonSelectedColor := colors.ButtonSelect
+	dropdownFocusedBackgroundColor := colors.DropdownFocus
 
 	app := tview.NewApplication().EnableMouse(true)
 
@@ -237,6 +250,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		CollectionsData:                collectionsData,
 		DataManager:                    dataManager,
 		EnvironmentsData:               environmentsData,
+		Colors:                         colors,
 		RootNode:                       rootNode,
 		MethodURLBar:                   methodURLBar,
 		MethodDropdown:                 methodDropdown,
