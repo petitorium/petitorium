@@ -186,7 +186,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 
 	// Create main grid layout
 	grid := tview.NewGrid().
-		SetRows(1, 0, 1).
+		SetRows(1, 0, 3).
 		SetColumns(30, 0).
 		SetBorders(false)
 

@@ -418,6 +418,67 @@ func createRenameRequestForm(app *tview.Application,
 	return form
 }
 
+func createRenameEnvironmentForm(app *tview.Application,
+	pages *tview.Pages,
+	selectedEnvironment *workspace.Environment,
+	environmentsData *[]workspace.Environment,
+	envDropdown *tview.DropDown,
+) *tview.Form {
+	theme := config.C.Theme
+	backgroundColor := hexToColor(theme.BackgroundColor)
+	foregroundColor := hexToColor(theme.ForegroundColor)
+	borderFocusColor := hexToColor(theme.BorderFocusColor)
+	titleColor := hexToColor(theme.TitleColor)
+
+	form := tview.NewForm()
+	form.SetBackgroundColor(backgroundColor)
+	form.SetBorderColor(borderFocusColor)
+	form.SetTitleColor(titleColor)
+	form.SetFieldBackgroundColor(backgroundColor)
+	form.SetFieldTextColor(foregroundColor)
+	form.SetLabelColor(foregroundColor)
+	form.SetButtonBackgroundColor(backgroundColor)
+	form.SetButtonTextColor(foregroundColor)
+
+	form.AddInputField("Environment Name", selectedEnvironment.Name, 30, nil, nil)
+
+	form.AddButton("Save", func() {
+		newName := form.GetFormItem(0).(*tview.InputField).GetText()
+		if strings.TrimSpace(newName) == "" {
+			return
+		}
+
+		// Find and update the environment in environmentsData
+		for i := range *environmentsData {
+			if (*environmentsData)[i].Name == selectedEnvironment.Name {
+				(*environmentsData)[i].Name = newName
+				break
+			}
+		}
+
+		// Save environments
+		if err := workspace.SaveEnvironments(*environmentsData); err != nil {
+			// Handle error
+		}
+
+		// Update environment dropdown
+		updateEnvironmentDropdown(envDropdown, *environmentsData)
+
+		pages.RemovePage("renameEnvironment")
+		pages.SwitchToPage("main")
+		app.SetFocus(envDropdown)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("renameEnvironment")
+		pages.SwitchToPage("main")
+		app.SetFocus(envDropdown)
+	})
+
+	form.SetBorder(true).SetTitle(" Rename Environment ")
+	return form
+}
+
 func createMoveCollectionForm(app *tview.Application,
 	pages *tview.Pages,
 	selectedCollection *workspace.Collection,
