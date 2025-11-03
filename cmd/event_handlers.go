@@ -283,14 +283,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 	// Set up environment config button click handler
 	ui.EnvConfigButton.SetSelectedFunc(func() {
-		showEnvironmentModal(
-			ui.App,
-			ui.Pages,
-			*ui.EnvironmentsData,
-			ui.EnvDropdown,
-			ui.Colors,
-			ui.Header,
-		)
+		showEnvironmentModal(ui)
 	})
 
 	// Add send button functionality

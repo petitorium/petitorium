@@ -11,23 +11,18 @@ import (
 
 // showEnvironmentModal displays the environment variables modal
 func showEnvironmentModal(
-	app *tview.Application,
-	pages *tview.Pages,
-	environmentsData []workspace.Environment,
-	envDropdown *tview.DropDown,
-	colors *ColorManager,
-	header *tview.TextView,
+	ui *UIOrchestrator,
 ) {
 	// Get current selected environment
-	currentEnvIndex, _ := envDropdown.GetCurrentOption()
+	currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
 	var env *workspace.Environment
 	var modalTitle string
 
 	if currentEnvIndex == 0 {
 		// Base Environment selected - find and edit the "Base" environment
-		for i := range environmentsData {
-			if environmentsData[i].Name == "Base" {
-				env = &environmentsData[i]
+		for i := range *ui.EnvironmentsData {
+			if (*ui.EnvironmentsData)[i].Name == "Base" {
+				env = &(*ui.EnvironmentsData)[i]
 				modalTitle = " Environment: Base "
 				break
 			}
@@ -37,9 +32,9 @@ func showEnvironmentModal(
 			env = nil
 			modalTitle = " Create New Environment "
 		}
-	} else if currentEnvIndex > 0 && currentEnvIndex <= len(environmentsData) {
+	} else if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
 		// Other environment is selected - edit existing environment
-		env = &environmentsData[currentEnvIndex-1] // -1 because dropdown has "Base Environment" at index 0
+		env = &(*ui.EnvironmentsData)[currentEnvIndex-1] // -1 because dropdown has "Base Environment" at index 0
 		modalTitle = " Environment: " + env.Name + " "
 	} else {
 		// Fallback - create new environment
@@ -47,13 +42,13 @@ func showEnvironmentModal(
 		modalTitle = " Create New Environment "
 	}
 
-	header.SetTitle(modalTitle)
+	ui.Header.SetTitle(modalTitle)
 
 	// Create JSON editor for environment variables
 	var jsonBytes []byte
 	if env != nil {
 		// Convert existing environment variables to JSON
-		effectiveVars := env.GetEffectiveVariables(environmentsData)
+		effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
 		jsonBytes, _ = json.MarshalIndent(effectiveVars, "", "  ")
 	} else {
 		// Start with empty JSON for new environment
@@ -61,7 +56,7 @@ func showEnvironmentModal(
 	}
 
 	// Create JSON editor
-	jsonEditor := createTextArea(" Environment Variables (JSON) ", colors.Background, colors.Border, colors.Title, colors.Foreground)
+	jsonEditor := createTextArea(" Environment Variables (JSON) ", ui.Colors.Background, ui.Colors.Border, ui.Colors.Title, ui.Colors.Foreground)
 	jsonEditor.SetText(string(jsonBytes), false)
 
 	// Create left panel (environment list)
@@ -69,17 +64,17 @@ func showEnvironmentModal(
 	var leftPanel *tview.List
 
 	leftPanel = createEnvironmentListPanel(
-		colors.Background,
-		colors.Border,
-		colors.BorderFocus,
-		colors.Title,
-		colors.Foreground,
-		colors.ButtonSelect,
-		environmentsData,
+		ui.Colors.Background,
+		ui.Colors.Border,
+		ui.Colors.BorderFocus,
+		ui.Colors.Title,
+		ui.Colors.Foreground,
+		ui.Colors.ButtonSelect,
+		*ui.EnvironmentsData,
 		func(env *workspace.Environment) {
 			selectedEnvironment = env
 			// Update the JSON editor with the selected environment's variables
-			effectiveVars := env.GetEffectiveVariables(environmentsData)
+			effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
 			jsonBytes, _ := json.MarshalIndent(effectiveVars, "", "  ")
 			jsonEditor.SetText(string(jsonBytes), false)
 		},
@@ -92,30 +87,30 @@ func showEnvironmentModal(
 			}
 
 			// Add to environments
-			environmentsData = append(environmentsData, newEnv)
+			*ui.EnvironmentsData = append(*ui.EnvironmentsData, newEnv)
 
 			// Save environments
-			if err := workspace.SaveEnvironments(environmentsData); err != nil {
+			if err := workspace.SaveEnvironments(*ui.EnvironmentsData); err != nil {
 				// Handle error
 				return
 			}
 
 			// Refresh the environment dropdown
-			updateEnvironmentDropdown(envDropdown, environmentsData)
+			updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
 
 			// Refresh the environment list in place
 			newLeftPanel := createEnvironmentListPanel(
-				colors.Background,
-				colors.Border,
-				colors.BorderFocus,
-				colors.Title,
-				colors.Foreground,
-				colors.ButtonSelect,
-				environmentsData,
+				ui.Colors.Background,
+				ui.Colors.Border,
+				ui.Colors.BorderFocus,
+				ui.Colors.Title,
+				ui.Colors.Foreground,
+				ui.Colors.ButtonSelect,
+				*ui.EnvironmentsData,
 				func(env *workspace.Environment) {
 					selectedEnvironment = env
 					// Update the JSON editor with the selected environment's variables
-					effectiveVars := env.GetEffectiveVariables(environmentsData)
+					effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
 					jsonBytes, _ := json.MarshalIndent(effectiveVars, "", "  ")
 					jsonEditor.SetText(string(jsonBytes), false)
 				},
@@ -129,10 +124,10 @@ func showEnvironmentModal(
 				AddItem(newLeftPanel, 0, 4, false). // 40% for left panel
 				AddItem(jsonEditor, 0, 6, false)    // 60% for JSON editor
 
-			modal := createModal(content, 120, 40, colors.Background)
-			pages.RemovePage("envVariables")
-			pages.AddPage("envVariables", modal, true, true)
-			app.SetFocus(newLeftPanel)
+			modal := createModal(content, 120, 40, ui.Colors.Background)
+			ui.Pages.RemovePage("envVariables")
+			ui.Pages.AddPage("envVariables", modal, true, true)
+			ui.App.SetFocus(newLeftPanel)
 		},
 	)
 
@@ -141,13 +136,14 @@ func showEnvironmentModal(
 		AddItem(leftPanel, 0, 4, false). // 40% for left panel
 		AddItem(jsonEditor, 0, 6, false) // 60% for JSON editor
 
-	modal := createModal(content, 120, 40, colors.Background)
-	pages.AddPage("envVariables", modal, true, true)
-	app.SetFocus(leftPanel)
+	modal := createModal(content, 120, 40, ui.Colors.Background)
+	ui.Pages.AddPage("envVariables", modal, true, true)
+	ui.App.SetFocus(leftPanel)
 
-	// Add keybinding to close modal with Escape, q, or Q
-	pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEscape || event.Key() == 'q' || event.Key() == 'Q' {
+	// Add keybinding to close modal with Escape, q, or Q using the keybinding manager
+	ui.Pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// First try modal keybindings
+		if result := ui.KeyManager.HandleKeyEvent(ui, event, "modal"); result != event {
 			// Save the JSON back to environment variables if editing existing environment
 			if selectedEnvironment != nil {
 				jsonText := jsonEditor.GetText()
@@ -157,14 +153,15 @@ func showEnvironmentModal(
 					// Could show an error message here
 				} else {
 					selectedEnvironment.Variables = newVars
-					if saveErr := workspace.SaveEnvironments(environmentsData); saveErr != nil {
+					if saveErr := workspace.SaveEnvironments(*ui.EnvironmentsData); saveErr != nil {
 						// Handle save error
 					}
 				}
 			}
 
-			// Keep modal open - environment list will be refreshed when modal is reopened
-			app.SetFocus(envDropdown)
+			// Close modal and return focus to config button
+			ui.Pages.RemovePage("envVariables")
+			ui.App.SetFocus(ui.EnvConfigButton)
 			return nil
 		}
 		return event

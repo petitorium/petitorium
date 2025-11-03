@@ -25,11 +25,34 @@ type KeyBindingManager struct {
 	bodyViewBindings []KeyBinding
 	treeViewBindings []KeyBinding
 	bodyEditBindings []KeyBinding
+	modalBindings    []KeyBinding
 }
 
 // NewKeyBindingManager creates a new keybinding manager with all default bindings
 func NewKeyBindingManager() *KeyBindingManager {
 	manager := &KeyBindingManager{}
+
+	// Modal keybindings (for modal dialogs)
+	manager.modalBindings = []KeyBinding{
+		{
+			Key:         tcell.KeyEscape,
+			Action:      closeModal,
+			Description: "Close modal dialog",
+			Context:     "modal",
+		},
+		{
+			Rune:        'q',
+			Action:      closeModal,
+			Description: "Close modal dialog",
+			Context:     "modal",
+		},
+		{
+			Rune:        'Q',
+			Action:      closeModal,
+			Description: "Close modal dialog",
+			Context:     "modal",
+		},
+	}
 
 	// Global keybindings (main app level)
 	manager.globalBindings = []KeyBinding{
@@ -266,6 +289,8 @@ func (kbm *KeyBindingManager) HandleKeyEvent(ui *UIOrchestrator, event *tcell.Ev
 		bindings = kbm.treeViewBindings
 	case "body_edit":
 		bindings = kbm.bodyEditBindings
+	case "modal":
+		bindings = kbm.modalBindings
 	default:
 		return event
 	}
@@ -297,6 +322,7 @@ func (kbm *KeyBindingManager) GetAllKeyBindings() []KeyBinding {
 	all = append(all, kbm.bodyViewBindings...)
 	all = append(all, kbm.treeViewBindings...)
 	all = append(all, kbm.bodyEditBindings...)
+	all = append(all, kbm.modalBindings...)
 	return all
 }
 
@@ -809,5 +835,13 @@ func saveBodyContent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
 		// Show save confirmation could be added here
 	}
+	return nil
+}
+
+// Modal actions
+func closeModal(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// This function is called when modal keybindings are triggered
+	// The actual modal closing logic is handled in the modal's SetInputCapture
+	// We return a special marker to indicate the modal should be closed
 	return nil
 }
