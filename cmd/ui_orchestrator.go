@@ -56,6 +56,7 @@ type UIOrchestrator struct {
 	MainCycle                      *MainCycle
 	HeadersCycle                   *HeadersCycle
 	RequestCycle                   *RequestCycle
+	EnvironmentsCycle              *EnvironmentsCycle
 	LastSelectedRequestNode        *tview.TreeNode
 	BodyEditMode                   bool
 	CurrentBodyContent             string
@@ -159,11 +160,21 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 
 	mainCycle = &MainCycle{
 		panels:  mainPanels,
-		current: 0,
+		current: 1,
 	}
 
 	headersCycle = &HeadersCycle{
 		inputs:   []tview.Primitive{},
+		current:  0,
+		parent:   mainCycle,
+		children: nil,
+	}
+
+	environmentsCycle = &EnvironmentsCycle{
+		inputs: []tview.Primitive{
+			envDropdown,
+			envConfigButton,
+		},
 		current:  0,
 		parent:   mainCycle,
 		children: nil,
@@ -264,6 +275,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		MainCycle:                      mainCycle,
 		HeadersCycle:                   headersCycle,
 		RequestCycle:                   requestCycle,
+		EnvironmentsCycle:              environmentsCycle,
 		LastSelectedRequestNode:        nil,
 		BodyEditMode:                   false,
 		CurrentBodyContent:             "",

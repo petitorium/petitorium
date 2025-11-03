@@ -187,9 +187,63 @@ func findRequestPtr(data []workspace.Collection, req workspace.Request) *workspa
 	return nil
 }
 
+// EnvironmentsCycle handles cycling through header inputs
+type EnvironmentsCycle struct {
+	inputs   []tview.Primitive
+	current  int
+	parent   Cycle
+	children []tview.Primitive
+}
+
+func (c *EnvironmentsCycle) Next() tview.Primitive {
+	if c.current < len(c.inputs)-1 {
+		c.current++
+		return c.inputs[c.current]
+	} else {
+		c.current = 0
+		return nil
+	}
+}
+
+func (c *EnvironmentsCycle) Prev() tview.Primitive {
+	if c.current > 0 {
+		c.current--
+		return c.inputs[c.current]
+	} else {
+		c.current = len(c.inputs) - 1
+		return nil
+	}
+}
+
+func (c *EnvironmentsCycle) GetCurrent() tview.Primitive {
+	return c.inputs[c.current]
+}
+
+func (c *EnvironmentsCycle) Contains(p tview.Primitive) bool {
+	for _, input := range c.inputs {
+		if input == p {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *EnvironmentsCycle) GetParent() Cycle {
+	return c.parent
+}
+
+func (c *EnvironmentsCycle) UpdateInputs() {
+	c.inputs = []tview.Primitive{}
+	for _, row := range currentHeaderRows {
+		c.inputs = append(c.inputs, row.KeyInput, row.ValueInput)
+	}
+}
+
 // Global cycle instances
 var mainCycle *MainCycle
 
 var requestCycle *RequestCycle
 
 var headersCycle *HeadersCycle
+
+var environmentsCycle *EnvironmentsCycle

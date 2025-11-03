@@ -649,8 +649,17 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 // handleTabNavigation handles Tab key navigation
 func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// environment panel
-	if ui.MainCycle.current == ui.EnviromentIndex {
+	// environment panel new - el 1
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 0 {
+		next := ui.EnvironmentsCycle.Next()
+		ui.App.SetFocus(next)
+		ui.CurrentFocus = ui.MainCycle.current
+
+		return nil
+	}
+
+	// environment panel new - el 2
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 1 {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -766,9 +775,11 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	// response panel
 	if ui.MainCycle.current == ui.ResponseIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		ui.EnvironmentsCycle.current = 0
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
-		ui.App.SetFocus(nextElement)
+		// Set focus to the first element in the environments cycle (dropdown)
+		ui.App.SetFocus(ui.EnvironmentsCycle.inputs[0])
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -780,8 +791,17 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 // handleBacktabNavigation handles Backtab (Shift+Tab) key navigation
 func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// environment panel
-	if ui.MainCycle.current == ui.EnviromentIndex {
+	// environment panel - cycle backward through elements
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 1 {
+		// Currently on config button, move to dropdown
+		prev := ui.EnvironmentsCycle.Prev()
+		ui.App.SetFocus(prev)
+		ui.CurrentFocus = ui.MainCycle.current
+		return nil
+	}
+
+	// environment panel - move to previous main panel
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 0 {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
@@ -796,7 +816,13 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
-		ui.App.SetFocus(prevElement)
+		// If going to environment panel, focus on the config button
+		if prevElement == ui.MainCycle.panels[ui.EnviromentIndex] {
+			ui.EnvironmentsCycle.current = 1
+			ui.App.SetFocus(ui.EnvironmentsCycle.inputs[1])
+		} else {
+			ui.App.SetFocus(prevElement)
+		}
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 		return nil
