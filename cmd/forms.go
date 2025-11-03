@@ -17,22 +17,18 @@ func createCollectionFormWithLocation(
 	collectionsData *[]workspace.Collection,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	// Get all available collections for location targets
 	var locationOptions []string
@@ -122,22 +118,18 @@ func createCollectionForm(app *tview.Application,
 	parentNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	parentCollection *workspace.Collection,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddInputField("Collection Name", "", 21, nil, nil)
 
@@ -193,22 +185,18 @@ func createRequestForm(app *tview.Application,
 	collectionsData *[]workspace.Collection,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddInputField("Request Name", "", 43, nil, nil)
 	form.AddDropDown("Method", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"}, 0, nil)
@@ -278,22 +266,18 @@ func createRenameCollectionForm(app *tview.Application,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddInputField("Collection Name", selectedCollection.Name, 30, nil, nil)
 	form.AddButton("Save", func() {
@@ -349,22 +333,18 @@ func createRenameRequestForm(app *tview.Application,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddInputField("Request Name", selectedRequest.Name, 30, nil, nil)
 
@@ -423,22 +403,18 @@ func createRenameEnvironmentForm(app *tview.Application,
 	selectedEnvironment *workspace.Environment,
 	environmentsData *[]workspace.Environment,
 	envDropdown *tview.DropDown,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddInputField("Environment Name", selectedEnvironment.Name, 30, nil, nil)
 
@@ -486,22 +462,18 @@ func createMoveCollectionForm(app *tview.Application,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	// Get all available collections for movement targets
 	var targetOptions []string
@@ -609,22 +581,18 @@ func createMoveRequestForm(app *tview.Application,
 	collectionsData *[]workspace.Collection,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetFieldBackgroundColor(backgroundColor)
-	form.SetFieldTextColor(foregroundColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	// Get all available collections for movement targets
 	var targetOptions []string
@@ -727,20 +695,16 @@ func createDeleteCollectionConfirm(app *tview.Application,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the collection '%s'?\nThis will also delete all nested collections and requests.", selectedCollection.Name), 0, 2, false, false)
 
@@ -783,20 +747,16 @@ func createDeleteRequestConfirm(app *tview.Application,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
+	colors *ColorManager,
 ) *tview.Form {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(backgroundColor)
-	form.SetBorderColor(borderFocusColor)
-	form.SetTitleColor(titleColor)
-	form.SetLabelColor(foregroundColor)
-	form.SetButtonBackgroundColor(backgroundColor)
-	form.SetButtonTextColor(foregroundColor)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the request '%s'?", selectedRequest.Name), 0, 1, false, false)
 

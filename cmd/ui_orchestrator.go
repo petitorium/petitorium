@@ -89,7 +89,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	sendButton := ui.SendButton
 	bodyViewPanel := ui.BodyViewPanel
 	bodyEditPanel := ui.BodyEditPanel
-	response := ui.Response
+	responsePanel := ui.Response
 	footer := ui.Footer
 	collectionsTreeView := ui.CollectionsTreeView
 	responsePages := ui.ResponsePages
@@ -141,7 +141,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 
 	// Create unified Request panel containing method+URL+send and tabs
 	requestPanel := setupRequestPanel(methodURLBar, requestDataTabs, colors)
-	rightSide := setupRightSide(requestPanel, response)
+	rightSide := setupRightSide(requestPanel, responsePanel)
 
 	requestCycle = &RequestCycle{
 		elements: []tview.Primitive{methodDropdown, urlInput, sendButton},
@@ -155,7 +155,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	leftSide.AddItem(collectionsTreeView, 0, 1, false)
 
 	// Create main panels
-	mainPanels := []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, response}
+	mainPanels := []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
 
 	mainCycle = &MainCycle{
 		panels:  mainPanels,
@@ -231,7 +231,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		SendButton:                     sendButton,
 		BodyViewPanel:                  bodyViewPanel,
 		BodyEditPanel:                  bodyEditPanel,
-		Response:                       response,
+		Response:                       responsePanel,
 		Footer:                         footer,
 		CollectionsTreeView:            collectionsTreeView,
 		ResponsePages:                  responsePages,

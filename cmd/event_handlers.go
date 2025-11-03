@@ -208,7 +208,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.ProgrammaticallyUpdatingURL = false
 
 			ui.SyncBodyContent(req.Body)
-			setHeadersInUI(req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
+			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
 
 			// Set current request for persistence
 			ui.CurrentSelectedNode = node
@@ -236,10 +236,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						BodySize:   len(lastResponse.Body),
 					}
 					// For historical responses, show when that specific request was made
-					updateResponseTabs(cmdResp, &lastResponse.Timestamp, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+					updateResponseTabs(cmdResp, &lastResponse.Timestamp, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
 				} else {
 					// Clear response if no history
-					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
 				}
 			}
 		} else if col, ok := reference.(workspace.Collection); ok {
@@ -288,12 +288,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.Pages,
 			*ui.EnvironmentsData,
 			ui.EnvDropdown,
-			tcell.ColorDefault,
-			tcell.ColorDefault,
-			tcell.ColorDefault,
-			tcell.ColorDefault,
-			tcell.ColorDefault,
-			tcell.ColorDefault,
+			ui.Colors,
 			ui.Header,
 		)
 	})
@@ -333,15 +328,15 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Validate URL
 		if url == "" {
-			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
 			return
 		}
 
 		// Send the request
-		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault) // Show loading state
+		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors) // Show loading state
 		resp, err := SendRequest(method, url, body, headers)
 		if err != nil {
-			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault) // Show error state
+			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors) // Show error state
 			return
 		}
 
@@ -366,7 +361,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Update the response tabs with the new response
 		now := time.Now()
-		updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+		updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
 	})
 
 	// Set up main application input capture for navigation and shortcuts
@@ -411,7 +406,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Collection shortcuts
 		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'n' {
-			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView)
+			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 			modal := createModal(form, 50, 12, tcell.ColorDefault)
 			ui.Pages.AddPage("newCollection", modal, true, true)
 			ui.App.SetFocus(form)
@@ -433,7 +428,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				}
 
 				if selectedCollection != nil {
-					form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView)
+					form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 					modal := createModal(form, 60, 14, tcell.ColorDefault)
 					ui.Pages.AddPage("newRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -450,14 +445,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				if col, ok := reference.(workspace.Collection); ok {
 					// Rename collection
-					form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+					form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 25, 10, tcell.ColorDefault)
 					ui.Pages.AddPage("renameCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Rename request - need to find parent collection
-					form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+					form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 47, 10, tcell.ColorDefault)
 					ui.Pages.AddPage("renameRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -472,14 +467,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if node != nil {
 				if col, ok := node.GetReference().(workspace.Collection); ok {
 					// Move collection
-					form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+					form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 40, 12, tcell.ColorDefault)
 					ui.Pages.AddPage("moveCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req, ok := node.GetReference().(workspace.Request); ok {
 					// Move request
-					form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView)
+					form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 					modal := createModal(form, 40, 10, tcell.ColorDefault)
 					ui.Pages.AddPage("moveRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -496,14 +491,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				if col, ok := reference.(workspace.Collection); ok {
 					// Delete collection with confirmation
-					form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+					form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 50, 8, tcell.ColorDefault)
 					ui.Pages.AddPage("deleteCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Delete request with confirmation
-					form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+					form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 50, 8, tcell.ColorDefault)
 					ui.Pages.AddPage("deleteRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -570,25 +565,25 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				case '1':
 					ui.TabPages.SwitchToPage("body")
 					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 0, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+					updateTabHeader(requestTabs, ui.TabHeader, 0, ui.Colors)
 					ui.CurrentTabIndex = 0
 					return nil
 				case '2':
 					ui.TabPages.SwitchToPage("auth")
 					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 1, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+					updateTabHeader(requestTabs, ui.TabHeader, 1, ui.Colors)
 					ui.CurrentTabIndex = 1
 					return nil
 				case '3':
 					ui.TabPages.SwitchToPage("query")
 					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 2, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+					updateTabHeader(requestTabs, ui.TabHeader, 2, ui.Colors)
 					ui.CurrentTabIndex = 2
 					return nil
 				case '4':
 					ui.TabPages.SwitchToPage("headers")
 					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 3, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+					updateTabHeader(requestTabs, ui.TabHeader, 3, ui.Colors)
 					ui.CurrentTabIndex = 3
 					return nil
 				}
@@ -609,7 +604,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				tabNames := []string{"body", "auth", "query", "headers"}
 				ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
 				requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-				updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+				updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
 				// Focus the appropriate tab content
 				switch ui.CurrentTabIndex {
 				case 0: // Body tab
@@ -633,7 +628,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				tabNames := []string{"body", "auth", "query", "headers"}
 				ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
 				requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-				updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+				updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
 				// Focus the appropriate tab content
 				switch ui.CurrentTabIndex {
 				case 0: // Body tab

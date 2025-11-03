@@ -11,15 +11,12 @@ import (
 
 // createInlineEditInput creates an input field for inline editing of environment names
 func createInlineEditInput(
-	backgroundColor,
-	borderColor,
-	titleColor,
-	foregroundColor tcell.Color,
+	colors *ColorManager,
 	currentName string,
 	onSave func(string),
 	onCancel func(),
 ) *tview.InputField {
-	editInput := createInputField("", backgroundColor, borderColor, titleColor, foregroundColor)
+	editInput := createInputField("", colors)
 	editInput.SetText(currentName)
 	editInput.SetBorder(false)
 	editInput.SetDoneFunc(func(key tcell.Key) {
@@ -127,39 +124,24 @@ func createEnvironmentListPanel(
 
 // createEnvironmentPanel creates the environment panel with dropdown and config button
 func createEnvironmentPanel(
-	backgroundColor,
-	borderColor,
-	borderFocusColor,
-	titleColor,
-	foregroundColor,
-	selectionBackgroundColor,
-	activeTabColor,
-	buttonSelectedColor,
-	dropdownFocusedBackgroundColor tcell.Color,
+	colors *ColorManager,
 ) (*tview.Flex, *tview.DropDown, *tview.Button, *CustomButton) {
 	// Create environment dropdown
 	envDropdown := createDropDown(
 		"",
 		[]string{"Base Environment"},
-		backgroundColor,
-		backgroundColor,
-		backgroundColor,
-		foregroundColor,
-		activeTabColor,
-		backgroundColor,
-		selectionBackgroundColor,
-		dropdownFocusedBackgroundColor,
+		colors,
 	)
 	envDropdown.SetBorder(false)
 	envDropdown.SetCurrentOption(0)
 
 	// Create config button
-	configButton := createButton("⚙", backgroundColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+	configButton := createButton("⚙", colors)
 
 	separator := tview.NewBox().
-		SetBackgroundColor(backgroundColor)
+		SetBackgroundColor(colors.Background)
 
-	indicator := createCustomButton("▼", backgroundColor, backgroundColor, borderFocusColor, borderFocusColor)
+	indicator := createCustomButton("▼", colors.Background, colors.Background, colors.BorderFocus, colors.BorderFocus)
 
 	// Create container
 	container := tview.NewFlex().
@@ -174,9 +156,9 @@ func createEnvironmentPanel(
 
 	container.SetBorder(true)
 	container.SetTitle(" Environment ")
-	container.SetBackgroundColor(backgroundColor)
-	container.SetBorderColor(borderColor)
-	container.SetTitleColor(titleColor)
+	container.SetBackgroundColor(colors.Background)
+	container.SetBorderColor(colors.Border)
+	container.SetTitleColor(colors.Title)
 
 	return container, envDropdown, configButton, indicator
 }

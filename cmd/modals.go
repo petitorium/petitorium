@@ -15,12 +15,7 @@ func showEnvironmentModal(
 	pages *tview.Pages,
 	environmentsData []workspace.Environment,
 	envDropdown *tview.DropDown,
-	backgroundColor,
-	borderColor,
-	borderFocusColor,
-	titleColor,
-	foregroundColor,
-	buttonSelectedColor tcell.Color,
+	colors *ColorManager,
 	header *tview.TextView,
 ) {
 	// Get current selected environment
@@ -66,7 +61,7 @@ func showEnvironmentModal(
 	}
 
 	// Create JSON editor
-	jsonEditor := createTextArea(" Environment Variables (JSON) ", backgroundColor, borderColor, titleColor, foregroundColor)
+	jsonEditor := createTextArea(" Environment Variables (JSON) ", colors.Background, colors.Border, colors.Title, colors.Foreground)
 	jsonEditor.SetText(string(jsonBytes), false)
 
 	// Create left panel (environment list)
@@ -74,12 +69,12 @@ func showEnvironmentModal(
 	var leftPanel *tview.List
 
 	leftPanel = createEnvironmentListPanel(
-		backgroundColor,
-		borderColor,
-		borderFocusColor,
-		titleColor,
-		foregroundColor,
-		buttonSelectedColor,
+		colors.Background,
+		colors.Border,
+		colors.BorderFocus,
+		colors.Title,
+		colors.Foreground,
+		colors.ButtonSelect,
 		environmentsData,
 		func(env *workspace.Environment) {
 			selectedEnvironment = env
@@ -110,12 +105,12 @@ func showEnvironmentModal(
 
 			// Refresh the environment list in place
 			newLeftPanel := createEnvironmentListPanel(
-				backgroundColor,
-				borderColor,
-				borderFocusColor,
-				titleColor,
-				foregroundColor,
-				buttonSelectedColor,
+				colors.Background,
+				colors.Border,
+				colors.BorderFocus,
+				colors.Title,
+				colors.Foreground,
+				colors.ButtonSelect,
 				environmentsData,
 				func(env *workspace.Environment) {
 					selectedEnvironment = env
@@ -134,7 +129,7 @@ func showEnvironmentModal(
 				AddItem(newLeftPanel, 0, 4, false). // 40% for left panel
 				AddItem(jsonEditor, 0, 6, false)    // 60% for JSON editor
 
-			modal := createModal(content, 120, 40, backgroundColor)
+			modal := createModal(content, 120, 40, colors.Background)
 			pages.RemovePage("envVariables")
 			pages.AddPage("envVariables", modal, true, true)
 			app.SetFocus(newLeftPanel)
@@ -146,7 +141,7 @@ func showEnvironmentModal(
 		AddItem(leftPanel, 0, 4, false). // 40% for left panel
 		AddItem(jsonEditor, 0, 6, false) // 60% for JSON editor
 
-	modal := createModal(content, 120, 40, backgroundColor)
+	modal := createModal(content, 120, 40, colors.Background)
 	pages.AddPage("envVariables", modal, true, true)
 	app.SetFocus(leftPanel)
 

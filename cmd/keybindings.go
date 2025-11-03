@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
+
 	"github.com/hbarral/petitorium/config"
 	"github.com/hbarral/petitorium/workspace"
 )
@@ -323,7 +324,7 @@ func handleBacktabNavigationAction(ui *UIOrchestrator, event *tcell.EventKey) *t
 
 func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.CollectionsIndex {
-		form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView)
+		form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 		modal := createModal(form, 50, 12, tcell.ColorDefault)
 		ui.Pages.AddPage("newCollection", modal, true, true)
 		ui.App.SetFocus(form)
@@ -348,7 +349,7 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 			}
 
 			if selectedCollection != nil {
-				form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView)
+				form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 				modal := createModal(form, 60, 14, tcell.ColorDefault)
 				ui.Pages.AddPage("newRequest", modal, true, true)
 				ui.App.SetFocus(form)
@@ -367,14 +368,14 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 			if col, ok := reference.(workspace.Collection); ok {
 				// Rename collection
-				form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+				form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 				modal := createModal(form, 25, 10, tcell.ColorDefault)
 				ui.Pages.AddPage("renameCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req, ok := reference.(workspace.Request); ok {
 				// Rename request - need to find parent collection
-				form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+				form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 				modal := createModal(form, 47, 10, tcell.ColorDefault)
 				ui.Pages.AddPage("renameRequest", modal, true, true)
 				ui.App.SetFocus(form)
@@ -389,7 +390,7 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 			env := &(*ui.EnvironmentsData)[currentEnvIndex-1] // -1 because dropdown has "Base Environment" at index 0
 
 			// Create a simple rename form
-			form := createRenameEnvironmentForm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.EnvDropdown)
+			form := createRenameEnvironmentForm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.EnvDropdown, ui.Colors)
 			modal := createModal(form, 30, 8, tcell.ColorDefault)
 			ui.Pages.AddPage("renameEnvironment", modal, true, true)
 			ui.App.SetFocus(form)
@@ -405,14 +406,14 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		if node != nil {
 			if col, ok := node.GetReference().(workspace.Collection); ok {
 				// Move collection
-				form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+				form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 				modal := createModal(form, 40, 12, tcell.ColorDefault)
 				ui.Pages.AddPage("moveCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req, ok := node.GetReference().(workspace.Request); ok {
 				// Move request
-				form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView)
+				form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 				modal := createModal(form, 40, 10, tcell.ColorDefault)
 				ui.Pages.AddPage("moveRequest", modal, true, true)
 				ui.App.SetFocus(form)
@@ -431,14 +432,14 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 			if col, ok := reference.(workspace.Collection); ok {
 				// Delete collection with confirmation
-				form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+				form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 				modal := createModal(form, 50, 8, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req, ok := reference.(workspace.Request); ok {
 				// Delete request with confirmation
-				form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node)
+				form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 				modal := createModal(form, 50, 8, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteRequest", modal, true, true)
 				ui.App.SetFocus(form)
@@ -504,7 +505,7 @@ func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("body")
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 0, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+			updateTabHeader(requestTabs, ui.TabHeader, 0, ui.Colors)
 			ui.CurrentTabIndex = 0
 			return nil
 		}
@@ -530,7 +531,7 @@ func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("auth")
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 1, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+			updateTabHeader(requestTabs, ui.TabHeader, 1, ui.Colors)
 			ui.CurrentTabIndex = 1
 			return nil
 		}
@@ -556,7 +557,7 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("query")
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 2, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+			updateTabHeader(requestTabs, ui.TabHeader, 2, ui.Colors)
 			ui.CurrentTabIndex = 2
 			return nil
 		}
@@ -582,7 +583,7 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("headers")
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 3, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+			updateTabHeader(requestTabs, ui.TabHeader, 3, ui.Colors)
 			ui.CurrentTabIndex = 3
 			return nil
 		}
@@ -605,7 +606,7 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		tabNames := []string{"body", "auth", "query", "headers"}
 		ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
 		requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-		updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+		updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
 		// Focus the appropriate tab content
 		switch ui.CurrentTabIndex {
 		case 0: // Body tab
@@ -634,7 +635,7 @@ func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		tabNames := []string{"body", "auth", "query", "headers"}
 		ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
 		requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-		updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault, tcell.ColorDefault)
+		updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
 		// Focus the appropriate tab content
 		switch ui.CurrentTabIndex {
 		case 0: // Body tab

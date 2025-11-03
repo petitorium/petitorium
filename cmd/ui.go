@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,64 +13,62 @@ import (
 	"github.com/hbarral/petitorium/config"
 )
 
-// setupTheme configures the theme colors and borders
-func setupTheme() (tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color, tcell.Color) {
-	theme := config.C.Theme
-	backgroundColor := hexToColor(theme.BackgroundColor)
-	foregroundColor := hexToColor(theme.ForegroundColor)
-	borderColor := hexToColor(theme.BorderColor)
-	borderFocusColor := hexToColor(theme.BorderFocusColor)
-	titleColor := hexToColor(theme.TitleColor)
-	selectionBackgroundColor := hexToColor(theme.SelectionBackground)
-	activeTabColor := hexToColor(theme.ActiveTabColor)
-	buttonSelectedColor := hexToColor(theme.ButtonSelectedColor)
-	dropdownFocusedBackgroundColor := hexToColor(theme.DropdownFocusedBackground)
-
-	tview.Borders.TopLeft = strToRune(theme.Borders.TopLeft)
-	tview.Borders.TopRight = strToRune(theme.Borders.TopRight)
-	tview.Borders.BottomLeft = strToRune(theme.Borders.BottomLeft)
-	tview.Borders.BottomRight = strToRune(theme.Borders.BottomRight)
-	tview.Borders.Horizontal = strToRune(theme.Borders.Horizontal)
-	tview.Borders.Vertical = strToRune(theme.Borders.Vertical)
-
-	tview.Borders.TopLeftFocus = strToRune(theme.BordersFocus.TopLeft)
-	tview.Borders.TopRightFocus = strToRune(theme.BordersFocus.TopRight)
-	tview.Borders.BottomLeftFocus = strToRune(theme.BordersFocus.BottomLeft)
-	tview.Borders.BottomRightFocus = strToRune(theme.BordersFocus.BottomRight)
-	tview.Borders.HorizontalFocus = strToRune(theme.BordersFocus.Horizontal)
-	tview.Borders.VerticalFocus = strToRune(theme.BordersFocus.Vertical)
-
-	return backgroundColor, foregroundColor, borderColor, borderFocusColor, titleColor, selectionBackgroundColor, activeTabColor, buttonSelectedColor, dropdownFocusedBackgroundColor
+type PanelOptions struct {
+	HasBorder   *bool
+	BorderColor *tcell.Color
+	Scrollable  *bool
+	Wrap        *bool
 }
 
 // createPanel creates a new text view panel with consistent styling and 16m color support
-func createPanel(title string, backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextView {
+func createPanel(title string, colors *ColorManager, opts *PanelOptions) *tview.TextView {
+	border := true
+	scrollable := true
+	wrap := true
+	borderColor := colors.Border
+
+	if opts != nil {
+		if opts.HasBorder != nil {
+			border = *opts.HasBorder
+		}
+		if opts.Scrollable != nil {
+			scrollable = *opts.Scrollable
+		}
+		if opts.Wrap != nil {
+			wrap = *opts.Wrap
+		}
+		if opts.BorderColor != nil {
+			borderColor = tcell.Color(*opts.BorderColor)
+		}
+	}
+
 	tv := tview.NewTextView()
-	tv.SetBorder(true)
+	tv.SetBorder(border)
 	tv.SetTitle(title)
-	tv.SetBackgroundColor(backgroundColor)
+	tv.SetBackgroundColor(colors.Background)
 	tv.SetBorderColor(borderColor)
-	tv.SetTitleColor(titleColor)
-	tv.SetTextColor(foregroundColor)
+	tv.SetTitleColor(colors.Title)
+	tv.SetTextColor(colors.Foreground)
 	tv.SetBorderPadding(0, 0, 0, 0)
-	tv.SetDynamicColors(true) // Enable color interpretation with hex support
-	tv.SetRegions(true)       // Enable regions for better color handling
-	tv.SetWordWrap(true)      // Enable word wrap for better formatting
-	tv.SetScrollable(true)    // Enable scrolling for long content
-	tv.SetWrap(true)
+	tv.SetDynamicColors(true)    // Enable color interpretation with hex support
+	tv.SetRegions(true)          // Enable regions for better color handling
+	tv.SetWordWrap(true)         // Enable word wrap for better formatting
+	tv.SetScrollable(scrollable) // Enable scrolling for long content
+	tv.SetWrap(wrap)
+
 	return tv
 }
 
 // createInputField creates a new input field with consistent styling
-func createInputField(title string, backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.InputField {
+func createInputField(title string, colors *ColorManager) *tview.InputField {
 	input := tview.NewInputField()
 	input.SetBorder(true)
 	input.SetTitle(title)
-	input.SetBackgroundColor(backgroundColor)
-	input.SetBorderColor(borderColor)
-	input.SetTitleColor(titleColor)
-	input.SetFieldTextColor(foregroundColor)
-	input.SetFieldBackgroundColor(backgroundColor)
+	input.SetBackgroundColor(colors.Background)
+	input.SetBorderColor(colors.Border)
+	input.SetTitleColor(colors.Title)
+	input.SetFieldTextColor(colors.Foreground)
+	input.SetFieldBackgroundColor(colors.Background)
 	input.SetBorderPadding(0, 0, 0, 0)
 	return input
 }
@@ -79,44 +76,37 @@ func createInputField(title string, backgroundColor, borderColor, titleColor, fo
 // createDropDown creates a dropdown with consistent styling
 func createDropDown(title string,
 	options []string,
-	backgroundColor,
-	borderColor,
-	titleColor,
-	foregroundColor,
-	activeTabColor,
-	listBackgroundColor,
-	listSelectedColor,
-	dropdownFocusedBackgroundColor tcell.Color,
+	colors *ColorManager,
 ) *tview.DropDown {
 	dropdown := tview.NewDropDown()
 	dropdown.SetBorder(true)
 	dropdown.SetTitle(title)
-	dropdown.SetBackgroundColor(backgroundColor)
-	dropdown.SetBorderColor(borderColor)
-	dropdown.SetTitleColor(titleColor)
-	dropdown.SetFieldTextColor(activeTabColor)
-	dropdown.SetFieldBackgroundColor(backgroundColor)
+	dropdown.SetBackgroundColor(colors.Background)
+	dropdown.SetBorderColor(colors.Border)
+	dropdown.SetTitleColor(colors.Title)
+	dropdown.SetFieldTextColor(colors.ActiveTab)
+	dropdown.SetFieldBackgroundColor(colors.Background)
 	dropdown.SetBorderPadding(0, 0, 0, 0)
 	dropdown.SetOptions(options, nil)
-	dropdown.SetFocusedStyle(tcell.StyleDefault.Background(dropdownFocusedBackgroundColor).Foreground(activeTabColor))
+	dropdown.SetFocusedStyle(tcell.StyleDefault.Background(colors.DropdownFocus).Foreground(colors.ActiveTab))
 
 	// Set the dropdown list styles to match the theme
-	unselectedStyle := tcell.StyleDefault.Background(listBackgroundColor).Foreground(foregroundColor)
-	selectedStyle := tcell.StyleDefault.Background(listSelectedColor).Foreground(foregroundColor)
+	unselectedStyle := tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground)
+	selectedStyle := tcell.StyleDefault.Background(colors.Selection).Foreground(colors.Foreground)
 	dropdown.SetListStyles(unselectedStyle, selectedStyle)
 
 	return dropdown
 }
 
-func createButton(text string, backgroundColor, borderColor, titleColor, foregroundColor, selectedColor tcell.Color) *tview.Button {
+func createButton(text string, colors *ColorManager) *tview.Button {
 	button := tview.NewButton(text)
 	button.SetBorder(false)
-	button.SetBackgroundColor(backgroundColor)
-	button.SetLabelColor(foregroundColor)
-	button.SetBackgroundColorActivated(selectedColor)
-	button.SetLabelColorActivated(backgroundColor)
+	button.SetBackgroundColor(colors.Background)
+	button.SetLabelColor(colors.Foreground)
+	button.SetBackgroundColorActivated(colors.ButtonSelect)
+	button.SetLabelColorActivated(colors.Background)
 	button.SetBorderPadding(0, 0, 0, 0)
-	button.SetBorderColor(borderColor)
+	button.SetBorderColor(colors.Border)
 	return button
 }
 
@@ -349,38 +339,24 @@ func createTextArea(title string, backgroundColor, borderColor, titleColor, fore
 // createMethodURLBar creates a unified method+URL+Send input component
 func createMethodURLBar(
 	title string,
-	backgroundColor,
-	borderColor,
-	titleColor,
-	foregroundColor,
-	selectionBackgroundColor,
-	activeTabColor,
-	buttonSelectedColor,
-	dropdownFocusedBackgroundColor tcell.Color,
+	colors *ColorManager,
 ) (*tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button) {
 	// Create the components without borders
 	methodDropdown := createDropDown(
 		"",
 		[]string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
-		backgroundColor,
-		backgroundColor,
-		backgroundColor,
-		foregroundColor,
-		activeTabColor,
-		backgroundColor,
-		selectionBackgroundColor,
-		dropdownFocusedBackgroundColor,
+		colors,
 	)
 	methodDropdown.SetBorder(false)
 
-	urlInput := createInputField("", backgroundColor, backgroundColor, foregroundColor, foregroundColor)
+	urlInput := createInputField("", colors)
 	urlInput.SetBorder(false)
 
-	sendButton := createButton(" Send ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-	sendButton.SetBackgroundColor(borderColor)
-	sendButton.SetLabelColor(backgroundColor)
+	sendButton := createButton(" Send ", colors)
+	sendButton.SetBackgroundColor(colors.Border)
+	sendButton.SetLabelColor(colors.Background)
 
-	spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 
 	// Create container with unified border
 	container := tview.NewFlex().
@@ -393,28 +369,20 @@ func createMethodURLBar(
 
 	container.SetBorder(true)
 	container.SetTitle(title)
-	container.SetBackgroundColor(backgroundColor)
-	container.SetBorderColor(borderColor)
-	container.SetTitleColor(titleColor)
+	container.SetBackgroundColor(colors.Background)
+	container.SetBorderColor(colors.Border)
+	container.SetTitleColor(colors.Title)
 	container.SetBorderPadding(0, 0, 0, 0)
 
 	return container, methodDropdown, urlInput, sendButton
 }
 
 // createTabHeader creates a clickable tab header bar
-func createTabHeader(tabs []string, backgroundColor,
-	borderColor,
-	titleColor,
-	foregroundColor,
-	activeTabColor,
-	selectionBackgroundColor tcell.Color,
-	onTabClick func(int),
-) *tview.Flex {
+func createTabHeader(tabs []string, colors *ColorManager, onTabClick func(int)) *tview.Flex {
 	tabHeader := tview.NewFlex().SetDirection(tview.FlexColumn)
-	tabHeader.SetBackgroundColor(backgroundColor)
+	tabHeader.SetBackgroundColor(colors.Background)
 
 	// Tab titles and their active states
-	tabs = []string{"Body", "Auth", "Query", "Headers"}
 	activeTab := 0 // Default to first tab
 
 	// Create tab buttons
@@ -423,19 +391,19 @@ func createTabHeader(tabs []string, backgroundColor,
 
 		// Create individual tab as TextView (clickable)
 		tab := tview.NewTextView()
-		tab.SetBackgroundColor(backgroundColor)
-		tab.SetTextColor(foregroundColor)
+		tab.SetBackgroundColor(colors.Background)
+		tab.SetTextColor(colors.Foreground)
 		tab.SetTextAlign(tview.AlignCenter)
 		tab.SetBorder(false)
 
 		// Set initial text based on whether it's active
 		if i == activeTab {
 			tab.SetText(tabTitle)
-			tab.SetTextColor(activeTabColor)
-			tab.SetBackgroundColor(selectionBackgroundColor)
+			tab.SetTextColor(colors.Title)
+			tab.SetBackgroundColor(colors.Background)
 		} else {
 			tab.SetText(tabTitle)
-			tab.SetBackgroundColor(backgroundColor)
+			tab.SetBackgroundColor(colors.Background)
 		}
 
 		// Make tab clickable
@@ -451,8 +419,8 @@ func createTabHeader(tabs []string, backgroundColor,
 		// Add separator except for last tab
 		if i < len(tabs)-1 {
 			separator := tview.NewTextView()
-			separator.SetBackgroundColor(backgroundColor)
-			separator.SetTextColor(foregroundColor)
+			separator.SetBackgroundColor(colors.Background)
+			separator.SetTextColor(colors.Foreground)
 			separator.SetText("|")
 			tabHeader.AddItem(separator, 1, 0, false)
 		}
@@ -466,10 +434,7 @@ func updateTabHeader(
 	tabs []string,
 	tabHeader *tview.Flex,
 	activeTabIndex int,
-	backgroundColor,
-	foregroundColor,
-	activeTabColor,
-	selectionBackgroundColor tcell.Color,
+	colors *ColorManager,
 ) {
 	// Tab titles
 	tabs = []string{"Body", "Auth", "Query", "Headers"}
@@ -483,13 +448,13 @@ func updateTabHeader(
 				if i == activeTabIndex {
 					// Active tab - use active tab color and background
 					tab.SetText(tabs[i])
-					tab.SetTextColor(activeTabColor)
-					tab.SetBackgroundColor(selectionBackgroundColor)
+					tab.SetTextColor(colors.ActiveTab)
+					tab.SetBackgroundColor(colors.Selection)
 				} else {
 					// Inactive tab - use regular foreground color and background
 					tab.SetText(fmt.Sprintf(" %s ", tabs[i]))
-					tab.SetTextColor(foregroundColor)
-					tab.SetBackgroundColor(backgroundColor)
+					tab.SetTextColor(colors.Foreground)
+					tab.SetBackgroundColor(colors.Background)
 				}
 			}
 		}
@@ -497,19 +462,17 @@ func updateTabHeader(
 }
 
 // createAuthTab creates placeholder authentication tab content
-func createAuthTab(backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextView {
+func createAuthTab(colors *ColorManager) *tview.TextView {
 	// Auth panel
-	// borderColor
-	authPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
+	authPanel := createPanel("", colors, &PanelOptions{HasBorder: &[]bool{true}[0], BorderColor: &colors.Background})
 	authPanel.SetText("Authentication settings will go here.\n\n• Bearer Token\n• Basic Auth\n• API Key\n• OAuth (future)")
 	return authPanel
 }
 
 // createQueryTab creates placeholder query parameters tab content
-func createQueryTab(backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextView {
+func createQueryTab(colors *ColorManager) *tview.TextView {
 	// Query Parameters panel
-	// borderColor
-	queryPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
+	queryPanel := createPanel("", colors, &PanelOptions{HasBorder: &[]bool{true}[0], BorderColor: &colors.Background})
 	queryPanel.SetText("URL Query Parameters editor will go here.\n\n• Key-Value pairs\n• Add/Remove parameters\n• Bulk import\n• Templates (future)")
 	return queryPanel
 }
@@ -536,26 +499,30 @@ type HeaderRow struct {
 	Row          *tview.Flex
 }
 
+// EnvVarRow represents a single environment variable key-value pair in the UI
+type EnvVarRow struct {
+	KeyInput     *tview.InputField
+	ValueInput   *tview.InputField
+	DeleteButton *tview.Button
+	Row          *tview.Flex
+}
+
 // createHeadersTabWithData creates headers tab with initial data
-func createHeadersTabWithData(backgroundColor,
-	borderColor,
-	titleColor,
-	foregroundColor,
-	buttonSelectedColor tcell.Color,
+func createHeadersTabWithData(colors *ColorManager,
 	initialHeaders map[string]string,
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 ) *tview.Flex {
 	headersContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	headersContainer.SetBackgroundColor(backgroundColor)
+	headersContainer.SetBackgroundColor(colors.Background)
 	headersContainer.SetBorder(true)
-	headersContainer.SetBorderColor(backgroundColor) // borderColor
-	headersContainer.SetTitleColor(titleColor)
-	headersContainer.SetBackgroundColor(backgroundColor)
+	headersContainer.SetBorderColor(colors.Background)
+	headersContainer.SetTitleColor(colors.Title)
+	headersContainer.SetBackgroundColor(colors.Background)
 
 	// Scrollable area for header entries
 	headersList := tview.NewFlex().SetDirection(tview.FlexRow)
-	headersList.SetBackgroundColor(backgroundColor)
+	headersList.SetBackgroundColor(colors.Background)
 
 	// Store references for global access
 	currentHeadersTab = headersContainer
@@ -573,38 +540,34 @@ func createHeadersTabWithData(backgroundColor,
 		}
 		// Always keep at least one empty row
 		if len(currentHeaderRows) == 0 {
-			addHeaderRow(headersList, backgroundColor, foregroundColor, borderColor, refreshHeadersUI, saveCallback, focusSetter)
+			addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter)
 		}
 	}
 
 	// Add initial rows based on data
 	if initialHeaders != nil && len(initialHeaders) > 0 {
 		for key, value := range initialHeaders {
-			addHeaderRowWithData(headersList, backgroundColor, foregroundColor, borderColor, key, value, refreshHeadersUI, saveCallback, focusSetter)
+			addHeaderRowWithData(headersList, colors, key, value, refreshHeadersUI, saveCallback, focusSetter)
 		}
 	}
 	// Always add at least one empty row
-	addHeaderRow(headersList, backgroundColor, foregroundColor, borderColor, refreshHeadersUI, saveCallback, focusSetter)
+	addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter)
 
 	// Add button row at the top
 	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonRow.SetBackgroundColor(backgroundColor)
+	buttonRow.SetBackgroundColor(colors.Background)
 
-	addButton := createButton(" Add Header ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-	addButton.SetBackgroundColorActivated(foregroundColor)
-	addButton.SetLabelColor(backgroundColor)
+	addButton := createButton(" Add Header ", colors)
+	addButton.SetBackgroundColorActivated(colors.Foreground)
+	addButton.SetLabelColor(colors.Background)
 	addButton.SetSelectedFunc(func() {
-		addHeaderRow(headersList, backgroundColor, foregroundColor, borderColor, refreshHeadersUI, saveCallback, focusSetter)
-		refreshHeadersUI()
-		if saveCallback != nil {
-			saveCallback()
-		}
+		addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter)
 	})
 
 	// Delete all button
-	deleteAllButton := createButton(" Delete All ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
+	deleteAllButton := createButton(" Delete All ", colors)
 	deleteAllButton.SetBorder(false)
-	deleteAllButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	deleteAllButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 	deleteAllButton.SetSelectedFunc(func() {
 		// Clear all header rows
 		currentHeaderRows = []*HeaderRow{}
@@ -621,7 +584,7 @@ func createHeadersTabWithData(backgroundColor,
 	headersContainer.AddItem(buttonRow, 1, 0, false)
 
 	// Add visual spacing between buttons and headers
-	spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	headersContainer.AddItem(spacer, 1, 0, false)
 
 	headersContainer.AddItem(headersList, 0, 1, false)
@@ -631,25 +594,23 @@ func createHeadersTabWithData(backgroundColor,
 
 // addHeaderRow adds a new key-value header input row to the headers list
 func addHeaderRow(headersList *tview.Flex,
-	backgroundColor,
-	foregroundColor,
-	borderColor tcell.Color,
+	colors *ColorManager,
 	refreshUI func(),
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 ) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
-	row.SetBackgroundColor(backgroundColor)
+	row.SetBackgroundColor(colors.Background)
 
 	keyInput := tview.NewInputField()
-	keyInput.SetBackgroundColor(backgroundColor)
-	keyInput.SetFieldBackgroundColor(backgroundColor)
-	keyInput.SetFieldTextColor(foregroundColor)
-	keyInput.SetLabelColor(foregroundColor)
+	keyInput.SetBackgroundColor(colors.Background)
+	keyInput.SetFieldBackgroundColor(colors.Background)
+	keyInput.SetFieldTextColor(colors.Foreground)
+	keyInput.SetLabelColor(colors.Foreground)
 	keyInput.SetPlaceholder("Header name")
-	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
-	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-	keyInput.SetFieldBackgroundColor(backgroundColor)
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	keyInput.SetFieldBackgroundColor(colors.Background)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -662,14 +623,14 @@ func addHeaderRow(headersList *tview.Flex,
 	})
 
 	valueInput := tview.NewInputField()
-	valueInput.SetBackgroundColor(backgroundColor)
-	valueInput.SetFieldBackgroundColor(backgroundColor)
-	valueInput.SetFieldTextColor(foregroundColor)
-	valueInput.SetLabelColor(foregroundColor)
+	valueInput.SetBackgroundColor(colors.Background)
+	valueInput.SetFieldBackgroundColor(colors.Background)
+	valueInput.SetFieldTextColor(colors.Foreground)
+	valueInput.SetLabelColor(colors.Foreground)
 	valueInput.SetPlaceholder("Header value")
-	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
-	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-	valueInput.SetFieldBackgroundColor(backgroundColor)
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	valueInput.SetFieldBackgroundColor(colors.Background)
 	valueInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -682,10 +643,10 @@ func addHeaderRow(headersList *tview.Flex,
 	})
 
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
-	removeButton.SetBackgroundColor(backgroundColor)
-	removeButton.SetLabelColor(foregroundColor)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 
 	headerRow := &HeaderRow{
 		KeyInput:     keyInput,
@@ -738,7 +699,7 @@ func addHeaderRow(headersList *tview.Flex,
 
 	// Wrap button in a container to match row height
 	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(backgroundColor)
+	buttonContainer.SetBackgroundColor(colors.Background)
 	buttonContainer.AddItem(nil, 0, 1, false)
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
@@ -751,123 +712,74 @@ func addHeaderRow(headersList *tview.Flex,
 	headersList.AddItem(row, rowHeight, 0, false)
 
 	// Add separator line between rows
-	separator := tview.NewBox().SetBackgroundColor(backgroundColor)
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
 	separator.SetBorder(false)
 	headersList.AddItem(separator, 1, 0, false)
 
-	// Update headers cycle
-	if headersCycle != nil {
-		headersCycle.UpdateInputs()
-	}
-}
-
-// getHeadersFromUI extracts headers from the current UI state
-func getHeadersFromUI() map[string]string {
-	headers := make(map[string]string)
-	for _, row := range currentHeaderRows {
-		key := strings.TrimSpace(row.KeyInput.GetText())
-		value := strings.TrimSpace(row.ValueInput.GetText())
-		if key != "" {
-			headers[key] = value
-		}
-	}
-	return headers
-}
-
-// setHeadersInUI populates the UI with the given headers
-func setHeadersInUI(headers map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
-	// Clear existing rows
-	currentHeaderRows = []*HeaderRow{}
-
-	if currentHeadersList != nil {
-		currentHeadersList.Clear()
-
-		// Get current theme colors
-		theme := config.C.Theme
-		backgroundColor := hexToColor(theme.BackgroundColor)
-		foregroundColor := hexToColor(theme.ForegroundColor)
-		borderColor := hexToColor(theme.BorderColor)
-
-		// Add rows for each header (sorted by key for consistent ordering)
-		var keys []string
-		for key := range headers {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-
-		for _, key := range keys {
-			value := headers[key]
-			addHeaderRowWithData(currentHeadersList, backgroundColor, foregroundColor, borderColor, key, value, func() {
-				// Refresh function - for now just rebuild the list
-				setHeadersInUI(getHeadersFromUI(), saveCallback, focusSetter)
-			}, saveCallback, focusSetter)
-		}
-
-		// Always add one empty row
-		addHeaderRow(currentHeadersList, backgroundColor, foregroundColor, borderColor, func() {
-			setHeadersInUI(getHeadersFromUI(), saveCallback, focusSetter)
-		}, saveCallback, focusSetter)
-	}
-
-	// Update headers cycle
+	// Update cycles if needed
 	if headersCycle != nil {
 		headersCycle.UpdateInputs()
 	}
 }
 
 // addHeaderRowWithData adds a header row with pre-filled data
-func addHeaderRowWithData(
-	headersList *tview.Flex,
-	backgroundColor, foregroundColor, borderColor tcell.Color,
+func addHeaderRowWithData(headersList *tview.Flex,
+	colors *ColorManager,
 	key, value string,
 	refreshUI func(),
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 ) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
-	row.SetBackgroundColor(backgroundColor)
+	row.SetBackgroundColor(colors.Background)
 
 	keyInput := tview.NewInputField()
-	keyInput.SetBackgroundColor(backgroundColor)
-	keyInput.SetFieldBackgroundColor(backgroundColor)
-	keyInput.SetFieldTextColor(foregroundColor)
-	keyInput.SetLabelColor(foregroundColor)
+	keyInput.SetBackgroundColor(colors.Background)
+	keyInput.SetFieldBackgroundColor(colors.Background)
+	keyInput.SetFieldTextColor(colors.Foreground)
+	keyInput.SetLabelColor(colors.Foreground)
 	keyInput.SetPlaceholder("Header name")
-	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
 	keyInput.SetText(key)
-	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-	if saveCallback != nil {
-		keyInput.SetChangedFunc(func(text string) {
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	keyInput.SetFieldBackgroundColor(colors.Background)
+	keyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
 			saveCallback()
-		})
-		keyInput.SetBlurFunc(func() {
+		}
+	})
+	keyInput.SetBlurFunc(func() {
+		if saveCallback != nil {
 			saveCallback()
-		})
-	}
+		}
+	})
 
 	valueInput := tview.NewInputField()
-	valueInput.SetBackgroundColor(backgroundColor)
-	valueInput.SetFieldBackgroundColor(backgroundColor)
-	valueInput.SetFieldTextColor(foregroundColor)
-	valueInput.SetLabelColor(foregroundColor)
+	valueInput.SetBackgroundColor(colors.Background)
+	valueInput.SetFieldBackgroundColor(colors.Background)
+	valueInput.SetFieldTextColor(colors.Foreground)
+	valueInput.SetLabelColor(colors.Foreground)
 	valueInput.SetPlaceholder("Header value")
-	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
 	valueInput.SetText(value)
-	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-	if saveCallback != nil {
-		valueInput.SetChangedFunc(func(text string) {
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	valueInput.SetFieldBackgroundColor(colors.Background)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
 			saveCallback()
-		})
-		valueInput.SetBlurFunc(func() {
+		}
+	})
+	valueInput.SetBlurFunc(func() {
+		if saveCallback != nil {
 			saveCallback()
-		})
-	}
+		}
+	})
 
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
-	removeButton.SetBackgroundColor(backgroundColor)
-	removeButton.SetLabelColor(foregroundColor)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 
 	headerRow := &HeaderRow{
 		KeyInput:     keyInput,
@@ -904,44 +816,23 @@ func addHeaderRowWithData(
 		return event
 	})
 
-	// Handle Shift+Tab navigation between key/value inputs
-	keyInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyBacktab {
-			// Shift+Tab: Find current row index and move to previous row's value input
-			currentIndex := -1
-			for i, row := range currentHeaderRows {
-				if row == headerRow {
-					currentIndex = i
-					break
-				}
-			}
-
-			if currentIndex > 0 {
-				// Move to previous row's value input
-				prevRow := currentHeaderRows[currentIndex-1]
-				focusSetter(prevRow.ValueInput)
-			} else {
-				// First row, cycle to last row's value input
-				lastRow := currentHeaderRows[len(currentHeaderRows)-1]
-				focusSetter(lastRow.ValueInput)
-			}
-			return nil
-		}
-		return event
-	})
-
+	// Handle Tab to add new header row when on the last value input
 	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyBacktab {
-			// Shift+Tab: Move to key input of same row
-			focusSetter(keyInput)
-			return nil
+		if event.Key() == tcell.KeyTab {
+			// Check if this is the last value input
+			if len(currentHeaderRows) > 0 && currentHeaderRows[len(currentHeaderRows)-1] == headerRow {
+				// Cycle back to first key input
+				firstRow := currentHeaderRows[0]
+				focusSetter(firstRow.KeyInput)
+				return nil
+			}
 		}
 		return event
 	})
 
 	// Wrap button in a container to match row height
 	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(backgroundColor)
+	buttonContainer.SetBackgroundColor(colors.Background)
 	buttonContainer.AddItem(nil, 0, 1, false)
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
@@ -954,581 +845,9 @@ func addHeaderRowWithData(
 	headersList.AddItem(row, rowHeight, 0, false)
 
 	// Add separator line between rows
-	// separator := tview.NewBox().SetBackgroundColor(backgroundColor)
-	// separator.SetBorder(true)
-	// headersList.AddItem(separator, 1, 0, false)
-
-	// Update headers cycle
-	if headersCycle != nil {
-		headersCycle.UpdateInputs()
-	}
-}
-
-// createRequestDataTabs creates the main tabbed interface for request data
-func createRequestDataTabs(
-	bodyViewPanel *tview.TextView,
-	bodyEditPanel *tview.TextArea,
-	colors *ColorManager,
-	saveCallback func(),
-	focusSetter func(tview.Primitive),
-	tabIndexSetter func(int),
-	panelFocusSetter func(int, bool),
-) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.Flex, func(int)) {
-	// Create the tab content pages
-	tabPages := tview.NewPages()
-
-	// Create placeholder tabs
-	authTab := createAuthTab(colors.Background, colors.Border, colors.Title, colors.Foreground)
-	queryTab := createQueryTab(colors.Background, colors.Border, colors.Title, colors.Foreground)
-	headersTab := createHeadersTabWithData(colors.Background, colors.Border, colors.Title, colors.Foreground, colors.ButtonSelect, nil, saveCallback, focusSetter)
-
-	// Body tab uses the existing dual-mode container
-	bodyContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	bodyContainer.AddItem(bodyViewPanel, 0, 1, false)
-	bodyContainer.SetBorderColor(colors.Background)
-
-	// Add all tabs to pages
-	tabPages.AddPage("body", bodyContainer, true, true)
-	tabPages.AddPage("auth", authTab, true, false)
-	tabPages.AddPage("query", queryTab, true, false)
-	tabPages.AddPage("headers", headersTab, true, false)
-	tabPages.SetBackgroundColor(colors.Background)
-
-	// Create tab header first
-	var tabHeader *tview.Flex
-	// var switchToTab func(int)
-
-	// Create tab switching function
-	switchToTab := func(tabIndex int) {
-		tabNames := []string{"body", "auth", "query", "headers"}
-		if tabIndex >= 0 && tabIndex < len(tabNames) {
-			tabPages.SwitchToPage(tabNames[tabIndex])
-			// Update current tab index
-			if tabIndexSetter != nil {
-				tabIndexSetter(tabIndex)
-			}
-			// Update the tab header to show the new active tab
-			if tabHeader != nil {
-				tabs := []string{"Body", "Auth", "Query", "Headers"}
-				updateTabHeader(tabs, tabHeader, tabIndex, colors.Background, colors.Foreground, colors.ActiveTab, colors.Selection)
-			}
-
-			// Ensure only the request panel is focused
-			// Unfocus all panels that have borders
-			if panelFocusSetter != nil {
-				// Unfocus all panels: collections, request panel, response
-				for i := 0; i < 3; i++ {
-					if i != 1 { // Don't unfocus request panel itself
-						panelFocusSetter(i, false)
-					}
-				}
-			}
-
-			// Explicitly focus the request panel
-			if panelFocusSetter != nil {
-				panelFocusSetter(1, true)
-			}
-		}
-	}
-
-	// Create tab header
-	tabs := []string{"Body", "Auth", "Query", "Headers"}
-	tabHeader = createTabHeader(tabs, colors.Background, colors.Border, colors.Title, colors.Foreground, colors.ActiveTab, colors.Selection, switchToTab)
-
-	// Create main container with header and content
-	tabContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	tabContainer.AddItem(tabHeader, 1, 0, false)
-	tabContainer.AddItem(tabPages, 0, 1, false)
-	tabContainer.SetBorder(true)
-	tabContainer.SetBorderColor(colors.Border)
-	tabContainer.SetTitle(" Request ")
-	tabContainer.SetTitleColor(colors.Title)
-	tabContainer.SetBackgroundColor(colors.Background)
-
-	return tabContainer, tabPages, bodyContainer, tabHeader, authTab, queryTab, headersTab, switchToTab
-}
-
-// getStatusCodeColors returns appropriate background and foreground colors for HTTP status codes
-func getStatusCodeColors(statusCode int, defaultBg, defaultFg tcell.Color) (tcell.Color, tcell.Color) {
-	var bgColorHex, fgColorHex string
-
-	switch {
-	case statusCode >= 200 && statusCode < 300:
-		// 2xx Success
-		bgColorHex = config.C.StatusColors.Success
-		fgColorHex = config.C.StatusColors.SuccessText
-	case statusCode >= 300 && statusCode < 400:
-		// 3xx Redirection
-		bgColorHex = config.C.StatusColors.Redirection
-		fgColorHex = config.C.StatusColors.RedirectionText
-	case statusCode >= 400 && statusCode < 500:
-		// 4xx Client Error
-		bgColorHex = config.C.StatusColors.ClientError
-		fgColorHex = config.C.StatusColors.ClientErrorText
-	case statusCode >= 500:
-		// 5xx Server Error
-		bgColorHex = config.C.StatusColors.ServerError
-		fgColorHex = config.C.StatusColors.ServerErrorText
-	default:
-		// Unknown/other - Use default from config or fallback to default colors
-		if config.C.StatusColors.Default != "" {
-			return hexToColor(config.C.StatusColors.Default), hexToColor(config.C.StatusColors.DefaultText)
-		}
-		return defaultBg, defaultFg
-	}
-
-	// Convert hex colors
-	return hexToColor(bgColorHex), hexToColor(fgColorHex)
-}
-
-// createResponseInfoBar creates the info bar showing status, time, bytes, and last request time
-func createResponseInfoBar(
-	backgroundColor, foregroundColor, titleColor tcell.Color,
-	response *HTTPResponse,
-	lastRequestTime *time.Time,
-) *tview.Flex {
-	infoBar := tview.NewFlex().SetDirection(tview.FlexColumn)
-	infoBar.SetBackgroundColor(backgroundColor)
-
-	// Status
-	statusText := " --- "
-	statusViewWidth := 5
-	statusBgColor := backgroundColor
-	statusFgColor := foregroundColor
-	if response != nil {
-		statusText = fmt.Sprintf(" %d ", response.StatusCode)
-		statusBgColor, statusFgColor = getStatusCodeColors(response.StatusCode, backgroundColor, foregroundColor)
-	}
-	// Create status container with fixed width
-	statusContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	statusContainer.SetBackgroundColor(statusBgColor)
-
-	statusView := tview.NewTextView()
-	statusView.SetText(statusText)
-	statusView.SetTextColor(statusFgColor)
-	statusView.SetBackgroundColor(statusBgColor)
-	statusView.SetBorder(false)
-
-	statusContainer.AddItem(statusView, statusViewWidth, 0, false) // Fixed width for status code
-
-	// Duration
-	durationText := "Time: -"
-	if response != nil {
-		durationText = fmt.Sprintf("Time: %v", response.Duration.Round(time.Millisecond))
-	}
-	durationView := tview.NewTextView()
-	durationView.SetText(durationText)
-	durationView.SetTextColor(foregroundColor)
-	durationView.SetBackgroundColor(backgroundColor)
-	durationView.SetBorder(false)
-
-	// Size
-	sizeText := "Size: -"
-	if response != nil {
-		sizeText = fmt.Sprintf("Size: %d bytes", response.BodySize)
-	}
-	sizeView := tview.NewTextView()
-	sizeView.SetText(sizeText)
-	sizeView.SetTextColor(foregroundColor)
-	sizeView.SetBackgroundColor(backgroundColor)
-	sizeView.SetBorder(false)
-
-	// Last request time
-	lastTimeText := "Last: never"
-	if lastRequestTime != nil {
-		lastTimeText = fmt.Sprintf("Last: %s ago", timeSinceHuman(*lastRequestTime))
-	}
-	lastView := tview.NewTextView()
-	lastView.SetText(lastTimeText)
-	lastView.SetTextColor(foregroundColor)
-	lastView.SetBackgroundColor(backgroundColor)
-	lastView.SetBorder(false)
-
-	infoBar.AddItem(statusContainer, statusViewWidth, 0, false)
-	infoBar.AddItem(durationView, 0, 1, false)
-	infoBar.AddItem(sizeView, 0, 1, false)
-	infoBar.AddItem(lastView, 0, 1, false)
-
-	return infoBar
-}
-
-// timeSinceHuman returns a human-readable time since the given time
-func timeSinceHuman(t time.Time) string {
-	duration := time.Since(t)
-
-	if duration < time.Minute {
-		return fmt.Sprintf("%ds", int(duration.Seconds()))
-	} else if duration < time.Hour {
-		return fmt.Sprintf("%dm", int(duration.Minutes()))
-	} else if duration < 24*time.Hour {
-		return fmt.Sprintf("%dh", int(duration.Hours()))
-	} else {
-		return fmt.Sprintf("%dd", int(duration.Hours()/24))
-	}
-}
-
-// createResponseTabs creates the tabbed interface for response data
-func createResponseTabs(
-	backgroundColor, borderColor, borderFocusColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor tcell.Color,
-	response *HTTPResponse,
-	lastRequestTime *time.Time,
-) (*tview.Flex, *tview.Pages, *tview.Flex, func(int), *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
-	// Create info bar
-	infoBar := createResponseInfoBar(backgroundColor, foregroundColor, titleColor, response, lastRequestTime)
-
-	// Create the tab content pages
-	tabPages := tview.NewPages()
-
-	// Preview tab - shows formatted response body
-	previewPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
-	if response != nil && response.Body != "" {
-		// Pretty-print JSON if it's valid JSON
-		bodyToFormat := response.Body
-		if strings.TrimSpace(response.Body)[0] == '{' || strings.TrimSpace(response.Body)[0] == '[' {
-			var jsonData interface{}
-			if err := json.Unmarshal([]byte(response.Body), &jsonData); err == nil {
-				// It's valid JSON, pretty-print it
-				prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
-				if err == nil {
-					bodyToFormat = string(prettyJSON)
-				}
-			}
-		}
-		formattedBody := formatBodyContent(bodyToFormat)
-		previewPanel.SetText(formattedBody)
-	} else {
-		previewPanel.SetText("(empty response)")
-	}
-
-	// Headers tab
-	headersPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
-	if response != nil && len(response.Headers) > 0 {
-		var headersText strings.Builder
-		headersText.WriteString("Response Headers:\n\n")
-		for key, values := range response.Headers {
-			for _, value := range values {
-				headersText.WriteString(fmt.Sprintf("%s: %s\n", key, value))
-			}
-		}
-		headersPanel.SetText(headersText.String())
-	} else {
-		headersPanel.SetText("No response headers")
-	}
-
-	// Cookies tab
-	cookiesPanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
-	if response != nil && len(response.Cookies) > 0 {
-		var cookiesText strings.Builder
-		cookiesText.WriteString("Response Cookies:\n\n")
-		for _, cookie := range response.Cookies {
-			cookiesText.WriteString(fmt.Sprintf("Name: %s\n", cookie.Name))
-			cookiesText.WriteString(fmt.Sprintf("Value: %s\n", cookie.Value))
-			if cookie.Domain != "" {
-				cookiesText.WriteString(fmt.Sprintf("Domain: %s\n", cookie.Domain))
-			}
-			if cookie.Path != "" {
-				cookiesText.WriteString(fmt.Sprintf("Path: %s\n", cookie.Path))
-			}
-			if !cookie.Expires.IsZero() {
-				cookiesText.WriteString(fmt.Sprintf("Expires: %s\n", cookie.Expires.Format("2006-01-02 15:04:05")))
-			}
-			cookiesText.WriteString(fmt.Sprintf("Secure: %t\n", cookie.Secure))
-			cookiesText.WriteString(fmt.Sprintf("HttpOnly: %t\n\n", cookie.HttpOnly))
-		}
-		cookiesPanel.SetText(cookiesText.String())
-	} else {
-		cookiesPanel.SetText("No response cookies")
-	}
-
-	// Timeline tab - timing information
-	timelinePanel := createPanel("", backgroundColor, backgroundColor, titleColor, foregroundColor)
-	if response != nil {
-		var timelineText strings.Builder
-		timelineText.WriteString("Request Timeline:\n\n")
-		timelineText.WriteString(fmt.Sprintf("Request sent: %s\n", response.Timestamp.Format("2006-01-02 15:04:05")))
-		timelineText.WriteString(fmt.Sprintf("Response received: %s\n", response.Timestamp.Add(response.Duration).Format("2006-01-02 15:04:05")))
-		timelineText.WriteString(fmt.Sprintf("Total duration: %v\n", response.Duration.Round(time.Millisecond)))
-		timelineText.WriteString(fmt.Sprintf("Response size: %d bytes\n", response.BodySize))
-		timelinePanel.SetText(timelineText.String())
-	} else {
-		timelinePanel.SetText("No request timeline available")
-	}
-
-	// Add all tabs to pages
-	tabPages.AddPage("preview", previewPanel, true, true)
-	tabPages.AddPage("headers", headersPanel, true, false)
-	tabPages.AddPage("cookies", cookiesPanel, true, false)
-	tabPages.AddPage("timeline", timelinePanel, true, false)
-	tabPages.SetBackgroundColor(backgroundColor)
-
-	// Create tab header
-	var tabHeader *tview.Flex
-
-	// Create tab switching function
-	switchToTab := func(tabIndex int) {
-		tabNames := []string{"preview", "headers", "cookies", "timeline"}
-		if tabIndex >= 0 && tabIndex < len(tabNames) {
-			tabPages.SwitchToPage(tabNames[tabIndex])
-			// Update the tab header to show the new active tab
-			if tabHeader != nil {
-				responseTabs := []string{"Preview", "Headers", "Cookies", "Timeline"}
-				updateTabHeader(responseTabs, tabHeader, tabIndex, backgroundColor, foregroundColor, activeTabColor, selectionBackgroundColor)
-			}
-		}
-	}
-
-	// Create tab header
-	responseTabs := []string{"Preview", "Headers", "Cookies", "Timeline"}
-	tabHeader = createTabHeader(responseTabs, backgroundColor, borderColor, titleColor, foregroundColor, activeTabColor, selectionBackgroundColor, switchToTab)
-
-	// Create combined top row: tabs on left, spacer, info bar on right
-	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
-	topRow.SetBackgroundColor(backgroundColor)
-	topRow.AddItem(tabHeader, 0, 1, false) // Tabs take minimal space on left
-	spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
-	topRow.AddItem(spacer, 0, 1, false)  // Spacer takes flexible space in middle
-	topRow.AddItem(infoBar, 0, 1, false) // Info bar takes flexible space on right
-
-	// Create main container with combined row and content
-	tabContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	tabContainer.AddItem(topRow, 1, 0, false)
-	tabContainer.AddItem(tabPages, 0, 1, false)
-	tabContainer.SetBorder(true)
-	tabContainer.SetBorderColor(borderColor)
-	tabContainer.SetTitle(" Response ")
-	tabContainer.SetTitleColor(titleColor)
-	tabContainer.SetBackgroundColor(backgroundColor)
-
-	return tabContainer, tabPages, tabHeader, switchToTab, infoBar, previewPanel, headersPanel, cookiesPanel, timelinePanel
-}
-
-// createEnvironmentVariablesTab creates a tab for editing environment variables
-func createEnvironmentVariablesTab(
-	backgroundColor,
-	borderColor,
-	titleColor,
-	foregroundColor,
-	buttonSelectedColor tcell.Color,
-	initialVariables map[string]string,
-	saveCallback func(),
-	focusSetter func(tview.Primitive),
-) *tview.Flex {
-	envContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	envContainer.SetBackgroundColor(backgroundColor)
-	envContainer.SetBorder(true)
-	envContainer.SetBorderColor(borderColor)
-	envContainer.SetTitle(" Environment Variables ")
-	envContainer.SetTitleColor(titleColor)
-	envContainer.SetBackgroundColor(backgroundColor)
-
-	// Scrollable area for variable entries
-	variablesList := tview.NewFlex().SetDirection(tview.FlexRow)
-	variablesList.SetBackgroundColor(backgroundColor)
-
-	// Store references for global access (similar to headers)
-	currentEnvVarsList = variablesList
-
-	// Function to refresh the UI
-	var refreshEnvUI func()
-	refreshEnvUI = func() {
-		variablesList.Clear()
-		for _, row := range currentEnvRows {
-			variablesList.AddItem(row.Row, rowHeight, 0, false)
-		}
-		// Always keep at least one empty row
-		if len(currentEnvRows) == 0 {
-			addEnvVarRow(variablesList, backgroundColor, foregroundColor, borderColor, refreshEnvUI, saveCallback, focusSetter)
-		}
-	}
-
-	// Initialize global env rows
-	currentEnvRows = []*EnvVarRow{}
-
-	// Add initial rows based on data
-	if initialVariables != nil && len(initialVariables) > 0 {
-		for key, value := range initialVariables {
-			addEnvVarRowWithData(variablesList, backgroundColor, foregroundColor, borderColor, key, value, refreshEnvUI, saveCallback, focusSetter)
-		}
-	}
-	// Always add at least one empty row
-	addEnvVarRow(variablesList, backgroundColor, foregroundColor, borderColor, refreshEnvUI, saveCallback, focusSetter)
-
-	// Add button row at the top
-	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonRow.SetBackgroundColor(backgroundColor)
-
-	addButton := createButton(" Add Variable ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-	addButton.SetBackgroundColorActivated(foregroundColor)
-	addButton.SetLabelColor(backgroundColor)
-	addButton.SetSelectedFunc(func() {
-		addEnvVarRow(variablesList, backgroundColor, foregroundColor, borderColor, refreshEnvUI, saveCallback, focusSetter)
-		refreshEnvUI()
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
-	// Delete all button
-	deleteAllButton := createButton(" Delete All ", borderColor, borderColor, titleColor, foregroundColor, buttonSelectedColor)
-	deleteAllButton.SetBorder(false)
-	deleteAllButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-	deleteAllButton.SetSelectedFunc(func() {
-		// Clear all variable rows
-		currentEnvRows = []*EnvVarRow{}
-		refreshEnvUI()
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
-	buttonRow.AddItem(addButton, 15, 0, false)
-	buttonRow.AddItem(deleteAllButton, 15, 0, false)
-	buttonRow.AddItem(nil, 0, 1, false)
-
-	envContainer.AddItem(buttonRow, 1, 0, false)
-
-	// Add visual spacing between buttons and variables
-	spacer := tview.NewBox().SetBackgroundColor(backgroundColor)
-	envContainer.AddItem(spacer, 1, 0, false)
-
-	envContainer.AddItem(variablesList, 0, 1, false)
-
-	return envContainer
-}
-
-// EnvVarRow represents a single environment variable key-value pair in the UI
-type EnvVarRow struct {
-	KeyInput     *tview.InputField
-	ValueInput   *tview.InputField
-	DeleteButton *tview.Button
-	Row          *tview.Flex
-}
-
-// addEnvVarRow adds a new key-value environment variable input row
-func addEnvVarRow(variablesList *tview.Flex,
-	backgroundColor,
-	foregroundColor,
-	borderColor tcell.Color,
-	refreshUI func(),
-	saveCallback func(),
-	focusSetter func(tview.Primitive),
-) {
-	row := tview.NewFlex().SetDirection(tview.FlexColumn)
-	row.SetBackgroundColor(backgroundColor)
-
-	keyInput := tview.NewInputField()
-	keyInput.SetBackgroundColor(backgroundColor)
-	keyInput.SetFieldBackgroundColor(backgroundColor)
-	keyInput.SetFieldTextColor(foregroundColor)
-	keyInput.SetLabelColor(foregroundColor)
-	keyInput.SetPlaceholder("Variable name")
-	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
-	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-	keyInput.SetFieldBackgroundColor(backgroundColor)
-	keyInput.SetChangedFunc(func(text string) {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-	keyInput.SetBlurFunc(func() {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
-	valueInput := tview.NewInputField()
-	valueInput.SetBackgroundColor(backgroundColor)
-	valueInput.SetFieldBackgroundColor(backgroundColor)
-	valueInput.SetFieldTextColor(foregroundColor)
-	valueInput.SetLabelColor(foregroundColor)
-	valueInput.SetPlaceholder("Variable value")
-	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(hexToColor("#4A5053")))
-	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-	valueInput.SetFieldBackgroundColor(backgroundColor)
-	valueInput.SetChangedFunc(func(text string) {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-	valueInput.SetBlurFunc(func() {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
-	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
-	removeButton.SetBackgroundColor(backgroundColor)
-	removeButton.SetLabelColor(foregroundColor)
-	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
-
-	envVarRow := &EnvVarRow{
-		KeyInput:     keyInput,
-		ValueInput:   valueInput,
-		DeleteButton: removeButton,
-		Row:          row,
-	}
-
-	removeButton.SetSelectedFunc(func() {
-		// Find and remove this row
-		for i, r := range currentEnvRows {
-			if r == envVarRow {
-				currentEnvRows = append(currentEnvRows[:i], currentEnvRows[i+1:]...)
-				refreshUI()
-				if saveCallback != nil {
-					saveCallback()
-				}
-				break
-			}
-		}
-	})
-
-	// Handle Tab navigation for delete button
-	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			// Tab from delete button to next row's key input
-			// Simple implementation: cycle to first row's key input
-			if len(currentEnvRows) > 0 {
-				firstRow := currentEnvRows[0]
-				focusSetter(firstRow.KeyInput)
-			}
-			return nil
-		}
-		return event
-	})
-
-	// Handle Tab to add new variable row when on the last value input
-	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			// Check if this is the last value input
-			if len(currentEnvRows) > 0 && currentEnvRows[len(currentEnvRows)-1] == envVarRow {
-				// Cycle back to first key input
-				firstRow := currentEnvRows[0]
-				focusSetter(firstRow.KeyInput)
-				return nil
-			}
-		}
-		return event
-	})
-
-	// Wrap button in a container to match row height
-	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(backgroundColor)
-	buttonContainer.AddItem(nil, 0, 1, false)
-	buttonContainer.AddItem(removeButton, 1, 0, false)
-	buttonContainer.AddItem(nil, 0, 1, false)
-
-	row.AddItem(keyInput, 0, 1, false)
-	row.AddItem(valueInput, 0, 1, false)
-	row.AddItem(buttonContainer, 4, 0, false)
-
-	currentEnvRows = append(currentEnvRows, envVarRow)
-	variablesList.AddItem(row, rowHeight, 0, false)
-
-	// Add separator line between rows
-	separator := tview.NewBox().SetBackgroundColor(backgroundColor)
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
 	separator.SetBorder(false)
-	variablesList.AddItem(separator, 1, 0, false)
+	headersList.AddItem(separator, 1, 0, false)
 
 	// Update cycles if needed
 	if headersCycle != nil {
@@ -1539,24 +858,24 @@ func addEnvVarRow(variablesList *tview.Flex,
 // addEnvVarRowWithData adds an environment variable row with pre-filled data
 func addEnvVarRowWithData(
 	variablesList *tview.Flex,
-	backgroundColor, foregroundColor, borderColor tcell.Color,
+	colors *ColorManager,
 	key, value string,
 	refreshUI func(),
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 ) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
-	row.SetBackgroundColor(backgroundColor)
+	row.SetBackgroundColor(colors.Background)
 
 	keyInput := tview.NewInputField()
-	keyInput.SetBackgroundColor(backgroundColor)
-	keyInput.SetFieldBackgroundColor(backgroundColor)
-	keyInput.SetFieldTextColor(foregroundColor)
-	keyInput.SetLabelColor(foregroundColor)
+	keyInput.SetBackgroundColor(colors.Background)
+	keyInput.SetFieldBackgroundColor(colors.Background)
+	keyInput.SetFieldTextColor(colors.Foreground)
+	keyInput.SetLabelColor(colors.Foreground)
 	keyInput.SetPlaceholder("Variable name")
-	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 	keyInput.SetText(key)
-	keyInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 	if saveCallback != nil {
 		keyInput.SetChangedFunc(func(text string) {
 			saveCallback()
@@ -1567,14 +886,14 @@ func addEnvVarRowWithData(
 	}
 
 	valueInput := tview.NewInputField()
-	valueInput.SetBackgroundColor(backgroundColor)
-	valueInput.SetFieldBackgroundColor(backgroundColor)
-	valueInput.SetFieldTextColor(foregroundColor)
-	valueInput.SetLabelColor(foregroundColor)
+	valueInput.SetBackgroundColor(colors.Background)
+	valueInput.SetFieldBackgroundColor(colors.Background)
+	valueInput.SetFieldTextColor(colors.Foreground)
+	valueInput.SetLabelColor(colors.Foreground)
 	valueInput.SetPlaceholder("Variable value")
-	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 	valueInput.SetText(value)
-	valueInput.SetFieldStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 	if saveCallback != nil {
 		valueInput.SetChangedFunc(func(text string) {
 			saveCallback()
@@ -1585,10 +904,10 @@ func addEnvVarRowWithData(
 	}
 
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
-	removeButton.SetBackgroundColor(backgroundColor)
-	removeButton.SetLabelColor(foregroundColor)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor))
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
 
 	envVarRow := &EnvVarRow{
 		KeyInput:     keyInput,
@@ -1662,7 +981,7 @@ func addEnvVarRowWithData(
 
 	// Wrap button in a container to match row height
 	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(backgroundColor)
+	buttonContainer.SetBackgroundColor(colors.Background)
 	buttonContainer.AddItem(nil, 0, 1, false)
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
@@ -1675,14 +994,187 @@ func addEnvVarRowWithData(
 	variablesList.AddItem(row, rowHeight, 0, false)
 
 	// Add separator line between rows
-	// separator := tview.NewBox().SetBackgroundColor(backgroundColor)
-	// separator.SetBorder(true)
-	// variablesList.AddItem(separator, 1, 0, false)
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
+	separator.SetBorder(false)
+	variablesList.AddItem(separator, 1, 0, false)
 
 	// Update cycles if needed
 	if headersCycle != nil {
 		headersCycle.UpdateInputs()
 	}
+}
+
+// addEnvVarRow adds a new environment variable row to the variables list
+func addEnvVarRow(variablesList *tview.Flex,
+	colors *ColorManager,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+
+	keyInput := tview.NewInputField()
+	keyInput.SetBackgroundColor(colors.Background)
+	keyInput.SetFieldBackgroundColor(colors.Background)
+	keyInput.SetFieldTextColor(colors.Foreground)
+	keyInput.SetLabelColor(colors.Foreground)
+	keyInput.SetPlaceholder("Variable name")
+	keyInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
+	keyInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	keyInput.SetFieldBackgroundColor(colors.Background)
+	keyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	keyInput.SetBlurFunc(func() {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	valueInput := tview.NewInputField()
+	valueInput.SetBackgroundColor(colors.Background)
+	valueInput.SetFieldBackgroundColor(colors.Background)
+	valueInput.SetFieldTextColor(colors.Foreground)
+	valueInput.SetLabelColor(colors.Foreground)
+	valueInput.SetPlaceholder("Variable value")
+	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
+	valueInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	valueInput.SetFieldBackgroundColor(colors.Background)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.SetBlurFunc(func() {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+
+	envVarRow := &EnvVarRow{
+		KeyInput:     keyInput,
+		ValueInput:   valueInput,
+		DeleteButton: removeButton,
+		Row:          row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		// Find and remove this row
+		for i, r := range currentEnvRows {
+			if r == envVarRow {
+				currentEnvRows = append(currentEnvRows[:i], currentEnvRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Handle Tab navigation for delete button
+	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Tab from delete button to next row's key input
+			// Simple implementation: cycle to first row's key input
+			if len(currentEnvRows) > 0 {
+				firstRow := currentEnvRows[0]
+				focusSetter(firstRow.KeyInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Handle Tab to add new variable row when on the last value input
+	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Check if this is the last value input
+			if len(currentEnvRows) > 0 && currentEnvRows[len(currentEnvRows)-1] == envVarRow {
+				// Cycle back to first key input
+				firstRow := currentEnvRows[0]
+				focusSetter(firstRow.KeyInput)
+				return nil
+			}
+		}
+		return event
+	})
+
+	// Wrap button in a container to match row height
+	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonContainer.SetBackgroundColor(colors.Background)
+	buttonContainer.AddItem(nil, 0, 1, false)
+	buttonContainer.AddItem(removeButton, 1, 0, false)
+	buttonContainer.AddItem(nil, 0, 1, false)
+
+	row.AddItem(keyInput, 0, 1, false)
+	row.AddItem(valueInput, 0, 1, false)
+	row.AddItem(buttonContainer, 4, 0, false)
+
+	currentEnvRows = append(currentEnvRows, envVarRow)
+	variablesList.AddItem(row, rowHeight, 0, false)
+
+	// Add separator line between rows
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
+	separator.SetBorder(false)
+	variablesList.AddItem(separator, 1, 0, false)
+
+	// Update cycles if needed
+	if headersCycle != nil {
+		headersCycle.UpdateInputs()
+	}
+}
+
+// setHeadersInUI populates the UI with the given headers
+func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
+	// Clear existing rows
+	currentHeaderRows = []*HeaderRow{}
+
+	if currentHeadersList != nil {
+		currentHeadersList.Clear()
+
+		// Add rows for each header (sorted by key for consistent ordering)
+		var keys []string
+		for key := range headers {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			value := headers[key]
+			addHeaderRowWithData(currentHeadersList, colors, key, value, func() {
+				// Refresh function - for now just rebuild the list
+				setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter)
+			}, saveCallback, focusSetter)
+		}
+
+		// Always add one empty row
+		addHeaderRow(currentHeadersList, colors, func() {
+			setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter)
+		}, saveCallback, focusSetter)
+	}
+}
+
+// getHeadersFromUI extracts headers from the current UI state
+func getHeadersFromUI() map[string]string {
+	headers := make(map[string]string)
+	for _, row := range currentHeaderRows {
+		key := strings.TrimSpace(row.KeyInput.GetText())
+		value := strings.TrimSpace(row.ValueInput.GetText())
+		if key != "" {
+			headers[key] = value
+		}
+	}
+	return headers
 }
 
 // getEnvVarsFromUI extracts environment variables from the current UI state
@@ -1699,18 +1191,12 @@ func getEnvVarsFromUI() map[string]string {
 }
 
 // setEnvVarsInUI populates the UI with the given environment variables
-func setEnvVarsInUI(variables map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
+func setEnvVarsInUI(colors *ColorManager, variables map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
 	// Clear existing rows
 	currentEnvRows = []*EnvVarRow{}
 
 	if currentEnvVarsList != nil {
 		currentEnvVarsList.Clear()
-
-		// Get current theme colors
-		theme := config.C.Theme
-		backgroundColor := hexToColor(theme.BackgroundColor)
-		foregroundColor := hexToColor(theme.ForegroundColor)
-		borderColor := hexToColor(theme.BorderColor)
 
 		// Add rows for each variable (sorted by key for consistent ordering)
 		var keys []string
@@ -1721,15 +1207,15 @@ func setEnvVarsInUI(variables map[string]string, saveCallback func(), focusSette
 
 		for _, key := range keys {
 			value := variables[key]
-			addEnvVarRowWithData(currentEnvVarsList, backgroundColor, foregroundColor, borderColor, key, value, func() {
+			addEnvVarRowWithData(currentEnvVarsList, colors, key, value, func() {
 				// Refresh function - for now just rebuild the list
-				setEnvVarsInUI(getEnvVarsFromUI(), saveCallback, focusSetter)
+				setEnvVarsInUI(colors, getEnvVarsFromUI(), saveCallback, focusSetter)
 			}, saveCallback, focusSetter)
 		}
 
 		// Always add one empty row
-		addEnvVarRow(currentEnvVarsList, backgroundColor, foregroundColor, borderColor, func() {
-			setEnvVarsInUI(getEnvVarsFromUI(), saveCallback, focusSetter)
+		addEnvVarRow(currentEnvVarsList, colors, func() {
+			setEnvVarsInUI(colors, getEnvVarsFromUI(), saveCallback, focusSetter)
 		}, saveCallback, focusSetter)
 	}
 
@@ -1737,6 +1223,184 @@ func setEnvVarsInUI(variables map[string]string, saveCallback func(), focusSette
 	if headersCycle != nil {
 		headersCycle.UpdateInputs()
 	}
+}
+
+// formatSize formats a size in bytes to a human-readable string
+func formatSize(size int) string {
+	if size < 1024 {
+		return fmt.Sprintf("%d B", size)
+	} else if size < 1024*1024 {
+		return fmt.Sprintf("%.1f KB", float64(size)/1024)
+	} else {
+		return fmt.Sprintf("%.1f MB", float64(size)/(1024*1024))
+	}
+}
+
+// createResponseInfoBar creates the response information bar
+func createResponseInfoBar(backgroundColor, foregroundColor, titleColor tcell.Color, resp *HTTPResponse, lastTime *time.Time) *tview.Flex {
+	infoBar := tview.NewFlex().SetDirection(tview.FlexColumn)
+	infoBar.SetBackgroundColor(backgroundColor)
+
+	if resp == nil {
+		// No response yet
+		noResponseText := tview.NewTextView()
+		noResponseText.SetBackgroundColor(backgroundColor)
+		noResponseText.SetTextColor(foregroundColor)
+		noResponseText.SetText("No response")
+		infoBar.AddItem(noResponseText, 0, 1, false)
+		return infoBar
+	}
+
+	// Status code and status
+	statusText := tview.NewTextView()
+	// statusText.SetBackgroundColor(backgroundColor)
+	statusText.SetBackgroundColor(hexToColor("#00FF00"))
+	statusText.SetTextColor(titleColor)
+	statusText.SetText(fmt.Sprintf("%d %s", resp.StatusCode, resp.Status))
+	statusText.SetTextAlign(tview.AlignLeft)
+	infoBar.AddItem(statusText, 15, 0, false)
+
+	// Size
+	sizeText := tview.NewTextView()
+	sizeText.SetBackgroundColor(backgroundColor)
+	sizeText.SetTextColor(foregroundColor)
+	sizeText.SetText(fmt.Sprintf("Size: %s", formatSize(resp.BodySize)))
+	sizeText.SetTextAlign(tview.AlignRight)
+	infoBar.AddItem(sizeText, 15, 0, false)
+
+	// Time
+	timeText := tview.NewTextView()
+	timeText.SetBackgroundColor(hexToColor("#FF0000"))
+	timeText.SetTextColor(foregroundColor)
+	if lastTime != nil {
+		// Convert duration to seconds and format with 2 decimal places
+		seconds := float64(resp.Duration) / 1e9
+		timeText.SetText(fmt.Sprintf("Time: %.2f s", seconds))
+	} else {
+		timeText.SetText("Time: -")
+	}
+	timeText.SetTextAlign(tview.AlignRight)
+	infoBar.AddItem(timeText, 0, 1, false)
+
+	return infoBar
+}
+
+// createRequestDataTabs creates the request data tabs interface
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive)) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex) {
+	// Create main request data container
+	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
+	requestDataTabs.SetBackgroundColor(colors.Background)
+	requestDataTabs.SetBorder(true)
+	requestDataTabs.SetBorderColor(colors.Border)
+	requestDataTabs.SetTitle(" Request ")
+	requestDataTabs.SetTitleColor(colors.Title)
+
+	// Create tab header
+	tabHeader := createTabHeader([]string{"Body", "Auth", "Query", "Headers"}, colors, func(index int) {
+		if tabIndexSetter != nil {
+			tabIndexSetter(index)
+		}
+	})
+
+	// Create tab pages
+	tabPages := tview.NewPages()
+	tabPages.SetBackgroundColor(colors.Background)
+
+	// Create body container (switch between view and edit)
+	bodyContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	bodyContainer.SetBackgroundColor(colors.Background)
+	bodyContainer.AddItem(bodyViewPanel, 0, 1, false)
+
+	// Create auth tab
+	authTab := createAuthTab(colors)
+
+	// Create query tab
+	queryTab := createQueryTab(colors)
+
+	// Create headers tab
+	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter)
+
+	// Add pages
+	tabPages.AddPage("body", bodyContainer, true, true)
+	tabPages.AddPage("auth", authTab, true, false)
+	tabPages.AddPage("query", queryTab, true, false)
+	tabPages.AddPage("headers", headersTab, true, false)
+
+	// Add to main container
+	requestDataTabs.AddItem(tabHeader, 1, 0, false)
+	requestDataTabs.AddItem(tabPages, 0, 1, false)
+
+	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab
+}
+
+// createResponseTabs creates the response tabs interface
+func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
+	// Create main response container
+	response := tview.NewFlex().SetDirection(tview.FlexRow)
+	response.SetBackgroundColor(colors.Background)
+	response.SetBorder(true)
+	response.SetBorderColor(colors.Border)
+	response.SetTitle(" Response ")
+	response.SetTitleColor(colors.Title)
+
+	// Create tab header
+	responseTabHeader := createTabHeader([]string{"Preview", "Headers", "Cookies", "Timeline"}, colors, func(int) {})
+
+	// Create info bar
+	responseInfoBar := createResponseInfoBar(colors.Background, colors.Foreground, colors.Title, resp, lastTime)
+
+	// Create top row with tab header and info bar
+	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	topRow.SetBackgroundColor(colors.Background)
+	topRow.AddItem(responseTabHeader, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	topRow.AddItem(spacer, 0, 1, false)
+	topRow.AddItem(responseInfoBar, 44, 0, false)
+
+	// Create tab pages
+	responsePages := tview.NewPages()
+	responsePages.SetBackgroundColor(colors.Background)
+
+	// Create individual tab panels
+	responsePreviewPanel := createPanel(" Response Body ", colors, &PanelOptions{
+		HasBorder: &[]bool{false}[0],
+	})
+
+	responseHeadersPanel := tview.NewTextView()
+	responseHeadersPanel.SetBackgroundColor(colors.Background)
+	responseHeadersPanel.SetTextColor(colors.Foreground)
+	responseHeadersPanel.SetBorder(true)
+	responseHeadersPanel.SetTitle(" Response Headers ")
+	responseHeadersPanel.SetTitleColor(colors.Title)
+	responseHeadersPanel.SetBorderColor(colors.Border)
+
+	responseCookiesPanel := tview.NewTextView()
+	responseCookiesPanel.SetBackgroundColor(colors.Background)
+	responseCookiesPanel.SetTextColor(colors.Foreground)
+	responseCookiesPanel.SetBorder(true)
+	responseCookiesPanel.SetTitle(" Response Cookies ")
+	responseCookiesPanel.SetTitleColor(colors.Title)
+	responseCookiesPanel.SetBorderColor(colors.Border)
+
+	responseTimelinePanel := tview.NewTextView()
+	responseTimelinePanel.SetBackgroundColor(colors.Background)
+	responseTimelinePanel.SetTextColor(colors.Foreground)
+	responseTimelinePanel.SetBorder(true)
+	responseTimelinePanel.SetTitle(" Response Timeline ")
+	responseTimelinePanel.SetTitleColor(colors.Title)
+	responseTimelinePanel.SetBorderColor(colors.Border)
+
+	// Add pages
+	responsePages.AddPage("preview", responsePreviewPanel, true, true)
+	responsePages.AddPage("headers", responseHeadersPanel, true, false)
+	responsePages.AddPage("cookies", responseCookiesPanel, true, false)
+	responsePages.AddPage("timeline", responseTimelinePanel, true, false)
+
+	// Add to main container
+	response.AddItem(topRow, 1, 0, false)
+	response.AddItem(responsePages, 0, 1, false)
+
+	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel
 }
 
 // createModal creates a centered modal dialog

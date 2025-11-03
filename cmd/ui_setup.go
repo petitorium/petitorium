@@ -33,7 +33,7 @@ type UIComponents struct {
 // setupUIComponents creates and configures all UI components
 func setupUIComponents(colors *ColorManager) *UIComponents {
 	// Create header panel
-	header := createPanel(" Petitorium ", colors.Background, colors.Border, colors.Title, colors.Foreground)
+	header := createPanel(" Petitorium ", colors, nil)
 
 	// Create root node for tree
 	rootNode := tview.NewTreeNode("").SetSelectable(false)
@@ -41,40 +41,25 @@ func setupUIComponents(colors *ColorManager) *UIComponents {
 	// Create unified method+URL+Send bar
 	methodURLBar, methodDropdown, urlInput, sendButton := createMethodURLBar(
 		"",
-		colors.Background,
-		colors.Border,
-		colors.Title,
-		colors.Foreground,
-		colors.Selection,
-		colors.ActiveTab,
-		colors.ButtonSelect,
-		colors.DropdownFocus,
+		colors,
 	)
 
 	// Create both view and edit panels for body
-	bodyViewPanel := createPanel(" Body (VIEW) ", colors.Background, colors.Background, colors.Title, colors.Foreground)
+	bodyViewPanel := createPanel(" Body (VIEW) ", colors, &PanelOptions{HasBorder: &[]bool{true}[0], BorderColor: &colors.Background})
 	bodyEditPanel := createTextArea(" Body (EDIT) ", colors.Background, colors.Border, colors.Title, colors.Foreground)
 
 	// Create response tabs panel
 	response, responsePages, responseTabHeader, _, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel := createResponseTabs(
-		colors.Background, colors.Border, colors.BorderFocus, colors.Title, colors.Foreground, colors.ActiveTab, colors.Selection,
+		colors,
 		nil, nil, // No initial response or last request time
 	)
 
 	// Create footer panel
-	footer := createPanel("", colors.Background, colors.Border, colors.Title, colors.Foreground)
+	footer := createPanel("", colors, nil)
 
 	// Create environment panel with dropdown and config button
 	environmentPanel, envDropdown, envConfigButton, envIndicatorButton := createEnvironmentPanel(
-		colors.Background,
-		colors.Border,
-		colors.BorderFocus,
-		colors.Title,
-		colors.Foreground,
-		colors.Selection,
-		colors.ActiveTab,
-		colors.ButtonSelect,
-		colors.DropdownFocus,
+		colors,
 	)
 
 	// Create collections tree view
