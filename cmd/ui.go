@@ -1253,12 +1253,11 @@ func createResponseInfoBar(backgroundColor, foregroundColor, titleColor tcell.Co
 
 	// Status code and status
 	statusText := tview.NewTextView()
-	// statusText.SetBackgroundColor(backgroundColor)
-	statusText.SetBackgroundColor(hexToColor("#00FF00"))
+	statusText.SetBackgroundColor(hexToColor("#343a40"))
 	statusText.SetTextColor(titleColor)
-	statusText.SetText(fmt.Sprintf("%d %s", resp.StatusCode, resp.Status))
-	statusText.SetTextAlign(tview.AlignLeft)
-	infoBar.AddItem(statusText, 15, 0, false)
+	statusText.SetText(fmt.Sprintf("%d", resp.StatusCode))
+	statusText.SetTextAlign(tview.AlignCenter)
+	infoBar.AddItem(statusText, 5, 0, false)
 
 	// Size
 	sizeText := tview.NewTextView()
@@ -1270,7 +1269,7 @@ func createResponseInfoBar(backgroundColor, foregroundColor, titleColor tcell.Co
 
 	// Time
 	timeText := tview.NewTextView()
-	timeText.SetBackgroundColor(hexToColor("#FF0000"))
+	timeText.SetBackgroundColor(backgroundColor)
 	timeText.SetTextColor(foregroundColor)
 	if lastTime != nil {
 		// Convert duration to seconds and format with 2 decimal places
