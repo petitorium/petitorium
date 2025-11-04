@@ -125,6 +125,9 @@ func createEnvironmentListPanel(
 				}
 			}
 			return nil // Consume the event
+		case 'n':
+			onCreateNew()
+			return nil // Consume the event
 		}
 		return event
 	})
