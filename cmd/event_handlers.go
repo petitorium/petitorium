@@ -458,47 +458,47 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'm' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
-				if col, ok := node.GetReference().(workspace.Collection); ok {
-					// Move collection
-					form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-					modal := createModal(form, 40, 12, tcell.ColorDefault)
-					ui.Pages.AddPage("moveCollection", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				} else if req, ok := node.GetReference().(workspace.Request); ok {
-					// Move request
-					form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-					modal := createModal(form, 40, 10, tcell.ColorDefault)
-					ui.Pages.AddPage("moveRequest", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				}
+				// if col, ok := node.GetReference().(workspace.Collection); ok {
+				// 	// Move collection
+				// 	form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+				// 	modal := createModal(form, 40, 12, tcell.ColorDefault)
+				// 	ui.Pages.AddPage("moveCollection", modal, true, true)
+				// 	ui.App.SetFocus(form)
+				// 	return nil
+				// } else if req, ok := node.GetReference().(workspace.Request); ok {
+				// 	// Move request
+				// 	form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+				// 	modal := createModal(form, 40, 10, tcell.ColorDefault)
+				// 	ui.Pages.AddPage("moveRequest", modal, true, true)
+				// 	ui.App.SetFocus(form)
+				// 	return nil
+				// }
 			}
 		}
 
-		// Delete functionality (d)
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'd' {
-			node := ui.CollectionsTreeView.GetCurrentNode()
-			if node != nil {
-				reference := node.GetReference()
+		// // Delete functionality (d)
+		// if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'd' {
+		// 	node := ui.CollectionsTreeView.GetCurrentNode()
+		// 	if node != nil {
+		// 		reference := node.GetReference()
 
-				if col, ok := reference.(workspace.Collection); ok {
-					// Delete collection with confirmation
-					form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-					modal := createModal(form, 50, 8, tcell.ColorDefault)
-					ui.Pages.AddPage("deleteCollection", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				} else if req, ok := reference.(workspace.Request); ok {
-					// Delete request with confirmation
-					form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-					modal := createModal(form, 50, 8, tcell.ColorDefault)
-					ui.Pages.AddPage("deleteRequest", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				}
-			}
-		}
+		// 		if col, ok := reference.(workspace.Collection); ok {
+		// 			// Delete collection with confirmation
+		// 			form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+		// 			modal := createModal(form, 50, 8, tcell.ColorDefault)
+		// 			ui.Pages.AddPage("deleteCollection", modal, true, true)
+		// 			ui.App.SetFocus(form)
+		// 			return nil
+		// 		} else if req, ok := reference.(workspace.Request); ok {
+		// 			// Delete request with confirmation
+		// 			form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+		// 			modal := createModal(form, 50, 8, tcell.ColorDefault)
+		// 			ui.Pages.AddPage("deleteRequest", modal, true, true)
+		// 			ui.App.SetFocus(form)
+		// 			return nil
+		// 		}
+		// 	}
+		// }
 
 		// F4 to open body in external editor
 		if ui.MainCycle.current == ui.RequestIndex && event.Key() == tcell.KeyF4 {

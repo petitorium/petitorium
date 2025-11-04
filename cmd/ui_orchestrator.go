@@ -296,7 +296,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	updateFooterFunc := func() {
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
 		if currentPage == "envVariables" {
-			uiOrchestrator.Footer.SetText(" Environment Config: (j/k) Navigate | (Enter) Select | (n) New Environment | (d) Delete Environment | (Esc/q) Close")
+			uiOrchestrator.Footer.SetText(" Environment Config: (j/k) Navigate | (Enter) Select | (n) New Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close")
 			return
 		}
 		switch uiOrchestrator.MainCycle.current {

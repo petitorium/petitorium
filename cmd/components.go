@@ -83,6 +83,7 @@ func createEnvironmentListPanel(
 	onEnvironmentSelected func(*workspace.Environment),
 	onCreateNew func(),
 	onDelete func(*workspace.Environment),
+	onRename func(*workspace.Environment),
 ) *tview.List {
 	list := tview.NewList()
 	list.SetBackgroundColor(backgroundColor)
@@ -127,6 +128,15 @@ func createEnvironmentListPanel(
 			return nil // Consume the event
 		case 'n':
 			onCreateNew()
+			return nil // Consume the event
+		case 'r', 'R':
+			currentItem := list.GetCurrentItem()
+			if currentItem > 0 && currentItem <= len(environments) {
+				env := &environments[currentItem-1]
+				if env.Name != "Base" {
+					onRename(env)
+				}
+			}
 			return nil // Consume the event
 		}
 		return event

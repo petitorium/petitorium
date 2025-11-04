@@ -74,12 +74,37 @@ func showEnvironmentModal(
 
 	var onCreateNew func()
 	var onDelete func(*workspace.Environment)
+	var onRename func(*workspace.Environment)
 
 	onDelete = func(env *workspace.Environment) {
 		currentFocus := ui.App.GetFocus()
 		form := createDeleteEnvironmentConfirm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.EnvDropdown, ui.EnvConfigButton, ui.Colors, currentFocus)
-		modal := createModal(form, 50, 8, ui.Colors.Background)
+		modal := createModal(form, 50, 8, ui.Colors.Background).(*tview.Flex)
+		modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("deleteEnvironment")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
 		ui.Pages.AddPage("deleteEnvironment", modal, true, true)
+		ui.App.SetFocus(form)
+	}
+
+	onRename = func(env *workspace.Environment) {
+		currentFocus := ui.App.GetFocus()
+		form := createRenameEnvironmentForm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.EnvDropdown, ui.EnvConfigButton, ui.Colors, currentFocus)
+		modal := createModal(form, 25, 10, ui.Colors.Background).(*tview.Flex)
+		modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("renameEnvironment")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
+		ui.Pages.AddPage("renameEnvironment", modal, true, true)
 		ui.App.SetFocus(form)
 	}
 
@@ -115,12 +140,25 @@ func showEnvironmentModal(
 			onEnvironmentSelected,
 			onCreateNew,
 			onDelete,
+			onRename,
 		)
 
 		// Replace the left panel with the updated one
 		content := tview.NewFlex().
 			AddItem(newLeftPanel, 0, 4, false). // 40% for left panel
 			AddItem(jsonEditor, 0, 6, false)    // 60% for JSON editor
+
+		content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyTab {
+				if ui.App.GetFocus() == newLeftPanel {
+					ui.App.SetFocus(jsonEditor)
+				} else {
+					ui.App.SetFocus(newLeftPanel)
+				}
+				return nil
+			}
+			return event
+		})
 
 		modal := createModal(content, 120, 40, ui.Colors.Background)
 		ui.Pages.RemovePage("envVariables")
@@ -140,12 +178,25 @@ func showEnvironmentModal(
 		onEnvironmentSelected,
 		onCreateNew,
 		onDelete,
+		onRename,
 	)
 
 	// Create split layout: left 40%, right 60%
 	content := tview.NewFlex().
 		AddItem(leftPanel, 0, 4, false). // 40% for left panel
 		AddItem(jsonEditor, 0, 6, false) // 60% for JSON editor
+
+	content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			if ui.App.GetFocus() == leftPanel {
+				ui.App.SetFocus(jsonEditor)
+			} else {
+				ui.App.SetFocus(leftPanel)
+			}
+			return nil
+		}
+		return event
+	})
 
 	modal := createModal(content, 120, 40, ui.Colors.Background)
 	ui.Pages.AddPage("envVariables", modal, true, true)
@@ -154,6 +205,10 @@ func showEnvironmentModal(
 
 	// Add keybinding to close modal with Escape, q, or Q using the keybinding manager
 	ui.Pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		currentPage, _ := ui.Pages.GetFrontPage()
+		if currentPage != "envVariables" {
+			return event
+		}
 		// First try modal keybindings
 		if result := ui.KeyManager.HandleKeyEvent(ui, event, "modal"); result != event {
 			// Save the JSON back to environment variables if editing existing environment

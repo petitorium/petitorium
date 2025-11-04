@@ -398,348 +398,6 @@ func createRenameRequestForm(app *tview.Application,
 	return form
 }
 
-func createRenameEnvironmentForm(app *tview.Application,
-	pages *tview.Pages,
-	selectedEnvironment *workspace.Environment,
-	environmentsData *[]workspace.Environment,
-	envDropdown *tview.DropDown,
-	colors *ColorManager,
-) *tview.Form {
-
-	form := tview.NewForm()
-	form.SetBackgroundColor(colors.Background)
-	form.SetBorderColor(colors.BorderFocus)
-	form.SetTitleColor(colors.Title)
-	form.SetFieldBackgroundColor(colors.Background)
-	form.SetFieldTextColor(colors.Foreground)
-	form.SetLabelColor(colors.Foreground)
-	form.SetButtonBackgroundColor(colors.Background)
-	form.SetButtonTextColor(colors.Foreground)
-
-	form.AddInputField("Environment Name", selectedEnvironment.Name, 30, nil, nil)
-
-	form.AddButton("Save", func() {
-		newName := form.GetFormItem(0).(*tview.InputField).GetText()
-		if strings.TrimSpace(newName) == "" {
-			return
-		}
-
-		// Find and update the environment in environmentsData
-		for i := range *environmentsData {
-			if (*environmentsData)[i].Name == selectedEnvironment.Name {
-				(*environmentsData)[i].Name = newName
-				break
-			}
-		}
-
-		// Save environments
-		if err := workspace.SaveEnvironments(*environmentsData); err != nil {
-			// Handle error
-		}
-
-		// Update environment dropdown
-		updateEnvironmentDropdown(envDropdown, *environmentsData)
-
-		pages.RemovePage("renameEnvironment")
-		pages.SwitchToPage("main")
-		app.SetFocus(envDropdown)
-	})
-
-	form.AddButton("Cancel", func() {
-		pages.RemovePage("renameEnvironment")
-		pages.SwitchToPage("main")
-		app.SetFocus(envDropdown)
-	})
-
-	form.SetBorder(true).SetTitle(" Rename Environment ")
-	return form
-}
-
-func createMoveCollectionForm(app *tview.Application,
-	pages *tview.Pages,
-	selectedCollection *workspace.Collection,
-	collectionsData *[]workspace.Collection,
-	rootNode *tview.TreeNode,
-	collectionsTreeView *tview.TreeView,
-	node *tview.TreeNode,
-	colors *ColorManager,
-) *tview.Form {
-
-	form := tview.NewForm()
-	form.SetBackgroundColor(colors.Background)
-	form.SetBorderColor(colors.BorderFocus)
-	form.SetTitleColor(colors.Title)
-	form.SetFieldBackgroundColor(colors.Background)
-	form.SetFieldTextColor(colors.Foreground)
-	form.SetLabelColor(colors.Foreground)
-	form.SetButtonBackgroundColor(colors.Background)
-	form.SetButtonTextColor(colors.Foreground)
-
-	// Get all available collections for movement targets
-	var targetOptions []string
-	targetOptions = append(targetOptions, "(Root Level)")
-
-	var addCollectionsToOptions func(collections []workspace.Collection, prefix string)
-	addCollectionsToOptions = func(collections []workspace.Collection, prefix string) {
-		for _, col := range collections {
-			if col.Name != selectedCollection.Name { // Don't allow moving into itself
-				targetOptions = append(targetOptions, prefix+col.Name)
-				if len(col.Collections) > 0 {
-					addCollectionsToOptions(col.Collections, prefix+col.Name+" → ")
-				}
-			}
-		}
-	}
-	addCollectionsToOptions(*collectionsData, "")
-
-	form.AddDropDown("Move to", targetOptions, 0, nil)
-
-	form.AddButton("Move", func() {
-		_, target := form.GetFormItem(0).(*tview.DropDown).GetCurrentOption()
-
-		// Remove collection from current location
-		var removeFromCollection func(collections *[]workspace.Collection) bool
-		removeFromCollection = func(collections *[]workspace.Collection) bool {
-			for i := range *collections {
-				if (*collections)[i].Name == selectedCollection.Name {
-					// Remove from current location
-					*collections = append((*collections)[:i], (*collections)[i+1:]...)
-					return true
-				}
-				if len((*collections)[i].Collections) > 0 {
-					if removeFromCollection(&(*collections)[i].Collections) {
-						return true
-					}
-				}
-			}
-			return false
-		}
-
-		// Remove from current location
-		removeFromCollection(collectionsData)
-
-		// Add to target location
-		if target == "(Root Level)" {
-			// Add to root
-			*collectionsData = append(*collectionsData, *selectedCollection)
-		} else {
-			// Find target collection and add to it
-			targetName := strings.Split(target, " → ")[0]
-			var addToCollection func(collections *[]workspace.Collection) bool
-			addToCollection = func(collections *[]workspace.Collection) bool {
-				for i := range *collections {
-					if (*collections)[i].Name == targetName {
-						(*collections)[i].Collections = append((*collections)[i].Collections, *selectedCollection)
-						return true
-					}
-					if len((*collections)[i].Collections) > 0 {
-						if addToCollection(&(*collections)[i].Collections) {
-							return true
-						}
-					}
-				}
-				return false
-			}
-			addToCollection(collectionsData)
-		}
-
-		// Rebuild the tree
-		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
-
-		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
-			// Handle error
-		}
-
-		pages.RemovePage("moveCollection")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	})
-
-	form.AddButton("Cancel", func() {
-		pages.RemovePage("moveCollection")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	})
-
-	cancelFunc := func() {
-		pages.RemovePage("moveCollection")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	}
-
-	form.SetCancelFunc(cancelFunc)
-
-	form.SetBorder(true).SetTitle(" Move Collection ")
-	return form
-}
-
-func createMoveRequestForm(app *tview.Application,
-	pages *tview.Pages,
-	selectedRequest *workspace.Request,
-	collectionsData *[]workspace.Collection,
-	rootNode *tview.TreeNode,
-	collectionsTreeView *tview.TreeView,
-	colors *ColorManager,
-) *tview.Form {
-
-	form := tview.NewForm()
-	form.SetBackgroundColor(colors.Background)
-	form.SetBorderColor(colors.BorderFocus)
-	form.SetTitleColor(colors.Title)
-	form.SetFieldBackgroundColor(colors.Background)
-	form.SetFieldTextColor(colors.Foreground)
-	form.SetLabelColor(colors.Foreground)
-	form.SetButtonBackgroundColor(colors.Background)
-	form.SetButtonTextColor(colors.Foreground)
-
-	// Get all available collections for movement targets
-	var targetOptions []string
-
-	var addCollectionsToOptions func(collections []workspace.Collection, prefix string)
-	addCollectionsToOptions = func(collections []workspace.Collection, prefix string) {
-		for _, col := range collections {
-			targetOptions = append(targetOptions, prefix+col.Name)
-			if len(col.Collections) > 0 {
-				addCollectionsToOptions(col.Collections, prefix+col.Name+" → ")
-			}
-		}
-	}
-	addCollectionsToOptions(*collectionsData, "")
-
-	form.AddDropDown("Move to", targetOptions, 0, nil)
-
-	cancelFunc := func() {
-		pages.RemovePage("moveRequest")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	}
-
-	form.AddButton("Move", func() {
-		_, target := form.GetFormItem(0).(*tview.DropDown).GetCurrentOption()
-
-		// Remove request from current location
-		var removeFromCollection func(collections *[]workspace.Collection) bool
-		removeFromCollection = func(collections *[]workspace.Collection) bool {
-			for i := range *collections {
-				// Check if request is in this collection
-				for j := len((*collections)[i].Requests) - 1; j >= 0; j-- {
-					req := (*collections)[i].Requests[j]
-					if req.Name == selectedRequest.Name && req.Method == selectedRequest.Method && req.URL == selectedRequest.URL {
-						// Remove from current location
-						(*collections)[i].Requests = append((*collections)[i].Requests[:j], (*collections)[i].Requests[j+1:]...)
-						return true
-					}
-				}
-				// Check nested collections
-				if len((*collections)[i].Collections) > 0 {
-					if removeFromCollection(&(*collections)[i].Collections) {
-						return true
-					}
-				}
-			}
-			return false
-		}
-
-		// Remove from current location
-		removeFromCollection(collectionsData)
-
-		// Add to target location
-		targetName := strings.Split(target, " → ")[0]
-		var addToCollection func(collections *[]workspace.Collection) bool
-		addToCollection = func(collections *[]workspace.Collection) bool {
-			for i := range *collections {
-				if (*collections)[i].Name == targetName {
-					(*collections)[i].Requests = append((*collections)[i].Requests, *selectedRequest)
-					return true
-				}
-				if len((*collections)[i].Collections) > 0 {
-					if addToCollection(&(*collections)[i].Collections) {
-						return true
-					}
-				}
-			}
-			return false
-		}
-		addToCollection(collectionsData)
-
-		// Rebuild the tree
-		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
-
-		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
-			// Handle error
-		}
-
-		cancelFunc()
-	})
-
-	form.AddButton("Cancel", func() {
-		pages.RemovePage("moveRequest")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	})
-
-	form.SetCancelFunc(cancelFunc)
-
-	form.SetBorder(true).SetTitle(" Move Request ")
-	return form
-}
-
-func createDeleteCollectionConfirm(app *tview.Application,
-	pages *tview.Pages,
-	selectedCollection *workspace.Collection,
-	collectionsData *[]workspace.Collection,
-	rootNode *tview.TreeNode,
-	collectionsTreeView *tview.TreeView,
-	node *tview.TreeNode,
-	colors *ColorManager,
-) *tview.Form {
-
-	form := tview.NewForm()
-	form.SetBackgroundColor(colors.Background)
-	form.SetBorderColor(colors.BorderFocus)
-	form.SetTitleColor(colors.Title)
-	form.SetLabelColor(colors.Foreground)
-	form.SetButtonBackgroundColor(colors.Background)
-	form.SetButtonTextColor(colors.Foreground)
-
-	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the collection '%s'?\nThis will also delete all nested collections and requests.", selectedCollection.Name), 0, 2, false, false)
-
-	form.AddButton("Delete", func() {
-		// Remove collection from data
-		deleteCollectionFromData(collectionsData, selectedCollection.Name)
-
-		// Rebuild tree from updated data
-		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
-
-		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
-			// Handle error
-		}
-
-		pages.RemovePage("deleteCollection")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	})
-
-	cancelFunc := func() {
-		pages.RemovePage("deleteCollection")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	}
-
-	form.AddButton("Cancel", cancelFunc)
-
-	form.SetCancelFunc(cancelFunc)
-
-	form.SetBorder(true).SetTitle(" Delete Collection ")
-	return form
-}
-
 func createDeleteEnvironmentConfirm(
 	app *tview.Application,
 	pages *tview.Pages,
@@ -800,6 +458,66 @@ func createDeleteEnvironmentConfirm(
 	form.SetCancelFunc(cancelFunc)
 
 	form.SetBorder(true).SetTitle(" Delete Environment ")
+	return form
+}
+
+func createRenameEnvironmentForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	selectedEnvironment *workspace.Environment,
+	environmentsData *[]workspace.Environment,
+	envDropdown *tview.DropDown,
+	envConfigButton *tview.Button,
+	colors *ColorManager,
+	currentFocus tview.Primitive,
+) *tview.Form {
+
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddInputField("Name", selectedEnvironment.Name, 15, nil, nil)
+	form.AddButton("Save", func() {
+		newName := form.GetFormItem(0).(*tview.InputField).GetText()
+		if strings.TrimSpace(newName) == "" {
+			return
+		}
+
+		// Find and update the actual environment in environmentsData
+		for i := range *environmentsData {
+			if (*environmentsData)[i].Name == selectedEnvironment.Name {
+				(*environmentsData)[i].Name = newName
+				break
+			}
+		}
+
+		// Update dropdown
+		updateEnvironmentDropdown(envDropdown, *environmentsData)
+
+		// Save environments
+		if err := workspace.SaveEnvironments(*environmentsData); err != nil {
+			// Handle error
+		}
+
+		pages.RemovePage("renameEnvironment")
+		// Since the modal is still open, refresh it
+		if pages.HasPage("envVariables") {
+			pages.RemovePage("envVariables")
+			app.SetFocus(envConfigButton)
+		}
+	})
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("renameEnvironment")
+		app.SetFocus(currentFocus)
+	})
+
+	form.SetBorder(true).SetTitle(" Rename Environment ")
 	return form
 }
 
