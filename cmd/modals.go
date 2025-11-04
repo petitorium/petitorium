@@ -63,6 +63,72 @@ func showEnvironmentModal(
 	var selectedEnvironment *workspace.Environment
 	var leftPanel *tview.List
 
+	// Define callbacks
+	onEnvironmentSelected := func(env *workspace.Environment) {
+		selectedEnvironment = env
+		// Update the JSON editor with the selected environment's variables
+		effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
+		jsonBytes, _ := json.MarshalIndent(effectiveVars, "", "  ")
+		jsonEditor.SetText(string(jsonBytes), false)
+	}
+
+	var onCreateNew func()
+	var onDelete func(*workspace.Environment)
+
+	onDelete = func(env *workspace.Environment) {
+		currentFocus := ui.App.GetFocus()
+		form := createDeleteEnvironmentConfirm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.EnvDropdown, ui.EnvConfigButton, ui.Colors, currentFocus)
+		modal := createModal(form, 50, 8, ui.Colors.Background)
+		ui.Pages.AddPage("deleteEnvironment", modal, true, true)
+		ui.App.SetFocus(form)
+	}
+
+	onCreateNew = func() {
+		// Handle create new environment - directly create "New Environment"
+		newEnv := workspace.Environment{
+			Name:      "New Environment",
+			Base:      "Base",
+			Variables: make(map[string]string),
+		}
+
+		// Add to environments
+		*ui.EnvironmentsData = append(*ui.EnvironmentsData, newEnv)
+
+		// Save environments
+		if err := workspace.SaveEnvironments(*ui.EnvironmentsData); err != nil {
+			// Handle error
+			return
+		}
+
+		// Refresh the environment dropdown
+		updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
+
+		// Refresh the environment list in place
+		newLeftPanel := createEnvironmentListPanel(
+			ui.Colors.Background,
+			ui.Colors.Border,
+			ui.Colors.BorderFocus,
+			ui.Colors.Title,
+			ui.Colors.Foreground,
+			ui.Colors.ButtonSelect,
+			*ui.EnvironmentsData,
+			onEnvironmentSelected,
+			onCreateNew,
+			onDelete,
+		)
+
+		// Replace the left panel with the updated one
+		content := tview.NewFlex().
+			AddItem(newLeftPanel, 0, 4, false). // 40% for left panel
+			AddItem(jsonEditor, 0, 6, false)    // 60% for JSON editor
+
+		modal := createModal(content, 120, 40, ui.Colors.Background)
+		ui.Pages.RemovePage("envVariables")
+		ui.Pages.AddPage("envVariables", modal, true, true)
+		ui.UpdateFooter()
+		ui.App.SetFocus(newLeftPanel)
+	}
+
 	leftPanel = createEnvironmentListPanel(
 		ui.Colors.Background,
 		ui.Colors.Border,
@@ -71,65 +137,9 @@ func showEnvironmentModal(
 		ui.Colors.Foreground,
 		ui.Colors.ButtonSelect,
 		*ui.EnvironmentsData,
-		func(env *workspace.Environment) {
-			selectedEnvironment = env
-			// Update the JSON editor with the selected environment's variables
-			effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
-			jsonBytes, _ := json.MarshalIndent(effectiveVars, "", "  ")
-			jsonEditor.SetText(string(jsonBytes), false)
-		},
-		func() {
-			// Handle create new environment - directly create "New Environment"
-			newEnv := workspace.Environment{
-				Name:      "New Environment",
-				Base:      "Base",
-				Variables: make(map[string]string),
-			}
-
-			// Add to environments
-			*ui.EnvironmentsData = append(*ui.EnvironmentsData, newEnv)
-
-			// Save environments
-			if err := workspace.SaveEnvironments(*ui.EnvironmentsData); err != nil {
-				// Handle error
-				return
-			}
-
-			// Refresh the environment dropdown
-			updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
-
-			// Refresh the environment list in place
-			newLeftPanel := createEnvironmentListPanel(
-				ui.Colors.Background,
-				ui.Colors.Border,
-				ui.Colors.BorderFocus,
-				ui.Colors.Title,
-				ui.Colors.Foreground,
-				ui.Colors.ButtonSelect,
-				*ui.EnvironmentsData,
-				func(env *workspace.Environment) {
-					selectedEnvironment = env
-					// Update the JSON editor with the selected environment's variables
-					effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
-					jsonBytes, _ := json.MarshalIndent(effectiveVars, "", "  ")
-					jsonEditor.SetText(string(jsonBytes), false)
-				},
-				func() {
-					// This will be replaced by the outer function
-				},
-			)
-
-			// Replace the left panel with the updated one
-			content := tview.NewFlex().
-				AddItem(newLeftPanel, 0, 4, false). // 40% for left panel
-				AddItem(jsonEditor, 0, 6, false)    // 60% for JSON editor
-
-			modal := createModal(content, 120, 40, ui.Colors.Background)
-			ui.Pages.RemovePage("envVariables")
-			ui.Pages.AddPage("envVariables", modal, true, true)
-			ui.UpdateFooter()
-			ui.App.SetFocus(newLeftPanel)
-		},
+		onEnvironmentSelected,
+		onCreateNew,
+		onDelete,
 	)
 
 	// Create split layout: left 40%, right 60%

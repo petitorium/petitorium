@@ -82,6 +82,7 @@ func createEnvironmentListPanel(
 	environments []workspace.Environment,
 	onEnvironmentSelected func(*workspace.Environment),
 	onCreateNew func(),
+	onDelete func(*workspace.Environment),
 ) *tview.List {
 	list := tview.NewList()
 	list.SetBackgroundColor(backgroundColor)
@@ -108,13 +109,22 @@ func createEnvironmentListPanel(
 		})
 	}
 
-	// Add vim-style navigation (j/k for down/up)
+	// Add vim-style navigation (j/k for down/up) and delete (d)
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case 'j':
 			return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
 		case 'k':
 			return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+		case 'd':
+			currentItem := list.GetCurrentItem()
+			if currentItem > 0 && currentItem <= len(environments) {
+				env := &environments[currentItem-1]
+				if env.Name != "Base" {
+					onDelete(env)
+				}
+			}
+			return nil // Consume the event
 		}
 		return event
 	})
