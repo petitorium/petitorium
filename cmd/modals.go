@@ -127,6 +127,7 @@ func showEnvironmentModal(
 			modal := createModal(content, 120, 40, ui.Colors.Background)
 			ui.Pages.RemovePage("envVariables")
 			ui.Pages.AddPage("envVariables", modal, true, true)
+			ui.UpdateFooter()
 			ui.App.SetFocus(newLeftPanel)
 		},
 	)
@@ -138,6 +139,7 @@ func showEnvironmentModal(
 
 	modal := createModal(content, 120, 40, ui.Colors.Background)
 	ui.Pages.AddPage("envVariables", modal, true, true)
+	ui.UpdateFooter()
 	ui.App.SetFocus(leftPanel)
 
 	// Add keybinding to close modal with Escape, q, or Q using the keybinding manager
@@ -161,6 +163,7 @@ func showEnvironmentModal(
 
 			// Close modal and return focus to config button
 			ui.Pages.RemovePage("envVariables")
+			ui.UpdateFooter()
 			ui.App.SetFocus(ui.EnvConfigButton)
 			return nil
 		}

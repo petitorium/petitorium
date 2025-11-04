@@ -294,9 +294,14 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 
 	// Function to update footer based on current focus
 	updateFooterFunc := func() {
+		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
+		if currentPage == "envVariables" {
+			uiOrchestrator.Footer.SetText(" Environment Config: (j/k) Navigate | (Enter) Select | (Esc/q) Close")
+			return
+		}
 		switch uiOrchestrator.MainCycle.current {
 		case uiOrchestrator.EnviromentIndex:
-			uiOrchestrator.Footer.SetText(" Environment: (j/k) Navigate List | (R) Rename | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.Footer.SetText(" Environment: (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.CollectionsIndex:
 			uiOrchestrator.Footer.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.URLBarIndex:
