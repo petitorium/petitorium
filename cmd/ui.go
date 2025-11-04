@@ -7,6 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
@@ -1225,60 +1226,59 @@ func setEnvVarsInUI(colors *ColorManager, variables map[string]string, saveCallb
 	}
 }
 
-// formatSize formats a size in bytes to a human-readable string
-func formatSize(size int) string {
-	if size < 1024 {
-		return fmt.Sprintf("%d B", size)
-	} else if size < 1024*1024 {
-		return fmt.Sprintf("%.1f KB", float64(size)/1024)
-	} else {
-		return fmt.Sprintf("%.1f MB", float64(size)/(1024*1024))
-	}
-}
-
 // createResponseInfoBar creates the response information bar
-func createResponseInfoBar(backgroundColor, foregroundColor, titleColor tcell.Color, resp *HTTPResponse, lastTime *time.Time) *tview.Flex {
+func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) *tview.Flex {
 	infoBar := tview.NewFlex().SetDirection(tview.FlexColumn)
-	infoBar.SetBackgroundColor(backgroundColor)
+	infoBar.SetBackgroundColor(colors.Background)
 
 	if resp == nil {
 		// No response yet
 		noResponseText := tview.NewTextView()
-		noResponseText.SetBackgroundColor(backgroundColor)
-		noResponseText.SetTextColor(foregroundColor)
+		noResponseText.SetBackgroundColor(colors.Background)
+		noResponseText.SetTextColor(colors.Foreground)
 		noResponseText.SetText("No response")
 		infoBar.AddItem(noResponseText, 0, 1, false)
 		return infoBar
 	}
 
+	// Determine status background color
+	var statusBgColor tcell.Color
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		statusBgColor = colors.Success
+	} else if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		statusBgColor = colors.Warning
+	} else if resp.StatusCode >= 400 {
+		statusBgColor = colors.Error
+	} else {
+		statusBgColor = colors.Background // For 1xx or unknown
+	}
+
 	// Status code and status
 	statusText := tview.NewTextView()
-	statusText.SetBackgroundColor(hexToColor("#343a40"))
-	statusText.SetTextColor(titleColor)
+	statusText.SetBackgroundColor(statusBgColor)
+	statusText.SetTextColor(colors.Title)
 	statusText.SetText(fmt.Sprintf("%d", resp.StatusCode))
 	statusText.SetTextAlign(tview.AlignCenter)
 	infoBar.AddItem(statusText, 5, 0, false)
 
 	// Size
 	sizeText := tview.NewTextView()
-	sizeText.SetBackgroundColor(backgroundColor)
-	sizeText.SetTextColor(foregroundColor)
-	sizeText.SetText(fmt.Sprintf("Size: %s", formatSize(resp.BodySize)))
-	sizeText.SetTextAlign(tview.AlignRight)
-	infoBar.AddItem(sizeText, 15, 0, false)
+	sizeText.SetBackgroundColor(colors.Background)
+	sizeText.SetTextColor(colors.Foreground)
+	sizeText.SetText(fmt.Sprintf("Size: %s", humanize.IBytes(uint64(resp.BodySize))))
+	sizeText.SetTextAlign(tview.AlignCenter)
+	infoBar.AddItem(sizeText, 0, 1, false)
 
 	// Time
 	timeText := tview.NewTextView()
-	timeText.SetBackgroundColor(backgroundColor)
-	timeText.SetTextColor(foregroundColor)
+	timeText.SetBackgroundColor(colors.Background)
+	timeText.SetTextColor(colors.Foreground)
 	if lastTime != nil {
-		// Convert duration to seconds and format with 2 decimal places
-		seconds := float64(resp.Duration) / 1e9
-		timeText.SetText(fmt.Sprintf("Time: %.2f s", seconds))
+		timeText.SetText(fmt.Sprintf("Time: %s", humanize.Time(*lastTime)))
 	} else {
 		timeText.SetText("Time: -")
 	}
-	timeText.SetTextAlign(tview.AlignRight)
+	timeText.SetTextAlign(tview.AlignCenter)
 	infoBar.AddItem(timeText, 0, 1, false)
 
 	return infoBar
@@ -1346,7 +1346,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	responseTabHeader := createTabHeader([]string{"Preview", "Headers", "Cookies", "Timeline"}, colors, func(int) {})
 
 	// Create info bar
-	responseInfoBar := createResponseInfoBar(colors.Background, colors.Foreground, colors.Title, resp, lastTime)
+	responseInfoBar := createResponseInfoBar(colors, resp, lastTime)
 
 	// Create top row with tab header and info bar
 	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
