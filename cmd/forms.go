@@ -521,6 +521,241 @@ func createRenameEnvironmentForm(
 	return form
 }
 
+func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the collection '%s'?\nThis will also delete all nested collections and requests.", selectedCollection.Name), 0, 2, false, false)
+
+	form.AddButton("Delete", func() {
+		// Remove collection from data
+		deleteCollectionFromData(collectionsData, selectedCollection.Name)
+
+		// Rebuild tree from updated data
+		rootNode.ClearChildren()
+		addCollectionsToTree(*collectionsData, rootNode)
+
+		// Save workspace
+		if err := workspace.SaveCollections(*collectionsData); err != nil {
+			// Handle error
+		}
+
+		pages.RemovePage("deleteCollection")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("deleteCollection")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.SetBorder(true).SetTitle(" Delete Collection ")
+	return form
+}
+
+// Helper function to check if a collection is a descendant of another
+func isDescendant(parent, child *workspace.Collection) bool {
+	for _, col := range parent.Collections {
+		if col.Name == child.Name || isDescendant(&col, child) {
+			return true
+		}
+	}
+	return false
+}
+
+// Helper function to remove a collection from its parent
+func removeCollectionFromParent(collectionsData *[]workspace.Collection, name string) {
+	for i, col := range *collectionsData {
+		if col.Name == name {
+			*collectionsData = append((*collectionsData)[:i], (*collectionsData)[i+1:]...)
+			return
+		}
+		removeCollectionFromParent(&(*collectionsData)[i].Collections, name)
+	}
+}
+
+func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	// Get all possible parent collections (excluding self and descendants)
+	var possibleParents []workspace.Collection
+	for _, col := range *collectionsData {
+		if col.Name != selectedCollection.Name && !isDescendant(&col, selectedCollection) {
+			possibleParents = append(possibleParents, col)
+		}
+	}
+
+	// Create dropdown for selecting new parent
+	parentOptions := make([]string, len(possibleParents)+1)
+	parentOptions[0] = "Root"
+	for i, col := range possibleParents {
+		parentOptions[i+1] = col.Name
+	}
+
+	parentDropdown := tview.NewDropDown().
+		SetLabel("Move to: ").
+		SetOptions(parentOptions, nil).
+		SetCurrentOption(0)
+	parentDropdown.SetBackgroundColor(colors.Background)
+	parentDropdown.SetFieldBackgroundColor(colors.Background)
+	parentDropdown.SetFieldTextColor(colors.Foreground)
+	parentDropdown.SetLabelColor(colors.Foreground)
+
+	form.AddFormItem(parentDropdown)
+
+	form.AddButton("Move", func() {
+		selectedIndex, _ := parentDropdown.GetCurrentOption()
+		var newParent *workspace.Collection
+		if selectedIndex > 0 {
+			newParent = &possibleParents[selectedIndex-1]
+		}
+
+		// Remove from current parent
+		removeCollectionFromParent(collectionsData, selectedCollection.Name)
+
+		// Add to new parent
+		if newParent != nil {
+			newParent.Collections = append(newParent.Collections, *selectedCollection)
+		} else {
+			// Add to root
+			*collectionsData = append(*collectionsData, *selectedCollection)
+		}
+
+		// Save workspace
+		if err := workspace.SaveCollections(*collectionsData); err != nil {
+			// Handle error
+		}
+
+		// Rebuild tree
+		rootNode.ClearChildren()
+		addCollectionsToTree(*collectionsData, rootNode)
+
+		pages.RemovePage("moveCollection")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("moveCollection")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.SetBorder(true).SetTitle(" Move Collection ")
+	return form
+}
+
+// Helper function to remove a request from collections
+func removeRequestFromCollections(collectionsData *[]workspace.Collection, name, method, url string) {
+	for i := range *collectionsData {
+		col := &(*collectionsData)[i]
+		for j, req := range col.Requests {
+			if req.Name == name && req.Method == method && req.URL == url {
+				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
+				return
+			}
+		}
+		removeRequestFromCollections(&col.Collections, name, method, url)
+	}
+}
+
+func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, colors *ColorManager) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	// Get all collections as possible targets, including nested
+	var collectionOptions []string
+	var targetCollections []*workspace.Collection
+	collectionOptions = append(collectionOptions, "Root")
+
+	var addCollectionsToOptions func(collections []workspace.Collection, prefix string)
+	addCollectionsToOptions = func(collections []workspace.Collection, prefix string) {
+		for i := range collections {
+			col := &collections[i]
+			collectionOptions = append(collectionOptions, prefix+col.Name)
+			targetCollections = append(targetCollections, col)
+			if len(col.Collections) > 0 {
+				addCollectionsToOptions(col.Collections, prefix+col.Name+" → ")
+			}
+		}
+	}
+	addCollectionsToOptions(*collectionsData, "")
+
+	collectionDropdown := tview.NewDropDown().
+		SetLabel("Move to: ").
+		SetOptions(collectionOptions, nil).
+		SetCurrentOption(0)
+	collectionDropdown.SetBackgroundColor(colors.Background)
+	collectionDropdown.SetFieldBackgroundColor(colors.Background)
+	collectionDropdown.SetFieldTextColor(colors.Foreground)
+	collectionDropdown.SetLabelColor(colors.Foreground)
+
+	form.AddFormItem(collectionDropdown)
+
+	form.AddButton("Move", func() {
+		selectedIndex, _ := collectionDropdown.GetCurrentOption()
+		if selectedIndex == 0 {
+			// Create new root collection with the request
+			newCollection := workspace.Collection{
+				Name:     selectedRequest.Name,
+				Requests: []workspace.Request{*selectedRequest},
+			}
+			*collectionsData = append(*collectionsData, newCollection)
+
+			// Remove from current collection
+			removeRequestFromCollections(collectionsData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
+			targetCollection := targetCollections[selectedIndex-1]
+
+			// Remove from current collection
+			removeRequestFromCollections(collectionsData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+
+			// Add to target collection
+			targetCollection.Requests = append(targetCollection.Requests, *selectedRequest)
+		}
+
+		// Save workspace
+		if err := workspace.SaveCollections(*collectionsData); err != nil {
+			// Handle error
+		}
+
+		// Rebuild tree
+		rootNode.ClearChildren()
+		addCollectionsToTree(*collectionsData, rootNode)
+
+		pages.RemovePage("moveRequest")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("moveRequest")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.SetBorder(true).SetTitle(" Move Request ")
+	return form
+}
+
 func createDeleteRequestConfirm(app *tview.Application,
 	pages *tview.Pages,
 	selectedRequest *workspace.Request,
