@@ -8,36 +8,37 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func getCollectionsFilePath() (string, error) {
+func getWorkspaceFilePath() (string, error) {
 	home, err := homedir.Dir()
 	if err != nil {
 		return "", err
 	}
 
 	configDir := filepath.Join(home, ".config", "petitorium")
-	return filepath.Join(configDir, "collections.yaml"), nil
+	return filepath.Join(configDir, "workspace.yaml"), nil
 }
 
-func createDefaultCollections() []Collection {
-	return []Collection{
-		{
-			Name: "Users",
-			Requests: []Request{
-				{
-					Name:   "index",
-					Method: "GET",
-					URL:    "https://dummyjson.com/users",
-				},
-				{
-					Name:   "show",
-					Method: "GET",
-					URL:    "https://dummyjson.com/users/1",
-				},
-				{
-					Name:   "store",
-					Method: "POST",
-					URL:    "https://jsonplaceholder.org/users",
-					Body: `{
+func createDefaultWorkspace() *Workspace {
+	return &Workspace{
+		Collections: []Collection{
+			{
+				Name: "Users",
+				Requests: []Request{
+					{
+						Name:   "index",
+						Method: "GET",
+						URL:    "https://dummyjson.com/users",
+					},
+					{
+						Name:   "show",
+						Method: "GET",
+						URL:    "https://dummyjson.com/users/1",
+					},
+					{
+						Name:   "store",
+						Method: "POST",
+						URL:    "https://jsonplaceholder.org/users",
+						Body: `{
 									"firstName": "James",
 									"lastName": "Davis",
 									"maidenName": "",
@@ -106,72 +107,86 @@ func createDefaultCollections() []Collection {
 									},
 									"role": "admin"
 							}`,
-				},
-				{
-					Name:   "update",
-					Method: "PUT",
-					URL:    "https://dummyjson.com/users/2",
-					Body: `{
+					},
+					{
+						Name:   "update",
+						Method: "PUT",
+						URL:    "https://dummyjson.com/users/2",
+						Body: `{
 									"lastName": "Owais"
 							}`,
+					},
+					{
+						Name:   "delete",
+						Method: "DELETE",
+						URL:    "https://dummyjson.com/users/1",
+					},
 				},
-				{
-					Name:   "delete",
-					Method: "DELETE",
-					URL:    "https://dummyjson.com/users/1",
-				},
-			},
-			Collections: []Collection{
-				{
-					Name: "Others",
-					Requests: []Request{
-						{
-							Name:   "update",
-							Method: "PATCH",
-							URL:    "https://dummyjson.com/users/2",
-							Body: `{
+				Collections: []Collection{
+					{
+						Name: "Others",
+						Requests: []Request{
+							{
+								Name:   "update",
+								Method: "PATCH",
+								URL:    "https://dummyjson.com/users/2",
+								Body: `{
 									"lastName": "Owais"
 							}`,
-						},
-						{
-							Name:   "head",
-							Method: "HEAD",
-							URL:    "https://dummyjson.com/users",
-						},
-						{
-							Name:   "options",
-							Method: "OPTIONS",
-							URL:    "https://dummyjson.com/users",
+							},
+							{
+								Name:   "head",
+								Method: "HEAD",
+								URL:    "https://dummyjson.com/users",
+							},
+							{
+								Name:   "options",
+								Method: "OPTIONS",
+								URL:    "https://dummyjson.com/users",
+							},
 						},
 					},
 				},
 			},
-		},
-		{
-			Name: "Posts",
-			Requests: []Request{
-				{
-					Name:   "show",
-					Method: "GET",
-					URL:    "'https://dummyjson.com/posts/1'",
+			{
+				Name: "Posts",
+				Requests: []Request{
+					{
+						Name:   "show",
+						Method: "GET",
+						URL:    "'https://dummyjson.com/posts/1'",
+					},
 				},
+			},
+		},
+		Requests: []Request{
+			{
+				Name:   "Health Check",
+				Method: "GET",
+				URL:    "https://httpbin.org/status/200",
+			},
+			{
+				Name:   "Echo",
+				Method: "POST",
+				URL:    "https://httpbin.org/post",
+				Body:   `{"message": "Hello World"}`,
 			},
 		},
 	}
 }
 
-func LoadCollections() ([]Collection, error) {
-	path, err := getCollectionsFilePath()
+func LoadWorkspace() (*Workspace, error) {
+	path, err := getWorkspaceFilePath()
 	if err != nil {
 		return nil, err
 	}
 
 	if _, err = os.Stat(path); os.IsNotExist(err) {
-		defaultCollections := createDefaultCollections()
-		if err = SaveCollections(defaultCollections); err != nil {
+		defaultWorkspace := createDefaultWorkspace()
+		if err = SaveWorkspace(defaultWorkspace); err != nil {
 			return nil, err
 		}
-		return defaultCollections, nil
+		return defaultWorkspace, nil
 	}
 
 	data, err := os.ReadFile(path)
@@ -179,22 +194,22 @@ func LoadCollections() ([]Collection, error) {
 		return nil, err
 	}
 
-	var collections []Collection
-	if err := yaml.Unmarshal(data, &collections); err != nil {
+	var workspace Workspace
+	if err := yaml.Unmarshal(data, &workspace); err != nil {
 		return nil, err
 	}
 
 	// Load expansion state if available
-	if err := LoadExpansionState(&collections); err != nil {
+	if err := LoadExpansionState(&workspace.Collections); err != nil {
 		// If there's an error loading expansion state, continue without it
 		// This is not a critical error
 	}
 
-	return collections, nil
+	return &workspace, nil
 }
 
-func SaveCollections(collections []Collection) error {
-	path, err := getCollectionsFilePath()
+func SaveWorkspace(workspace *Workspace) error {
+	path, err := getWorkspaceFilePath()
 	if err != nil {
 		return err
 	}
@@ -203,7 +218,7 @@ func SaveCollections(collections []Collection) error {
 		return err
 	}
 
-	data, err := yaml.Marshal(collections)
+	data, err := yaml.Marshal(workspace)
 	if err != nil {
 		return err
 	}
@@ -316,7 +331,7 @@ func getExpansionStateFilePath() (string, error) {
 }
 
 // SaveExpansionState saves the expansion state of collections
-func SaveExpansionState(collections []Collection) error {
+func SaveExpansionState(collections *[]Collection) error {
 	path, err := getExpansionStateFilePath()
 	if err != nil {
 		return err
@@ -329,13 +344,13 @@ func SaveExpansionState(collections []Collection) error {
 	// Create a simple map for expansion state
 	expansionState := make(map[string]bool)
 
-	var collectExpansionState func(collections []Collection, prefix string)
-	collectExpansionState = func(collections []Collection, prefix string) {
-		for _, col := range collections {
+	var collectExpansionState func(collections *[]Collection, prefix string)
+	collectExpansionState = func(collections *[]Collection, prefix string) {
+		for _, col := range *collections {
 			fullName := prefix + col.Name
 			expansionState[fullName] = col.Expanded
 			if len(col.Collections) > 0 {
-				collectExpansionState(col.Collections, fullName+"/")
+				collectExpansionState(&col.Collections, fullName+"/")
 			}
 		}
 	}

@@ -13,7 +13,7 @@ import (
 // UIOrchestrator holds all UI components and state
 type UIOrchestrator struct {
 	App                   *tview.Application
-	CollectionsData       *[]workspace.Collection
+	WorkspaceData         *workspace.Workspace
 	DataManager           *DataManager
 	EnvironmentsData      *[]workspace.Environment
 	Colors                *ColorManager
@@ -79,7 +79,7 @@ type UIOrchestrator struct {
 }
 
 // SetupUI initializes all UI components and layout
-func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, environmentsData *[]workspace.Environment) (*UIOrchestrator, error) {
+func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, environmentsData *[]workspace.Environment) (*UIOrchestrator, error) {
 	// Initialize centralized color management
 	colors := NewColorManager()
 
@@ -141,7 +141,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
-			func() { saveCurrentRequest(currentRequest, *collectionsData) },
+			func() { saveCurrentRequest(currentRequest, workspaceData) },
 			func(p tview.Primitive) { app.SetFocus(p) },
 			func(tabIndex int) { currentTabIndex = tabIndex },
 			nil, // panelFocusSetter will be set later
@@ -238,14 +238,14 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	pages.AddPage("main", grid, true, true)
 
 	// Set up tree view expansion handling
-	SetupTreeViewExpansionHandling(*collectionsData, rootNode)
+	SetupTreeViewExpansionHandling(workspaceData, rootNode)
 
 	// Set initial focus
 	setPanelFocus(currentFocus, true)
 
 	uiOrchestrator := &UIOrchestrator{
 		App:                            app,
-		CollectionsData:                collectionsData,
+		WorkspaceData:                  workspaceData,
 		DataManager:                    dataManager,
 		EnvironmentsData:               environmentsData,
 		Colors:                         colors,

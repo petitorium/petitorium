@@ -71,7 +71,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				ui.CurrentRequest.Body = ui.CurrentBodyContent
 				if ui.CurrentSelectedNode != nil {
 					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-					saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
+					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
 			}
 			ui.SyncBodyContent(ui.CurrentBodyContent)
@@ -97,7 +97,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				ui.CurrentRequest.Body = ui.CurrentBodyContent
 				if ui.CurrentSelectedNode != nil {
 					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-					saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
+					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
 			}
 			ui.SyncBodyContent(ui.CurrentBodyContent)
@@ -133,7 +133,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					coloredIcon := fmt.Sprintf("[%s]%s[-:-:-]", iconColor, config.C.UI.SelectedRequestIcon)
 					ui.CurrentSelectedNode.SetText(fmt.Sprintf("%s%s%s", coloredIcon, coloredMethod, paddedName))
 
-					saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
+					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
 			}
 		}
@@ -152,7 +152,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// Update the node's reference with the new request data
 			ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 
-			saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
+			saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 		}
 	})
 
@@ -165,7 +165,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// Update the node's reference with the new request data
 			ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 
-			saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
+			saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 		}
 	})
 
@@ -208,7 +208,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.ProgrammaticallyUpdatingURL = false
 
 			ui.SyncBodyContent(req.Body)
-			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
+			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
 
 			// Set current request for persistence
 			ui.CurrentSelectedNode = node
@@ -216,6 +216,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 			// Find the request pointer in collectionsData
 			ui.CurrentRequest = ui.DataManager.FindRequestPtr(req)
+
+			// Update node reference to current data
+			if ui.CurrentRequest != nil {
+				node.SetReference(*ui.CurrentRequest)
+			}
 
 			// Set method in dropdown AFTER currentRequest is set
 			if ui.CurrentRequest != nil {
@@ -262,13 +267,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					addChildrenToCollectionNode(node, col)
 				}
 				if config.C.UI.CollectionExpansion == "remember" {
-					updateCollectionExpansionState(ui.CollectionsData, col.Name, true)
+					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, true)
 				}
 			} else {
 				node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
 				node.ClearChildren()
 				if config.C.UI.CollectionExpansion == "remember" {
-					updateCollectionExpansionState(ui.CollectionsData, col.Name, false)
+					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, false)
 				}
 			}
 		}
@@ -348,7 +353,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// Update the node's reference with the new response history
 			if ui.CurrentSelectedNode != nil {
 				ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-				saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
+				saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 			}
 		}
 
@@ -379,7 +384,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if event.Rune() == 'q' || event.Rune() == 'Q' {
 			// Save expansion state before quitting if in "remember" mode
 			if config.C.UI.CollectionExpansion == "remember" {
-				if err := workspace.SaveExpansionState(*ui.CollectionsData); err != nil {
+				if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
 					fmt.Printf("Warning: Failed to save expansion state: %v\n", err)
 				}
 			}
@@ -399,7 +404,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Collection shortcuts
 		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'n' {
-			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 			modal := createModal(form, 50, 12, tcell.ColorDefault)
 			ui.Pages.AddPage("newCollection", modal, true, true)
 			ui.App.SetFocus(form)
@@ -417,11 +422,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					selectedCollection = &col
 				} else if req, ok := node.GetReference().(workspace.Request); ok {
 					// Request is selected - find its parent collection
-					selectedCollection = findParentCollectionOfRequest(ui.CollectionsData, req.Name, req.Method, req.URL)
+					selectedCollection = findParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.Name, req.Method, req.URL)
 				}
 
 				if selectedCollection != nil {
-					form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+					form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 					modal := createModal(form, 60, 14, tcell.ColorDefault)
 					ui.Pages.AddPage("newRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -438,14 +443,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				if col, ok := reference.(workspace.Collection); ok {
 					// Rename collection
-					form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 25, 10, tcell.ColorDefault)
 					ui.Pages.AddPage("renameCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Rename request - need to find parent collection
-					form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 47, 10, tcell.ColorDefault)
 					ui.Pages.AddPage("renameRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -454,25 +459,25 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Move collection/request functionality (M)
+		// Move collection/request functionality (m)
 		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'm' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
-				// if col, ok := node.GetReference().(workspace.Collection); ok {
-				// 	// Move collection
-				// 	form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				// 	modal := createModal(form, 40, 12, tcell.ColorDefault)
-				// 	ui.Pages.AddPage("moveCollection", modal, true, true)
-				// 	ui.App.SetFocus(form)
-				// 	return nil
-				// } else if req, ok := node.GetReference().(workspace.Request); ok {
-				// 	// Move request
-				// 	form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-				// 	modal := createModal(form, 40, 10, tcell.ColorDefault)
-				// 	ui.Pages.AddPage("moveRequest", modal, true, true)
-				// 	ui.App.SetFocus(form)
-				// 	return nil
-				// }
+				if col, ok := node.GetReference().(workspace.Collection); ok {
+					// Move collection
+					form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					modal := createModal(form, 40, 12, tcell.ColorDefault)
+					ui.Pages.AddPage("moveCollection", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
+				} else if req, ok := node.GetReference().(workspace.Request); ok {
+					// Move request
+					form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+					modal := createModal(form, 40, 10, tcell.ColorDefault)
+					ui.Pages.AddPage("moveRequest", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
+				}
 			}
 		}
 
@@ -484,14 +489,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				if col, ok := reference.(workspace.Collection); ok {
 					// Delete collection with confirmation
-					form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 50, 8, tcell.ColorDefault)
 					ui.Pages.AddPage("deleteCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req, ok := reference.(workspace.Request); ok {
 					// Delete request with confirmation
-					form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.CollectionsData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 50, 8, tcell.ColorDefault)
 					ui.Pages.AddPage("deleteRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -519,7 +524,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 						ui.CurrentRequest.Body = modifiedContent
 						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-						saveCurrentRequest(ui.CurrentRequest, *ui.CollectionsData)
+						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
 				})
 			}

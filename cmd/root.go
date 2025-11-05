@@ -35,13 +35,13 @@ func init() {
 
 func runTUI(cmd *cobra.Command, args []string) {
 	// Load data
-	collectionsData, dataManager, environmentsData, err := LoadData()
+	workspaceData, dataManager, environmentsData, err := LoadData()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to load data: %v", err))
 	}
 
 	// Setup UI
-	ui, err := SetupUI(collectionsData, dataManager, environmentsData)
+	ui, err := SetupUI(workspaceData, dataManager, environmentsData)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup UI: %v", err))
 	}

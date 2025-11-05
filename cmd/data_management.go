@@ -7,49 +7,49 @@ import (
 	"github.com/hbarral/petitorium/workspace"
 )
 
-// DataManager handles data operations for collections and requests
+// DataManager handles data operations for workspace and requests
 type DataManager struct {
-	collectionsData []workspace.Collection
+	workspaceData *workspace.Workspace
 }
 
 // NewDataManager creates a new data manager
-func NewDataManager(collectionsData []workspace.Collection) *DataManager {
+func NewDataManager(workspaceData *workspace.Workspace) *DataManager {
 	return &DataManager{
-		collectionsData: collectionsData,
+		workspaceData: workspaceData,
 	}
 }
 
-// FindRequestPtr finds the pointer to a request in the collections data
+// FindRequestPtr finds the pointer to a request in the workspace data
 func (dm *DataManager) FindRequestPtr(targetReq workspace.Request) *workspace.Request {
-	return findRequestPtr(dm.collectionsData, targetReq)
+	return findRequestPtr(dm.workspaceData, targetReq)
 }
 
-// SaveCollections saves the collections data to disk
-func (dm *DataManager) SaveCollections() error {
-	return workspace.SaveCollections(dm.collectionsData)
+// SaveWorkspace saves the workspace data to disk
+func (dm *DataManager) SaveWorkspace() error {
+	return workspace.SaveWorkspace(dm.workspaceData)
 }
 
-// UpdateCollectionsData updates the collections data
-func (dm *DataManager) UpdateCollectionsData(newData []workspace.Collection) {
-	dm.collectionsData = newData
+// UpdateWorkspaceData updates the workspace data
+func (dm *DataManager) UpdateWorkspaceData(newData *workspace.Workspace) {
+	dm.workspaceData = newData
 }
 
-// GetCollectionsData returns the current collections data
-func (dm *DataManager) GetCollectionsData() []workspace.Collection {
-	return dm.collectionsData
+// GetWorkspaceData returns the current workspace data
+func (dm *DataManager) GetWorkspaceData() *workspace.Workspace {
+	return dm.workspaceData
 }
 
 // SetupTreeViewExpansionHandling sets up the initial tree view expansion state based on configuration
-func SetupTreeViewExpansionHandling(collectionsData []workspace.Collection, rootNode *tview.TreeNode) {
+func SetupTreeViewExpansionHandling(workspaceData *workspace.Workspace, rootNode *tview.TreeNode) {
 	// For "closed" mode, we need to ensure all collections start collapsed
-	// For "remember" mode, the expansion state is handled within addCollectionsToTree
+	// For "remember" mode, the expansion state is handled within addWorkspaceToTree
 	if config.C.UI.CollectionExpansion == "closed" {
 		// Temporarily set config to "closed" for tree building, then restore
 		originalExpansion := config.C.UI.CollectionExpansion
 		config.C.UI.CollectionExpansion = "closed"
-		addCollectionsToTree(collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
 		config.C.UI.CollectionExpansion = originalExpansion
 	} else {
-		addCollectionsToTree(collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
 	}
 }

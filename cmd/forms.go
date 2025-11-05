@@ -14,7 +14,7 @@ import (
 func createCollectionFormWithLocation(
 	app *tview.Application,
 	pages *tview.Pages,
-	collectionsData *[]workspace.Collection,
+	workspaceData *workspace.Workspace,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	colors *ColorManager,
@@ -43,7 +43,7 @@ func createCollectionFormWithLocation(
 			}
 		}
 	}
-	addCollectionsToOptions(*collectionsData, "")
+	addCollectionsToOptions(workspaceData.Collections, "")
 
 	form.AddInputField("Collection Name", "", 21, nil, nil)
 	form.AddDropDown("Location", locationOptions, 0, nil)
@@ -65,34 +65,34 @@ func createCollectionFormWithLocation(
 
 		if location == "(Root Level)" {
 			// Add to root level
-			*collectionsData = append(*collectionsData, newCollection)
+			workspaceData.Collections = append(workspaceData.Collections, newCollection)
 		} else {
 			// Find target collection and add to it
 			targetName := strings.Split(location, " → ")[0]
-			var addToCollection func(collections *[]workspace.Collection) bool
-			addToCollection = func(collections *[]workspace.Collection) bool {
-				for i := range *collections {
-					if (*collections)[i].Name == targetName {
-						(*collections)[i].Collections = append((*collections)[i].Collections, newCollection)
+			var addToCollection func(collections []workspace.Collection) bool
+			addToCollection = func(collections []workspace.Collection) bool {
+				for i := range collections {
+					if collections[i].Name == targetName {
+						collections[i].Collections = append(collections[i].Collections, newCollection)
 						return true
 					}
-					if len((*collections)[i].Collections) > 0 {
-						if addToCollection(&(*collections)[i].Collections) {
+					if len(collections[i].Collections) > 0 {
+						if addToCollection(collections[i].Collections) {
 							return true
 						}
 					}
 				}
 				return false
 			}
-			addToCollection(collectionsData)
+			addToCollection(workspaceData.Collections)
 		}
 
 		// Rebuild the entire tree to reflect changes
 		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
 
 		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
@@ -113,7 +113,7 @@ func createCollectionFormWithLocation(
 
 func createCollectionForm(app *tview.Application,
 	pages *tview.Pages,
-	collectionsData *[]workspace.Collection,
+	workspaceData *workspace.Workspace,
 	rootNode *tview.TreeNode,
 	parentNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
@@ -152,15 +152,15 @@ func createCollectionForm(app *tview.Application,
 			parentCollection.Collections = append(parentCollection.Collections, newCollection)
 		} else {
 			// Add to root level
-			*collectionsData = append(*collectionsData, newCollection)
+			workspaceData.Collections = append(workspaceData.Collections, newCollection)
 		}
 
 		// Rebuild the entire tree to reflect changes
 		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
 
 		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
@@ -182,7 +182,7 @@ func createCollectionForm(app *tview.Application,
 func createRequestForm(app *tview.Application,
 	pages *tview.Pages,
 	selectedCollection *workspace.Collection,
-	collectionsData *[]workspace.Collection,
+	workspaceData *workspace.Workspace,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	colors *ColorManager,
@@ -220,21 +220,26 @@ func createRequestForm(app *tview.Application,
 			Body:   body,
 		}
 
-		// Find and update the actual collection in collectionsData
-		actualCollection := findCollectionByName(collectionsData, selectedCollection.Name)
+		if selectedCollection == nil {
+			// Add to root requests
+			workspaceData.Requests = append(workspaceData.Requests, newRequest)
+		} else {
+			// Find and update the actual collection in workspaceData
+			actualCollection := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
 
-		if actualCollection != nil {
-			// Add request to the actual collection in collectionsData
-			actualCollection.Requests = append(actualCollection.Requests, newRequest)
-
-			// Rebuild the entire tree to reflect changes
-			rootNode.ClearChildren()
-			addCollectionsToTree(*collectionsData, rootNode)
-
-			// Save workspace
-			if err := workspace.SaveCollections(*collectionsData); err != nil {
-				// Handle error
+			if actualCollection != nil {
+				// Add request to the actual collection in workspaceData
+				actualCollection.Requests = append(actualCollection.Requests, newRequest)
 			}
+		}
+
+		// Rebuild the entire tree to reflect changes
+		rootNode.ClearChildren()
+		addWorkspaceToTree(workspaceData, rootNode)
+
+		// Save workspace
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			// Handle error
 		}
 
 		pages.RemovePage("newRequest")
@@ -262,7 +267,7 @@ func createRequestForm(app *tview.Application,
 func createRenameCollectionForm(app *tview.Application,
 	pages *tview.Pages,
 	selectedCollection *workspace.Collection,
-	collectionsData *[]workspace.Collection,
+	workspaceData *workspace.Workspace,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
@@ -286,10 +291,10 @@ func createRenameCollectionForm(app *tview.Application,
 			return
 		}
 
-		// Find and update the actual collection in collectionsData
-		for i := range *collectionsData {
-			if (*collectionsData)[i].Name == selectedCollection.Name {
-				(*collectionsData)[i].Name = newName
+		// Find and update the actual collection in workspaceData
+		for i := range workspaceData.Collections {
+			if workspaceData.Collections[i].Name == selectedCollection.Name {
+				workspaceData.Collections[i].Name = newName
 				break
 			}
 		}
@@ -308,7 +313,7 @@ func createRenameCollectionForm(app *tview.Application,
 		node.SetReference(updatedCollection)
 
 		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
@@ -329,7 +334,7 @@ func createRenameCollectionForm(app *tview.Application,
 func createRenameRequestForm(app *tview.Application,
 	pages *tview.Pages,
 	selectedRequest *workspace.Request,
-	collectionsData *[]workspace.Collection,
+	workspaceData *workspace.Workspace,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
@@ -360,13 +365,38 @@ func createRenameRequestForm(app *tview.Application,
 			return
 		}
 
-		// Find and update the request in collectionsData
-		for i := range *collectionsData {
-			for j := range (*collectionsData)[i].Requests {
-				if (*collectionsData)[i].Requests[j].Name == selectedRequest.Name &&
-					(*collectionsData)[i].Requests[j].Method == selectedRequest.Method &&
-					(*collectionsData)[i].Requests[j].URL == selectedRequest.URL {
-					(*collectionsData)[i].Requests[j].Name = newName
+		// Find and update the request in workspaceData
+		// First check root requests
+		for i, req := range workspaceData.Requests {
+			if req.Name == selectedRequest.Name && req.Method == selectedRequest.Method && req.URL == selectedRequest.URL {
+				workspaceData.Requests[i].Name = newName
+
+				// Update tree node
+				coloredMethod := getColoredMethod(selectedRequest.Method)
+				paddedName := padNameToMinLength(newName, 4)
+				node.SetText(fmt.Sprintf("%s %s", coloredMethod, paddedName))
+
+				// Update node reference
+				updatedRequest := *selectedRequest
+				updatedRequest.Name = newName
+				node.SetReference(updatedRequest)
+
+				// Save workspace
+				if err := workspace.SaveWorkspace(workspaceData); err != nil {
+					// Handle error
+				}
+
+				cancelFunc()
+				return
+			}
+		}
+		// Then check collections
+		for i := range workspaceData.Collections {
+			for j := range workspaceData.Collections[i].Requests {
+				if workspaceData.Collections[i].Requests[j].Name == selectedRequest.Name &&
+					workspaceData.Collections[i].Requests[j].Method == selectedRequest.Method &&
+					workspaceData.Collections[i].Requests[j].URL == selectedRequest.URL {
+					workspaceData.Collections[i].Requests[j].Name = newName
 
 					// Update tree node
 					coloredMethod := getColoredMethod(selectedRequest.Method)
@@ -379,7 +409,7 @@ func createRenameRequestForm(app *tview.Application,
 					node.SetReference(updatedRequest)
 
 					// Save workspace
-					if err := workspace.SaveCollections(*collectionsData); err != nil {
+					if err := workspace.SaveWorkspace(workspaceData); err != nil {
 						// Handle error
 					}
 
@@ -521,7 +551,7 @@ func createRenameEnvironmentForm(
 	return form
 }
 
-func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
+func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -534,14 +564,14 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 
 	form.AddButton("Delete", func() {
 		// Remove collection from data
-		deleteCollectionFromData(collectionsData, selectedCollection.Name)
+		deleteCollectionFromData(&workspaceData.Collections, selectedCollection.Name)
 
 		// Rebuild tree from updated data
 		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
 
 		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
@@ -571,17 +601,29 @@ func isDescendant(parent, child *workspace.Collection) bool {
 }
 
 // Helper function to remove a collection from its parent
-func removeCollectionFromParent(collectionsData *[]workspace.Collection, name string) {
-	for i, col := range *collectionsData {
+func removeCollectionFromParent(workspaceData *workspace.Workspace, name string) {
+	for i := range workspaceData.Collections {
+		col := &workspaceData.Collections[i]
 		if col.Name == name {
-			*collectionsData = append((*collectionsData)[:i], (*collectionsData)[i+1:]...)
+			workspaceData.Collections = append(workspaceData.Collections[:i], workspaceData.Collections[i+1:]...)
 			return
 		}
-		removeCollectionFromParent(&(*collectionsData)[i].Collections, name)
+		removeCollectionFromParentNested(&col.Collections, name)
 	}
 }
 
-func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
+// Helper function to remove a collection from nested collections
+func removeCollectionFromParentNested(collections *[]workspace.Collection, name string) {
+	for i := range *collections {
+		if (*collections)[i].Name == name {
+			*collections = append((*collections)[:i], (*collections)[i+1:]...)
+			return
+		}
+		removeCollectionFromParentNested(&(*collections)[i].Collections, name)
+	}
+}
+
+func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -591,9 +633,10 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 	form.SetButtonTextColor(colors.Foreground)
 
 	// Get all possible parent collections (excluding self and descendants)
-	var possibleParents []workspace.Collection
-	for _, col := range *collectionsData {
-		if col.Name != selectedCollection.Name && !isDescendant(&col, selectedCollection) {
+	var possibleParents []*workspace.Collection
+	for i := range workspaceData.Collections {
+		col := &workspaceData.Collections[i]
+		if col.Name != selectedCollection.Name && !isDescendant(col, selectedCollection) {
 			possibleParents = append(possibleParents, col)
 		}
 	}
@@ -620,28 +663,28 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 		selectedIndex, _ := parentDropdown.GetCurrentOption()
 		var newParent *workspace.Collection
 		if selectedIndex > 0 {
-			newParent = &possibleParents[selectedIndex-1]
+			newParent = possibleParents[selectedIndex-1]
 		}
 
 		// Remove from current parent
-		removeCollectionFromParent(collectionsData, selectedCollection.Name)
+		removeCollectionFromParent(workspaceData, selectedCollection.Name)
 
 		// Add to new parent
 		if newParent != nil {
 			newParent.Collections = append(newParent.Collections, *selectedCollection)
 		} else {
 			// Add to root
-			*collectionsData = append(*collectionsData, *selectedCollection)
+			workspaceData.Collections = append(workspaceData.Collections, *selectedCollection)
 		}
 
 		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
 		// Rebuild tree
 		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
 
 		pages.RemovePage("moveCollection")
 		pages.SwitchToPage("main")
@@ -659,20 +702,51 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 }
 
 // Helper function to remove a request from collections
-func removeRequestFromCollections(collectionsData *[]workspace.Collection, name, method, url string) {
-	for i := range *collectionsData {
-		col := &(*collectionsData)[i]
+func removeRequestFromCollections(workspaceData *workspace.Workspace, name, method, url string) {
+	// Remove from root requests
+	for i, req := range workspaceData.Requests {
+		if req.Name == name && req.Method == method && req.URL == url {
+			workspaceData.Requests = append(workspaceData.Requests[:i], workspaceData.Requests[i+1:]...)
+			return
+		}
+	}
+	// Remove from collections
+	for i := range workspaceData.Collections {
+		col := &workspaceData.Collections[i]
 		for j, req := range col.Requests {
 			if req.Name == name && req.Method == method && req.URL == url {
 				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
 				return
 			}
 		}
-		removeRequestFromCollections(&col.Collections, name, method, url)
+		// Recursive for nested
+		if len(col.Collections) > 0 {
+			if removeRequestFromNestedCollections(&col.Collections, name, method, url) {
+				return
+			}
+		}
 	}
 }
 
-func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, collectionsData *[]workspace.Collection, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, colors *ColorManager) *tview.Form {
+func removeRequestFromNestedCollections(collections *[]workspace.Collection, name, method, url string) bool {
+	for i := range *collections {
+		col := &(*collections)[i]
+		for j, req := range col.Requests {
+			if req.Name == name && req.Method == method && req.URL == url {
+				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
+				return true
+			}
+		}
+		if len(col.Collections) > 0 {
+			if removeRequestFromNestedCollections(&col.Collections, name, method, url) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, colors *ColorManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -686,18 +760,18 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 	var targetCollections []*workspace.Collection
 	collectionOptions = append(collectionOptions, "Root")
 
-	var addCollectionsToOptions func(collections []workspace.Collection, prefix string)
-	addCollectionsToOptions = func(collections []workspace.Collection, prefix string) {
-		for i := range collections {
-			col := &collections[i]
+	var addCollectionsToOptions func(collections *[]workspace.Collection, prefix string)
+	addCollectionsToOptions = func(collections *[]workspace.Collection, prefix string) {
+		for i := range *collections {
+			col := &(*collections)[i]
 			collectionOptions = append(collectionOptions, prefix+col.Name)
 			targetCollections = append(targetCollections, col)
 			if len(col.Collections) > 0 {
-				addCollectionsToOptions(col.Collections, prefix+col.Name+" → ")
+				addCollectionsToOptions(&col.Collections, prefix+col.Name+" → ")
 			}
 		}
 	}
-	addCollectionsToOptions(*collectionsData, "")
+	addCollectionsToOptions(&workspaceData.Collections, "")
 
 	collectionDropdown := tview.NewDropDown().
 		SetLabel("Move to: ").
@@ -712,34 +786,32 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 
 	form.AddButton("Move", func() {
 		selectedIndex, _ := collectionDropdown.GetCurrentOption()
-		if selectedIndex == 0 {
-			// Create new root collection with the request
-			newCollection := workspace.Collection{
-				Name:     selectedRequest.Name,
-				Requests: []workspace.Request{*selectedRequest},
-			}
-			*collectionsData = append(*collectionsData, newCollection)
 
-			// Remove from current collection
-			removeRequestFromCollections(collectionsData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+		if selectedIndex == 0 {
+			// Move to root requests - first remove from current location, then add to root
+			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+			workspaceData.Requests = append(workspaceData.Requests, *selectedRequest)
 		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
 			targetCollection := targetCollections[selectedIndex-1]
 
 			// Remove from current collection
-			removeRequestFromCollections(collectionsData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
 
 			// Add to target collection
 			targetCollection.Requests = append(targetCollection.Requests, *selectedRequest)
 		}
 
 		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
 		// Rebuild tree
 		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
+
+		// Refresh the tree view
+		collectionsTreeView.SetRoot(rootNode)
 
 		pages.RemovePage("moveRequest")
 		pages.SwitchToPage("main")
@@ -759,7 +831,7 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 func createDeleteRequestConfirm(app *tview.Application,
 	pages *tview.Pages,
 	selectedRequest *workspace.Request,
-	collectionsData *[]workspace.Collection,
+	workspaceData *workspace.Workspace,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
@@ -778,14 +850,14 @@ func createDeleteRequestConfirm(app *tview.Application,
 
 	form.AddButton("Delete", func() {
 		// Remove request from data
-		deleteRequestFromData(collectionsData, selectedRequest.Name)
+		deleteRequestFromData(workspaceData, selectedRequest.Name)
 
 		// Rebuild tree from updated data
 		rootNode.ClearChildren()
-		addCollectionsToTree(*collectionsData, rootNode)
+		addWorkspaceToTree(workspaceData, rootNode)
 
 		// Save workspace
-		if err := workspace.SaveCollections(*collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
