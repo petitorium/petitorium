@@ -191,14 +191,21 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 
 	// Create main grid layout
 	grid := tview.NewGrid().
-		SetRows(3, 0, 3).
 		SetColumns(30, 0).
 		SetBorders(false)
 
-	grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
-	grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, false)
-	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
-	grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
+	if header != nil {
+		grid.SetRows(3, 0, 3)
+		grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
+		grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, false)
+		grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
+		grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
+	} else {
+		grid.SetRows(0, 3)
+		grid.AddItem(leftSide, 0, 0, 1, 1, 0, 0, false)
+		grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
+		grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
+	}
 
 	// Initial focus is on requestPanel (panels[1])
 	currentFocus := collectionsIndex

@@ -34,7 +34,8 @@ type UIComponents struct {
 // setupUIComponents creates and configures all UI components
 func setupUIComponents(colors *ColorManager) *UIComponents {
 	// Create header panel
-	header := createPanel(" Petitorium ", colors, nil)
+	// header := createPanel(" Petitorium ", colors, nil)
+	header := (*tview.TextView)(nil)
 
 	// Create root node for tree
 	rootNode := tview.NewTreeNode("").SetSelectable(false)
@@ -137,14 +138,21 @@ func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.Tree
 		AddItem(collectionsTreeView, 0, 1, false)
 
 	grid := tview.NewGrid().
-		SetRows(3, 0, 3).
+		SetRows(0, 3).
 		SetColumns(30, 0).
 		SetBorders(false)
 
-	grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
-	grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
-	grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, true)
-	grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
+	if header != nil {
+		grid.SetRows(3, 0, 3)
+		grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
+		grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
+		grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, true)
+		grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
+	} else {
+		grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
+		grid.AddItem(leftSide, 0, 0, 1, 1, 0, 0, true)
+		grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
+	}
 
 	return grid
 }
