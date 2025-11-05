@@ -217,6 +217,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// Find the request pointer in collectionsData
 			ui.CurrentRequest = ui.DataManager.FindRequestPtr(req)
 
+			// Update node reference to current data
+			if ui.CurrentRequest != nil {
+				node.SetReference(*ui.CurrentRequest)
+			}
+
 			// Set method in dropdown AFTER currentRequest is set
 			if ui.CurrentRequest != nil {
 				syncMethodDropdown(ui.CurrentRequest, ui.MethodDropdown, &ui.ProgrammaticallyUpdatingMethod)
@@ -454,25 +459,25 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Move collection/request functionality (M)
+		// Move collection/request functionality (m)
 		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'm' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
-				// if col, ok := node.GetReference().(workspace.Collection); ok {
-				// 	// Move collection
-				// 	form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				// 	modal := createModal(form, 40, 12, tcell.ColorDefault)
-				// 	ui.Pages.AddPage("moveCollection", modal, true, true)
-				// 	ui.App.SetFocus(form)
-				// 	return nil
-				// } else if req, ok := node.GetReference().(workspace.Request); ok {
-				// 	// Move request
-				// 	form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-				// 	modal := createModal(form, 40, 10, tcell.ColorDefault)
-				// 	ui.Pages.AddPage("moveRequest", modal, true, true)
-				// 	ui.App.SetFocus(form)
-				// 	return nil
-				// }
+				if col, ok := node.GetReference().(workspace.Collection); ok {
+					// Move collection
+					form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					modal := createModal(form, 40, 12, tcell.ColorDefault)
+					ui.Pages.AddPage("moveCollection", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
+				} else if req, ok := node.GetReference().(workspace.Request); ok {
+					// Move request
+					form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+					modal := createModal(form, 40, 10, tcell.ColorDefault)
+					ui.Pages.AddPage("moveRequest", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
+				}
 			}
 		}
 

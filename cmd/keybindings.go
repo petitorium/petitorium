@@ -437,13 +437,15 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 				ui.Pages.AddPage("moveCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
-			} else if req, ok := node.GetReference().(workspace.Request); ok {
-				// Move request
-				form := createMoveRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-				modal := createModal(form, 40, 10, tcell.ColorDefault)
-				ui.Pages.AddPage("moveRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
+			} else if _, ok := node.GetReference().(workspace.Request); ok {
+				// Move request - use current request data instead of stale node reference
+				if ui.CurrentRequest != nil {
+					form := createMoveRequestForm(ui.App, ui.Pages, ui.CurrentRequest, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+					modal := createModal(form, 40, 10, tcell.ColorDefault)
+					ui.Pages.AddPage("moveRequest", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
+				}
 			}
 		}
 	}

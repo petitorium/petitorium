@@ -602,12 +602,13 @@ func isDescendant(parent, child *workspace.Collection) bool {
 
 // Helper function to remove a collection from its parent
 func removeCollectionFromParent(workspaceData *workspace.Workspace, name string) {
-	for i, col := range workspaceData.Collections {
+	for i := range workspaceData.Collections {
+		col := &workspaceData.Collections[i]
 		if col.Name == name {
 			workspaceData.Collections = append(workspaceData.Collections[:i], workspaceData.Collections[i+1:]...)
 			return
 		}
-		removeCollectionFromParentNested(&workspaceData.Collections[i].Collections, name)
+		removeCollectionFromParentNested(&col.Collections, name)
 	}
 }
 
@@ -710,7 +711,8 @@ func removeRequestFromCollections(workspaceData *workspace.Workspace, name, meth
 		}
 	}
 	// Remove from collections
-	for _, col := range workspaceData.Collections {
+	for i := range workspaceData.Collections {
+		col := &workspaceData.Collections[i]
 		for j, req := range col.Requests {
 			if req.Name == name && req.Method == method && req.URL == url {
 				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
@@ -719,24 +721,29 @@ func removeRequestFromCollections(workspaceData *workspace.Workspace, name, meth
 		}
 		// Recursive for nested
 		if len(col.Collections) > 0 {
-			removeRequestFromNestedCollections(&col.Collections, name, method, url)
+			if removeRequestFromNestedCollections(&col.Collections, name, method, url) {
+				return
+			}
 		}
 	}
 }
 
-func removeRequestFromNestedCollections(collections *[]workspace.Collection, name, method, url string) {
+func removeRequestFromNestedCollections(collections *[]workspace.Collection, name, method, url string) bool {
 	for i := range *collections {
 		col := &(*collections)[i]
 		for j, req := range col.Requests {
 			if req.Name == name && req.Method == method && req.URL == url {
 				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
-				return
+				return true
 			}
 		}
 		if len(col.Collections) > 0 {
-			removeRequestFromNestedCollections(&col.Collections, name, method, url)
+			if removeRequestFromNestedCollections(&col.Collections, name, method, url) {
+				return true
+			}
 		}
 	}
+	return false
 }
 
 func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, colors *ColorManager) *tview.Form {
@@ -753,18 +760,18 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 	var targetCollections []*workspace.Collection
 	collectionOptions = append(collectionOptions, "Root")
 
-	var addCollectionsToOptions func(collections []workspace.Collection, prefix string)
-	addCollectionsToOptions = func(collections []workspace.Collection, prefix string) {
-		for i := range collections {
-			col := &collections[i]
+	var addCollectionsToOptions func(collections *[]workspace.Collection, prefix string)
+	addCollectionsToOptions = func(collections *[]workspace.Collection, prefix string) {
+		for i := range *collections {
+			col := &(*collections)[i]
 			collectionOptions = append(collectionOptions, prefix+col.Name)
 			targetCollections = append(targetCollections, col)
 			if len(col.Collections) > 0 {
-				addCollectionsToOptions(col.Collections, prefix+col.Name+" → ")
+				addCollectionsToOptions(&col.Collections, prefix+col.Name+" → ")
 			}
 		}
 	}
-	addCollectionsToOptions(workspaceData.Collections, "")
+	addCollectionsToOptions(&workspaceData.Collections, "")
 
 	collectionDropdown := tview.NewDropDown().
 		SetLabel("Move to: ").
@@ -779,12 +786,11 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 
 	form.AddButton("Move", func() {
 		selectedIndex, _ := collectionDropdown.GetCurrentOption()
-		if selectedIndex == 0 {
-			// Move to root requests
-			workspaceData.Requests = append(workspaceData.Requests, *selectedRequest)
 
-			// Remove from current location
+		if selectedIndex == 0 {
+			// Move to root requests - first remove from current location, then add to root
 			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+			workspaceData.Requests = append(workspaceData.Requests, *selectedRequest)
 		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
 			targetCollection := targetCollections[selectedIndex-1]
 
@@ -803,6 +809,9 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 		// Rebuild tree
 		rootNode.ClearChildren()
 		addWorkspaceToTree(workspaceData, rootNode)
+
+		// Refresh the tree view
+		collectionsTreeView.SetRoot(rootNode)
 
 		pages.RemovePage("moveRequest")
 		pages.SwitchToPage("main")
