@@ -292,12 +292,11 @@ func createRenameCollectionForm(app *tview.Application,
 		}
 
 		// Find and update the actual collection in workspaceData
-		for i := range workspaceData.Requests {
-			if workspaceData.Requests[i].Name == selectedRequest.Name && workspaceData.Requests[i].Method == selectedRequest.Method && workspaceData.Requests[i].URL == selectedRequest.URL && workspaceData.Requests[i].Body == selectedRequest.Body {
-				workspaceData.Requests = append(workspaceData.Requests[:i], workspaceData.Requests[i+1:]...)
+		for i := range workspaceData.Collections {
+			if workspaceData.Collections[i].Name == selectedCollection.Name {
+				workspaceData.Collections[i].Name = newName
 				break
 			}
-		}
 		}
 
 		// Update tree node
@@ -367,12 +366,37 @@ func createRenameRequestForm(app *tview.Application,
 		}
 
 		// Find and update the request in workspaceData
-		for i := range workspaceData.Requests {
-			for j := range (workspaceData)[i].Requests {
-				if (workspaceData)[i].Requests[j].Name == selectedRequest.Name &&
-					(workspaceData)[i].Requests[j].Method == selectedRequest.Method &&
-					(workspaceData)[i].Requests[j].URL == selectedRequest.URL {
-					(workspaceData)[i].Requests[j].Name = newName
+		// First check root requests
+		for i, req := range workspaceData.Requests {
+			if req.Name == selectedRequest.Name && req.Method == selectedRequest.Method && req.URL == selectedRequest.URL {
+				workspaceData.Requests[i].Name = newName
+
+				// Update tree node
+				coloredMethod := getColoredMethod(selectedRequest.Method)
+				paddedName := padNameToMinLength(newName, 4)
+				node.SetText(fmt.Sprintf("%s %s", coloredMethod, paddedName))
+
+				// Update node reference
+				updatedRequest := *selectedRequest
+				updatedRequest.Name = newName
+				node.SetReference(updatedRequest)
+
+				// Save workspace
+				if err := workspace.SaveWorkspace(workspaceData); err != nil {
+					// Handle error
+				}
+
+				cancelFunc()
+				return
+			}
+		}
+		// Then check collections
+		for i := range workspaceData.Collections {
+			for j := range workspaceData.Collections[i].Requests {
+				if workspaceData.Collections[i].Requests[j].Name == selectedRequest.Name &&
+					workspaceData.Collections[i].Requests[j].Method == selectedRequest.Method &&
+					workspaceData.Collections[i].Requests[j].URL == selectedRequest.URL {
+					workspaceData.Collections[i].Requests[j].Name = newName
 
 					// Update tree node
 					coloredMethod := getColoredMethod(selectedRequest.Method)
@@ -578,12 +602,23 @@ func isDescendant(parent, child *workspace.Collection) bool {
 
 // Helper function to remove a collection from its parent
 func removeCollectionFromParent(workspaceData *workspace.Workspace, name string) {
-	for i, col := range workspaceData.Requests {
+	for i, col := range workspaceData.Collections {
 		if col.Name == name {
-			workspaceData = append((workspaceData)[:i], (workspaceData)[i+1:]...)
+			workspaceData.Collections = append(workspaceData.Collections[:i], workspaceData.Collections[i+1:]...)
 			return
 		}
-		removeCollectionFromParent(&(workspaceData)[i].Collections, name)
+		removeCollectionFromParentNested(&workspaceData.Collections[i].Collections, name)
+	}
+}
+
+// Helper function to remove a collection from nested collections
+func removeCollectionFromParentNested(collections *[]workspace.Collection, name string) {
+	for i := range *collections {
+		if (*collections)[i].Name == name {
+			*collections = append((*collections)[:i], (*collections)[i+1:]...)
+			return
+		}
+		removeCollectionFromParentNested(&(*collections)[i].Collections, name)
 	}
 }
 
@@ -597,9 +632,10 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 	form.SetButtonTextColor(colors.Foreground)
 
 	// Get all possible parent collections (excluding self and descendants)
-	var possibleParents []workspace.Collection
-	for _, col := range workspaceData.Requests {
-		if col.Name != selectedCollection.Name && !isDescendant(&col, selectedCollection) {
+	var possibleParents []*workspace.Collection
+	for i := range workspaceData.Collections {
+		col := &workspaceData.Collections[i]
+		if col.Name != selectedCollection.Name && !isDescendant(col, selectedCollection) {
 			possibleParents = append(possibleParents, col)
 		}
 	}
@@ -626,7 +662,7 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 		selectedIndex, _ := parentDropdown.GetCurrentOption()
 		var newParent *workspace.Collection
 		if selectedIndex > 0 {
-			newParent = &possibleParents[selectedIndex-1]
+			newParent = possibleParents[selectedIndex-1]
 		}
 
 		// Remove from current parent
@@ -674,13 +710,12 @@ func removeRequestFromCollections(workspaceData *workspace.Workspace, name, meth
 		}
 	}
 	// Remove from collections
-		for i, col := range workspaceData.Collections {
-			if col.Name == selectedCollection.Name {
-				workspaceData.Collections = append(workspaceData.Collections[:i], workspaceData.Collections[i+1:]...)
-				break
+	for _, col := range workspaceData.Collections {
+		for j, req := range col.Requests {
+			if req.Name == name && req.Method == method && req.URL == url {
+				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
+				return
 			}
-		}
-		}
 		}
 		// Recursive for nested
 		if len(col.Collections) > 0 {
@@ -806,7 +841,7 @@ func createDeleteRequestConfirm(app *tview.Application,
 
 	form.AddButton("Delete", func() {
 		// Remove request from data
-		deleteRequestFromData(&workspaceData.Collections, selectedRequest.Name)
+		deleteRequestFromData(workspaceData, selectedRequest.Name)
 
 		// Rebuild tree from updated data
 		rootNode.ClearChildren()
