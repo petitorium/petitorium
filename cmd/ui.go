@@ -1227,9 +1227,11 @@ func setEnvVarsInUI(colors *ColorManager, variables map[string]string, saveCallb
 }
 
 // createResponseInfoBar creates the response information bar
-func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) *tview.Flex {
+func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) (*tview.Flex, *tview.TextView, int) {
 	infoBar := tview.NewFlex().SetDirection(tview.FlexColumn)
 	infoBar.SetBackgroundColor(colors.Background)
+
+	var timeText *tview.TextView
 
 	if resp == nil {
 		// No response yet
@@ -1238,7 +1240,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 		noResponseText.SetTextColor(colors.Foreground)
 		noResponseText.SetText("No response")
 		infoBar.AddItem(noResponseText, 0, 1, false)
-		return infoBar
+		return infoBar, nil, 12 // "No response" is 11 chars, plus some padding
 	}
 
 	// Determine status background color
@@ -1262,26 +1264,38 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	infoBar.AddItem(statusText, 5, 0, false)
 
 	// Size
+	minSizeWidth := 15
 	sizeText := tview.NewTextView()
 	sizeText.SetBackgroundColor(colors.Background)
 	sizeText.SetTextColor(colors.Foreground)
-	sizeText.SetText(fmt.Sprintf("Size: %s", humanize.IBytes(uint64(resp.BodySize))))
+	sizeStr := fmt.Sprintf("Size: %s", humanize.IBytes(uint64(resp.BodySize)))
+	sizeText.SetText(sizeStr)
 	sizeText.SetTextAlign(tview.AlignCenter)
-	infoBar.AddItem(sizeText, 0, 1, false)
+	sizeWidth := utf8.RuneCountInString(sizeStr)
+	if sizeWidth < minSizeWidth {
+		sizeWidth = minSizeWidth
+	}
+	infoBar.AddItem(sizeText, sizeWidth, 0, false)
 
 	// Time
-	timeText := tview.NewTextView()
+	minWidth := 22
+	timeText = tview.NewTextView()
 	timeText.SetBackgroundColor(colors.Background)
 	timeText.SetTextColor(colors.Foreground)
+	timeStr := " Time: -"
 	if lastTime != nil {
-		timeText.SetText(fmt.Sprintf("Time: %s", humanize.Time(*lastTime)))
-	} else {
-		timeText.SetText("Time: -")
+		timeStr = fmt.Sprintf(" Time: %s", humanize.Time(*lastTime))
 	}
-	timeText.SetTextAlign(tview.AlignCenter)
-	infoBar.AddItem(timeText, 0, 1, false)
+	timeText.SetText(timeStr)
+	timeText.SetTextAlign(tview.AlignLeft)
+	timeWidth := utf8.RuneCountInString(timeStr)
+	if timeWidth < minWidth {
+		timeWidth = minWidth
+	}
+	infoBar.AddItem(timeText, timeWidth, 0, false)
 
-	return infoBar
+	totalWidth := 5 + sizeWidth + timeWidth // status 5, size dynamic, time dynamic
+	return infoBar, timeText, totalWidth
 }
 
 // createRequestDataTabs creates the request data tabs interface
@@ -1333,7 +1347,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 }
 
 // createResponseTabs creates the response tabs interface
-func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
+func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
 	// Create main response container
 	response := tview.NewFlex().SetDirection(tview.FlexRow)
 	response.SetBackgroundColor(colors.Background)
@@ -1346,7 +1360,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	responseTabHeader := createTabHeader([]string{"Preview", "Headers", "Cookies", "Timeline"}, colors, func(int) {})
 
 	// Create info bar
-	responseInfoBar := createResponseInfoBar(colors, resp, lastTime)
+	responseInfoBar, _, infoBarWidth := createResponseInfoBar(colors, resp, lastTime)
 
 	// Create top row with tab header and info bar
 	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -1354,7 +1368,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	topRow.AddItem(responseTabHeader, 0, 1, false)
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	topRow.AddItem(spacer, 0, 1, false)
-	topRow.AddItem(responseInfoBar, 44, 0, false)
+	topRow.AddItem(responseInfoBar, infoBarWidth, 0, false)
 
 	// Create tab pages
 	responsePages := tview.NewPages()
@@ -1399,7 +1413,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	response.AddItem(topRow, 1, 0, false)
 	response.AddItem(responsePages, 0, 1, false)
 
-	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel
+	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, nil
 }
 
 // createModal creates a centered modal dialog

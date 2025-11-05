@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+	"time"
+
+	"github.com/dustin/go-humanize"
 	"github.com/rivo/tview"
 
 	"github.com/hbarral/petitorium/workspace"
@@ -26,6 +30,7 @@ type UIOrchestrator struct {
 	ResponsePages         *tview.Pages
 	ResponseTabHeader     *tview.Flex
 	ResponseInfoBar       *tview.Flex
+	ResponseTimeText      *tview.TextView
 	ResponsePreviewPanel  *tview.TextView
 	ResponseHeadersPanel  *tview.TextView
 	ResponseCookiesPanel  *tview.TextView
@@ -37,6 +42,7 @@ type UIOrchestrator struct {
 	Pages                 *tview.Pages
 	Grid                  *tview.Grid
 	KeyManager            *KeyBindingManager
+	LastResponseTime      *time.Time
 
 	// State variables
 	CurrentSelectedNode            *tview.TreeNode
@@ -96,6 +102,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 	responsePages := ui.ResponsePages
 	responseTabHeader := ui.ResponseTabHeader
 	responseInfoBar := ui.ResponseInfoBar
+	responseTimeText := ui.ResponseTimeText
 	responsePreviewPanel := ui.ResponsePreviewPanel
 	responseHeadersPanel := ui.ResponseHeadersPanel
 	responseCookiesPanel := ui.ResponseCookiesPanel
@@ -248,6 +255,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		ResponsePages:                  responsePages,
 		ResponseTabHeader:              responseTabHeader,
 		ResponseInfoBar:                responseInfoBar,
+		ResponseTimeText:               responseTimeText,
 		ResponsePreviewPanel:           responsePreviewPanel,
 		ResponseHeadersPanel:           responseHeadersPanel,
 		ResponseCookiesPanel:           responseCookiesPanel,
@@ -290,6 +298,7 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 		SwitchBodyMode:                 switchBodyMode,
 		UpdateFooter:                   func() {}, // Will be set below
 		KeyManager:                     NewKeyBindingManager(),
+		LastResponseTime:               nil,
 	}
 
 	// Function to update footer based on current focus
@@ -318,6 +327,27 @@ func SetupUI(collectionsData *[]workspace.Collection, dataManager *DataManager, 
 
 	// Set initial footer content
 	uiOrchestrator.UpdateFooter()
+
+	// Start clock goroutine to update time every second
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if uiOrchestrator.ResponseTimeText != nil {
+					app.QueueUpdateDraw(func() {
+						if uiOrchestrator.LastResponseTime != nil {
+							text := humanize.Time(*uiOrchestrator.LastResponseTime)
+							uiOrchestrator.ResponseTimeText.SetText(fmt.Sprintf(" Time: %s", text))
+						} else {
+							uiOrchestrator.ResponseTimeText.SetText(" Time: -")
+						}
+					})
+				}
+			}
+		}
+	}()
 
 	return uiOrchestrator, nil
 }

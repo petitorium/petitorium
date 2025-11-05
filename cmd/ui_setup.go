@@ -20,6 +20,7 @@ type UIComponents struct {
 	ResponsePages         *tview.Pages
 	ResponseTabHeader     *tview.Flex
 	ResponseInfoBar       *tview.Flex
+	ResponseTimeText      *tview.TextView
 	ResponsePreviewPanel  *tview.TextView
 	ResponseHeadersPanel  *tview.TextView
 	ResponseCookiesPanel  *tview.TextView
@@ -49,7 +50,7 @@ func setupUIComponents(colors *ColorManager) *UIComponents {
 	bodyEditPanel := createTextArea(" Body (EDIT) ", colors.Background, colors.Border, colors.Title, colors.Foreground)
 
 	// Create response tabs panel
-	response, responsePages, responseTabHeader, _, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel := createResponseTabs(
+	response, responsePages, responseTabHeader, _, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, responseTimeText := createResponseTabs(
 		colors,
 		nil, nil, // No initial response or last request time
 	)
@@ -94,6 +95,7 @@ func setupUIComponents(colors *ColorManager) *UIComponents {
 		ResponsePages:         responsePages,
 		ResponseTabHeader:     responseTabHeader,
 		ResponseInfoBar:       responseInfoBar,
+		ResponseTimeText:      responseTimeText,
 		ResponsePreviewPanel:  responsePreviewPanel,
 		ResponseHeadersPanel:  responseHeadersPanel,
 		ResponseCookiesPanel:  responseCookiesPanel,

@@ -49,19 +49,21 @@ func syncMethodDropdown(currentRequest *workspace.Request, methodDropdown *tview
 }
 
 // updateResponseTabs updates the response tabs with new response data
-func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responsePreviewPanel *tview.TextView, responseHeadersPanel *tview.TextView, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager) {
+func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel *tview.TextView, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager) {
 	// Update the info bar - replace it in the top row
-	newInfoBar := createResponseInfoBar(colors, resp, lastTime)
+	newInfoBar, newTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime)
 	// The response container has: topRow (item 0), tabPages (item 1)
 	// topRow has: tabHeader, spacer, infoBar
 	if topRow, ok := response.GetItem(0).(*tview.Flex); ok {
 		// Clear and rebuild the top row with the new info bar
+		spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 		topRow.Clear()
 		topRow.AddItem(responseTabHeader, 0, 1, false)
-		spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 		topRow.AddItem(spacer, 0, 1, false)
-		topRow.AddItem(newInfoBar, 38, 0, false)
+		topRow.AddItem(newInfoBar, infoBarWidth, 0, false)
 		*responseInfoBar = newInfoBar
+		*responseTimeText = newTimeText
+		*lastResponseTime = lastTime
 	}
 
 	// Update preview tab
