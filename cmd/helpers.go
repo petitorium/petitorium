@@ -20,12 +20,12 @@ func updateEnvironmentDropdown(dropdown *tview.DropDown, environments []workspac
 	dropdown.SetOptions(options, nil)
 }
 
-// saveCurrentRequest saves the current request changes to collections
-func saveCurrentRequest(currentRequest *workspace.Request, collectionsData []workspace.Collection) {
+// saveCurrentRequest saves the current request changes to workspace
+func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *workspace.Workspace) {
 	if currentRequest != nil {
 		// Sync headers from UI before saving
 		currentRequest.Headers = getHeadersFromUI()
-		if err := workspace.SaveCollections(collectionsData); err != nil {
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error (could show in status or log)
 			return
 		}

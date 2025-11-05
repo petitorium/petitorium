@@ -31,7 +31,7 @@ func updateCollectionExpansionState(collectionsData *[]workspace.Collection, col
 
 	// Save expansion state if in "remember" mode
 	if config.C.UI.CollectionExpansion == "remember" {
-		if err := workspace.SaveExpansionState(*collectionsData); err != nil {
+		if err := workspace.SaveExpansionState(collectionsData); err != nil {
 			// Log error but don't fail the operation
 			fmt.Printf("Warning: Failed to save expansion state: %v\n", err)
 		}
