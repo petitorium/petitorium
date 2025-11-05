@@ -37,3 +37,8 @@ type Collection struct {
 	Collections []Collection `yaml:"collections,omitempty"`
 	Expanded    bool         `yaml:"expanded,omitempty"`
 }
+
+type Workspace struct {
+	Collections []Collection `yaml:"collections,omitempty"`
+	Requests    []Request    `yaml:"requests,omitempty"`
+}
