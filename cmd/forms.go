@@ -220,21 +220,26 @@ func createRequestForm(app *tview.Application,
 			Body:   body,
 		}
 
-		// Find and update the actual collection in workspaceData
-		actualCollection := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
+		if selectedCollection == nil {
+			// Add to root requests
+			workspaceData.Requests = append(workspaceData.Requests, newRequest)
+		} else {
+			// Find and update the actual collection in workspaceData
+			actualCollection := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
 
-		if actualCollection != nil {
-			// Add request to the actual collection in workspaceData
-			actualCollection.Requests = append(actualCollection.Requests, newRequest)
-
-			// Rebuild the entire tree to reflect changes
-			rootNode.ClearChildren()
-			addWorkspaceToTree(workspaceData, rootNode)
-
-			// Save workspace
-			if err := workspace.SaveWorkspace(workspaceData); err != nil {
-				// Handle error
+			if actualCollection != nil {
+				// Add request to the actual collection in workspaceData
+				actualCollection.Requests = append(actualCollection.Requests, newRequest)
 			}
+		}
+
+		// Rebuild the entire tree to reflect changes
+		rootNode.ClearChildren()
+		addWorkspaceToTree(workspaceData, rootNode)
+
+		// Save workspace
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			// Handle error
 		}
 
 		pages.RemovePage("newRequest")
@@ -288,10 +293,11 @@ func createRenameCollectionForm(app *tview.Application,
 
 		// Find and update the actual collection in workspaceData
 		for i := range workspaceData.Requests {
-			if (workspaceData)[i].Name == selectedCollection.Name {
-				(workspaceData)[i].Name = newName
+			if workspaceData.Requests[i].Name == selectedRequest.Name && workspaceData.Requests[i].Method == selectedRequest.Method && workspaceData.Requests[i].URL == selectedRequest.URL && workspaceData.Requests[i].Body == selectedRequest.Body {
+				workspaceData.Requests = append(workspaceData.Requests[:i], workspaceData.Requests[i+1:]...)
 				break
 			}
+		}
 		}
 
 		// Update tree node
@@ -660,15 +666,41 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 
 // Helper function to remove a request from collections
 func removeRequestFromCollections(workspaceData *workspace.Workspace, name, method, url string) {
-	for i := range workspaceData.Requests {
-		col := &(workspaceData)[i]
+	// Remove from root requests
+	for i, req := range workspaceData.Requests {
+		if req.Name == name && req.Method == method && req.URL == url {
+			workspaceData.Requests = append(workspaceData.Requests[:i], workspaceData.Requests[i+1:]...)
+			return
+		}
+	}
+	// Remove from collections
+		for i, col := range workspaceData.Collections {
+			if col.Name == selectedCollection.Name {
+				workspaceData.Collections = append(workspaceData.Collections[:i], workspaceData.Collections[i+1:]...)
+				break
+			}
+		}
+		}
+		}
+		// Recursive for nested
+		if len(col.Collections) > 0 {
+			removeRequestFromNestedCollections(&col.Collections, name, method, url)
+		}
+	}
+}
+
+func removeRequestFromNestedCollections(collections *[]workspace.Collection, name, method, url string) {
+	for i := range *collections {
+		col := &(*collections)[i]
 		for j, req := range col.Requests {
 			if req.Name == name && req.Method == method && req.URL == url {
 				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
 				return
 			}
 		}
-		removeRequestFromCollections(&col.Collections, name, method, url)
+		if len(col.Collections) > 0 {
+			removeRequestFromNestedCollections(&col.Collections, name, method, url)
+		}
 	}
 }
 
@@ -713,14 +745,10 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 	form.AddButton("Move", func() {
 		selectedIndex, _ := collectionDropdown.GetCurrentOption()
 		if selectedIndex == 0 {
-			// Create new root collection with the request
-			newCollection := workspace.Collection{
-				Name:     selectedRequest.Name,
-				Requests: []workspace.Request{*selectedRequest},
-			}
-			workspaceData.Collections = append(workspaceData.Collections, newCollection)
+			// Move to root requests
+			workspaceData.Requests = append(workspaceData.Requests, *selectedRequest)
 
-			// Remove from current collection
+			// Remove from current location
 			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
 		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
 			targetCollection := targetCollections[selectedIndex-1]
