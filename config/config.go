@@ -48,6 +48,8 @@ type UIConfig struct {
 	SelectedRequestIcon      string `mapstructure:"selectedRequestIcon"`      // icon to display before selected request names
 	SelectedRequestIconColor string `mapstructure:"selectedRequestIconColor"` // color for selected request icon
 	HeaderRemoveIcon         string `mapstructure:"headerRemoveIcon"`         // icon for removing headers
+	ConfigButtonIcon         string `mapstructure:"configButtonIcon"`         // icon for environment config button
+	DropdownIndicator        string `mapstructure:"dropdownIndicator"`        // indicator for dropdown
 }
 
 type MethodColorsConfig struct {
@@ -112,6 +114,8 @@ ui:
   selectedRequestIcon: ""
   selectedRequestIconColor: "#c8d3f5"
   headerRemoveIcon: "✕"
+  configButtonIcon: "⚙"
+  dropdownIndicator: "▼"
 
 # Syntax highlighting theme (chroma themes)
 # Popular options: github-dark, dracula, monokai, solarized-dark, nord, one-dark, vim, github

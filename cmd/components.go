@@ -6,6 +6,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
+	"github.com/hbarral/petitorium/config"
 	"github.com/hbarral/petitorium/workspace"
 )
 
@@ -159,12 +160,12 @@ func createEnvironmentPanel(
 	envDropdown.SetCurrentOption(0)
 
 	// Create config button
-	configButton := createButton("⚙", colors)
+	configButton := createButton(config.C.UI.ConfigButtonIcon, colors)
 
 	separator := tview.NewBox().
 		SetBackgroundColor(colors.Background)
 
-	indicator := createCustomButton("▼", colors.Background, colors.Background, colors.BorderFocus, colors.BorderFocus)
+	indicator := createCustomButton(config.C.UI.DropdownIndicator, colors.Background, colors.Background, colors.BorderFocus, colors.BorderFocus)
 
 	// Create container
 	container := tview.NewFlex().
