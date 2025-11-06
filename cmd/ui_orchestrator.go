@@ -346,9 +346,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 					app.QueueUpdateDraw(func() {
 						if uiOrchestrator.LastResponseTime != nil {
 							text := humanize.Time(*uiOrchestrator.LastResponseTime)
-							uiOrchestrator.ResponseTimeText.SetText(fmt.Sprintf(" Time: %s", text))
+							uiOrchestrator.ResponseTimeText.SetText(fmt.Sprintf(" %s", text))
 						} else {
-							uiOrchestrator.ResponseTimeText.SetText(" Time: -")
+							uiOrchestrator.ResponseTimeText.SetText(" -")
 						}
 					})
 				}

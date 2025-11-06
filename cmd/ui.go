@@ -1295,13 +1295,13 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	infoBar.AddItem(durationText, durationWidth, 0, false)
 
 	// Time
-	minWidth := 22
+	minWidth := 16
 	timeText = tview.NewTextView()
-	timeText.SetBackgroundColor(colors.Background)
+	timeText.SetBackgroundColor(colors.Border)
 	timeText.SetTextColor(colors.Foreground)
-	timeStr := " Time: -"
+	timeStr := " -"
 	if lastTime != nil {
-		timeStr = fmt.Sprintf(" Time: %s", humanize.Time(*lastTime))
+		timeStr = fmt.Sprintf(" %s", humanize.Time(*lastTime))
 	}
 	timeText.SetText(timeStr)
 	timeText.SetTextAlign(tview.AlignLeft)
