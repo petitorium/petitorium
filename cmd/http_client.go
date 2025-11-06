@@ -150,7 +150,7 @@ func FormatResponse(response *HTTPResponse) string {
 }
 
 // GetCurrentRequestData extracts the current request data from UI state
-func GetCurrentRequestData(methodDropdown *tview.DropDown, urlInput *VariableURLInput, currentRequest *workspace.Request) (string, string, string, map[string]string) {
+func GetCurrentRequestData(methodDropdown *tview.DropDown, urlInput *URLVariableInput, currentRequest *workspace.Request) (string, string, string, map[string]string) {
 	// Get method from dropdown
 	_, method := methodDropdown.GetCurrentOption()
 

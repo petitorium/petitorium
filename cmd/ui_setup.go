@@ -10,7 +10,7 @@ type UIComponents struct {
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
-	URLInput              *VariableURLInput
+	URLInput              *URLVariableInput
 	SendButton            *tview.Button
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea

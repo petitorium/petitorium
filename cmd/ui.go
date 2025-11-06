@@ -342,7 +342,7 @@ func createTextArea(title string, backgroundColor, borderColor, titleColor, fore
 func createMethodURLBar(
 	title string,
 	colors *ColorManager,
-) (*tview.Flex, *tview.DropDown, *VariableURLInput, *tview.Button) {
+) (*tview.Flex, *tview.DropDown, *URLVariableInput, *tview.Button) {
 	// Create the components without borders
 	methodDropdown := createDropDown(
 		"",
@@ -351,7 +351,7 @@ func createMethodURLBar(
 	)
 	methodDropdown.SetBorder(false)
 
-	urlInput := NewVariableURLInput(colors)
+	urlInput := NewURLVariableInput(colors)
 
 	sendButton := createButton(" Send ", colors)
 	sendButton.SetBackgroundColor(colors.Border)
@@ -1454,171 +1454,142 @@ func createModal(p tview.Primitive, width, height int, backgroundColor tcell.Col
 	return modal
 }
 
-// VariableURLInput is a custom input field that highlights environment variables
-type VariableURLInput struct {
-	*tview.TextView
-	text           string
-	cursorPos      int
+// URLVariableInput is a dual-mode input component for URLs with environment variables
+type URLVariableInput struct {
+	*tview.Flex
+	viewMode       *tview.TextView
+	editMode       *tview.InputField
+	currentMode    string // "view" or "edit"
+	rawText        string // The actual {{variable}} text
+	variables      map[string]string
 	onChanged      func(string)
 	onEnterPressed func()
-	variableRegex  *regexp.Regexp
 	colors         *ColorManager
-	theme          config.ThemeConfig
+	variableRegex  *regexp.Regexp
 }
 
-// NewVariableURLInput creates a new variable-highlighting URL input
-func NewVariableURLInput(colors *ColorManager) *VariableURLInput {
+// NewURLVariableInput creates a new dual-mode URL input component
+func NewURLVariableInput(colors *ColorManager) *URLVariableInput {
 	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
 
-	textView := tview.NewTextView().
+	// Create view mode component (TextView)
+	viewMode := tview.NewTextView().
 		SetDynamicColors(true).
-		SetRegions(true).
 		SetWordWrap(false).
 		SetScrollable(false)
 
-	textView.SetBackgroundColor(colors.Background)
-	textView.SetTextColor(colors.Foreground)
-	textView.SetBorderPadding(0, 0, 1, 1) // Add some padding to look like an input field
+	viewMode.SetBackgroundColor(colors.Background)
+	viewMode.SetTextColor(colors.Foreground)
+	viewMode.SetBorderPadding(0, 0, 1, 1)
 
-	input := &VariableURLInput{
-		TextView:      textView,
-		text:          "",
-		cursorPos:     0,
-		variableRegex: variableRegex,
+	// Create edit mode component (InputField)
+	editMode := tview.NewInputField()
+	editMode.SetBackgroundColor(colors.Background)
+	editMode.SetFieldBackgroundColor(colors.Background)
+	editMode.SetFieldTextColor(colors.Foreground)
+	editMode.SetBorder(false)
+
+	// Create container
+	container := tview.NewFlex().SetDirection(tview.FlexColumn)
+	container.AddItem(viewMode, 0, 1, false)
+
+	input := &URLVariableInput{
+		Flex:          container,
+		viewMode:      viewMode,
+		editMode:      editMode,
+		currentMode:   "view",
+		rawText:       "",
+		variables:     make(map[string]string),
 		colors:        colors,
-		theme:         config.C.Theme,
+		variableRegex: variableRegex,
 	}
 
-	// Set up input capture to handle typing
-	textView.SetInputCapture(input.handleInput)
+	// Set up event handlers
+	editMode.SetChangedFunc(func(text string) {
+		input.rawText = text
+		if input.onChanged != nil {
+			input.onChanged(text)
+		}
+	})
+
+	editMode.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter && input.onEnterPressed != nil {
+			input.onEnterPressed()
+		} else if key == tcell.KeyEsc {
+			input.switchToViewMode()
+		}
+	})
+
+	// Set up view mode click to enter edit mode
+	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEnter {
+			input.switchToEditMode()
+			return nil
+		}
+		return event
+	})
 
 	return input
 }
 
-// SetText sets the text and updates the display
-func (v *VariableURLInput) SetText(text string) {
-	v.text = text
-	v.cursorPos = len(text)
-	v.updateDisplay()
-	if v.onChanged != nil {
-		v.onChanged(text)
+// switchToViewMode switches to view mode, showing rendered variables
+func (u *URLVariableInput) switchToViewMode() {
+	u.currentMode = "view"
+	u.Flex.RemoveItem(u.editMode)
+	u.Flex.AddItem(u.viewMode, 0, 1, false)
+	u.updateViewMode()
+}
+
+// switchToEditMode switches to edit mode, showing raw text
+func (u *URLVariableInput) switchToEditMode() {
+	u.currentMode = "edit"
+	u.Flex.RemoveItem(u.viewMode)
+	u.Flex.AddItem(u.editMode, 0, 1, false)
+	u.editMode.SetText(u.rawText)
+}
+
+// updateViewMode renders the text with variables highlighted in view mode
+func (u *URLVariableInput) updateViewMode() {
+	if u.rawText == "" {
+		u.viewMode.SetText("")
+		return
+	}
+
+	// Parse and render variables without braces
+	result := u.variableRegex.ReplaceAllStringFunc(u.rawText, func(match string) string {
+		// Extract variable name (remove {{ and }})
+		varName := match[2 : len(match)-2]
+		// Render with background color
+		return fmt.Sprintf("[%s:-:-]%s[-:-:-]", config.C.Theme.DropdownFocusedBackground, varName)
+	})
+
+	u.viewMode.SetText(result)
+}
+
+// SetText sets the raw text and updates both modes
+func (u *URLVariableInput) SetText(text string) {
+	u.rawText = text
+	if u.currentMode == "view" {
+		u.updateViewMode()
+	} else {
+		u.editMode.SetText(text)
+	}
+	if u.onChanged != nil {
+		u.onChanged(text)
 	}
 }
 
-// GetText returns the current text
-func (v *VariableURLInput) GetText() string {
-	return v.text
+// GetText returns the current raw text
+func (u *URLVariableInput) GetText() string {
+	return u.rawText
 }
 
 // SetChangedFunc sets the callback for when text changes
-func (v *VariableURLInput) SetChangedFunc(callback func(string)) {
-	v.onChanged = callback
+func (u *URLVariableInput) SetChangedFunc(callback func(string)) {
+	u.onChanged = callback
 }
 
 // SetDoneFunc sets the callback for when Enter is pressed
-func (v *VariableURLInput) SetDoneFunc(callback func()) {
-	v.onEnterPressed = callback
-}
-
-// updateDisplay renders the text with variable highlighting
-func (v *VariableURLInput) updateDisplay() {
-	if v.text == "" {
-		v.TextView.SetText("")
-		return
-	}
-
-	// Parse text and highlight variables
-	parts := v.variableRegex.FindAllStringIndex(v.text, -1)
-	if len(parts) == 0 {
-		// No variables, just display normal text
-		v.TextView.SetText(v.text)
-		return
-	}
-
-	// Build styled text with ANSI color codes
-	var result strings.Builder
-	lastEnd := 0
-
-	for _, part := range parts {
-		start, end := part[0], part[1]
-
-		// Add text before variable
-		if start > lastEnd {
-			result.WriteString(v.text[lastEnd:start])
-		}
-
-		// Add highlighted variable
-		variable := v.text[start:end]
-		// Use the dropdown focused background color for background and white text for variables
-		result.WriteString(fmt.Sprintf("[%s:-:-]%s[-:-:-]", v.theme.DropdownFocusedBackground, variable))
-
-		lastEnd = end
-	}
-
-	// Add remaining text
-	if lastEnd < len(v.text) {
-		result.WriteString(v.text[lastEnd:])
-	}
-
-	v.TextView.SetText(result.String())
-}
-
-// handleInput processes keyboard input to make the TextView behave like an input field
-func (v *VariableURLInput) handleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Key() {
-	case tcell.KeyEnter:
-		if v.onEnterPressed != nil {
-			v.onEnterPressed()
-		}
-		return nil
-	case tcell.KeyBackspace, tcell.KeyBackspace2:
-		if v.cursorPos > 0 {
-			v.text = v.text[:v.cursorPos-1] + v.text[v.cursorPos:]
-			v.cursorPos--
-			v.updateDisplay()
-			if v.onChanged != nil {
-				v.onChanged(v.text)
-			}
-		}
-		return nil
-	case tcell.KeyDelete:
-		if v.cursorPos < len(v.text) {
-			v.text = v.text[:v.cursorPos] + v.text[v.cursorPos+1:]
-			v.updateDisplay()
-			if v.onChanged != nil {
-				v.onChanged(v.text)
-			}
-		}
-		return nil
-	case tcell.KeyLeft:
-		if v.cursorPos > 0 {
-			v.cursorPos--
-		}
-		return nil
-	case tcell.KeyRight:
-		if v.cursorPos < len(v.text) {
-			v.cursorPos++
-		}
-		return nil
-	case tcell.KeyHome:
-		v.cursorPos = 0
-		return nil
-	case tcell.KeyEnd:
-		v.cursorPos = len(v.text)
-		return nil
-	default:
-		// Handle regular character input
-		if event.Rune() != 0 {
-			runeStr := string(event.Rune())
-			v.text = v.text[:v.cursorPos] + runeStr + v.text[v.cursorPos:]
-			v.cursorPos += len(runeStr)
-			v.updateDisplay()
-			if v.onChanged != nil {
-				v.onChanged(v.text)
-			}
-			return nil
-		}
-	}
-
-	return event
+func (u *URLVariableInput) SetDoneFunc(callback func()) {
+	u.onEnterPressed = callback
 }
