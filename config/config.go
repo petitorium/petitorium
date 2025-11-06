@@ -8,14 +8,16 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 type AppConfig struct {
-	Theme        ThemeConfig        `mapstructure:"theme"`
-	UI           UIConfig           `mapstructure:"ui"`
-	MethodColors MethodColorsConfig `mapstructure:"methodColors"`
-	StatusColors StatusColorsConfig `mapstructure:"statusColors"`
-	SyntaxTheme  string             `mapstructure:"syntaxTheme"`
+	Theme               ThemeConfig        `mapstructure:"theme"`
+	UI                  UIConfig           `mapstructure:"ui"`
+	MethodColors        MethodColorsConfig `mapstructure:"methodColors"`
+	StatusColors        StatusColorsConfig `mapstructure:"statusColors"`
+	SyntaxTheme         string             `mapstructure:"syntaxTheme"`
+	SelectedEnvironment string             `mapstructure:"selectedEnvironment"`
 }
 
 type ThemeConfig struct {
@@ -122,6 +124,9 @@ ui:
 # Run 'petitorium themes' to see all available themes
 syntaxTheme: "tokyonight-night"
 
+# Selected environment name (defaults to "Base")
+selectedEnvironment: "Base"
+
 methodColors:
   GET: "#6EA5A0"
   POST: "#FF00FF"
@@ -164,6 +169,26 @@ func LoadConfig() error {
 	_ = viper.ReadInConfig()
 
 	return viper.Unmarshal(&C)
+}
+
+func SaveConfig(config *AppConfig) error {
+	home, err := homedir.Dir()
+	if err != nil {
+		return err
+	}
+	configDir := filepath.Join(home, ".config", "petitorium")
+	configFile := filepath.Join(configDir, "config.yaml")
+
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return err
+	}
+
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configFile, data, 0644)
 }
 
 func InitConfig() (string, error) {

@@ -16,33 +16,26 @@ func showEnvironmentModal(
 	// Get current selected environment
 	currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
 	var env *workspace.Environment
-	var modalTitle string
 
 	if currentEnvIndex == 0 {
 		// Base Environment selected - find and edit the "Base" environment
 		for i := range *ui.EnvironmentsData {
 			if (*ui.EnvironmentsData)[i].Name == "Base" {
 				env = &(*ui.EnvironmentsData)[i]
-				modalTitle = " Environment: Base "
 				break
 			}
 		}
 		// If Base environment doesn't exist, create new environment
 		if env == nil {
 			env = nil
-			modalTitle = " Create New Environment "
 		}
 	} else if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
 		// Other environment is selected - edit existing environment
 		env = &(*ui.EnvironmentsData)[currentEnvIndex-1] // -1 because dropdown has "Base Environment" at index 0
-		modalTitle = " Environment: " + env.Name + " "
 	} else {
 		// Fallback - create new environment
 		env = nil
-		modalTitle = " Create New Environment "
 	}
-
-	ui.Header.SetTitle(modalTitle)
 
 	// Create JSON editor for environment variables
 	var jsonBytes []byte

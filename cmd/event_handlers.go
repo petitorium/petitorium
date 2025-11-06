@@ -291,6 +291,21 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		showEnvironmentModal(ui)
 	})
 
+	// Set up environment dropdown selection handler
+	ui.EnvDropdown.SetSelectedFunc(func(text string, index int) {
+		// Update the selected environment in config
+		if index == 0 {
+			config.C.SelectedEnvironment = "Base"
+		} else if index > 0 && index <= len(*ui.EnvironmentsData) {
+			config.C.SelectedEnvironment = (*ui.EnvironmentsData)[index-1].Name
+		}
+		// Save the config
+		if err := config.SaveConfig(&config.C); err != nil {
+			// Log error but don't interrupt user
+			// Could add proper logging here
+		}
+	})
+
 	// Add send button functionality
 	ui.SendButton.SetSelectedFunc(func() {
 		// Get current request data from UI
