@@ -21,7 +21,7 @@ type UIOrchestrator struct {
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
-	URLInput              *tview.InputField
+	URLInput              *VariableURLInput
 	SendButton            *tview.Button
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
