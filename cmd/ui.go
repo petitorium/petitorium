@@ -1264,11 +1264,11 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	infoBar.AddItem(statusText, 5, 0, false)
 
 	// Size
-	minSizeWidth := 15
+	minSizeWidth := 9
 	sizeText := tview.NewTextView()
-	sizeText.SetBackgroundColor(colors.Background)
+	sizeText.SetBackgroundColor(colors.Border)
 	sizeText.SetTextColor(colors.Foreground)
-	sizeStr := fmt.Sprintf("Size: %s", humanize.IBytes(uint64(resp.BodySize)))
+	sizeStr := fmt.Sprintf(" %s", humanize.IBytes(uint64(resp.BodySize)))
 	sizeText.SetText(sizeStr)
 	sizeText.SetTextAlign(tview.AlignCenter)
 	sizeWidth := utf8.RuneCountInString(sizeStr)
