@@ -1277,6 +1277,23 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	}
 	infoBar.AddItem(sizeText, sizeWidth, 0, false)
 
+	// Duration
+	minDurationWidth := 7
+	durationText := tview.NewTextView()
+	durationText.SetBackgroundColor(colors.Border)
+	durationText.SetTextColor(colors.Foreground)
+	durationStr := " -"
+	if resp.Duration > 0 {
+		durationStr = fmt.Sprintf(" %v", resp.Duration.Round(time.Millisecond))
+	}
+	durationText.SetText(durationStr)
+	durationText.SetTextAlign(tview.AlignCenter)
+	durationWidth := utf8.RuneCountInString(durationStr)
+	if durationWidth < minDurationWidth {
+		durationWidth = minDurationWidth
+	}
+	infoBar.AddItem(durationText, durationWidth, 0, false)
+
 	// Time
 	minWidth := 22
 	timeText = tview.NewTextView()
@@ -1294,7 +1311,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	}
 	infoBar.AddItem(timeText, timeWidth, 0, false)
 
-	totalWidth := 5 + sizeWidth + timeWidth // status 5, size dynamic, time dynamic
+	totalWidth := 5 + sizeWidth + durationWidth + timeWidth // status 5, size dynamic, duration dynamic, time dynamic
 	return infoBar, timeText, totalWidth
 }
 
