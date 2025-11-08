@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -341,7 +342,8 @@ func createTextArea(title string, backgroundColor, borderColor, titleColor, fore
 func createMethodURLBar(
 	title string,
 	colors *ColorManager,
-) (*tview.Flex, *tview.DropDown, *tview.InputField, *tview.Button) {
+	app *tview.Application,
+) (*tview.Flex, *tview.DropDown, *URLVariableInput, *tview.Button) {
 	// Create the components without borders
 	methodDropdown := createDropDown(
 		"",
@@ -350,8 +352,7 @@ func createMethodURLBar(
 	)
 	methodDropdown.SetBorder(false)
 
-	urlInput := createInputField("", colors)
-	urlInput.SetBorder(false)
+	urlInput := NewURLVariableInput(colors, app)
 
 	sendButton := createButton(" Send ", colors)
 	sendButton.SetBackgroundColor(colors.Border)
@@ -1452,4 +1453,222 @@ func createModal(p tview.Primitive, width, height int, backgroundColor tcell.Col
 		AddItem(nil, 0, 1, false)
 	modal.SetBackgroundColor(backgroundColor)
 	return modal
+}
+
+// URLVariableInput is a dual-mode input component for URLs with environment variables
+type URLVariableInput struct {
+	*tview.Pages
+	viewMode       *tview.TextView
+	editMode       *tview.InputField
+	currentMode    string // "view" or "edit"
+	rawText        string // The actual {{variable}} text
+	variables      map[string]string
+	onChanged      func(string)
+	onEnterPressed func()
+	colors         *ColorManager
+	variableRegex  *regexp.Regexp
+	app            *tview.Application
+}
+
+// NewURLVariableInput creates a new dual-mode URL input component
+func NewURLVariableInput(colors *ColorManager, app *tview.Application) *URLVariableInput {
+	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
+
+	// Create view mode component (TextView)
+	viewMode := tview.NewTextView().
+		SetDynamicColors(true).
+		SetWordWrap(false).
+		SetScrollable(false)
+
+	viewMode.SetBackgroundColor(colors.Background)
+	viewMode.SetTextColor(colors.Foreground)
+	viewMode.SetBorderPadding(0, 0, 1, 1)
+
+	// Create edit mode component (InputField)
+	editMode := tview.NewInputField()
+	editMode.SetBackgroundColor(colors.Background)
+	editMode.SetFieldBackgroundColor(colors.Background)
+	editMode.SetFieldTextColor(colors.Foreground)
+	editMode.SetBorder(false)
+
+	// Ensure edit mode is properly focusable
+	editMode.SetFocusFunc(func() {
+		editMode.SetFieldBackgroundColor(colors.Selection)
+	})
+
+	editMode.SetBlurFunc(func() {
+		editMode.SetFieldBackgroundColor(colors.Background)
+	})
+
+	// Create Pages container
+	pages := tview.NewPages()
+	pages.SetBackgroundColor(colors.Background)
+	pages.AddPage("view", viewMode, true, true)
+	pages.AddPage("edit", editMode, true, false)
+
+	input := &URLVariableInput{
+		Pages:         pages,
+		viewMode:      viewMode,
+		editMode:      editMode,
+		currentMode:   "view",
+		rawText:       "",
+		variables:     make(map[string]string),
+		colors:        colors,
+		variableRegex: variableRegex,
+		app:           app,
+	}
+
+	// Set up event handlers
+	editMode.SetChangedFunc(func(text string) {
+		input.rawText = text
+		if input.onChanged != nil {
+			input.onChanged(text)
+		}
+	})
+
+	editMode.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter && input.onEnterPressed != nil {
+			input.onEnterPressed()
+		} else if key == tcell.KeyEsc {
+			input.switchToViewMode()
+		}
+	})
+
+	// Set up view mode click to enter edit mode
+	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEnter {
+			input.switchToEditMode()
+			return nil
+		}
+		return event
+	})
+
+	// Make view mode focusable and handle focus properly
+	viewMode.SetFocusFunc(func() {
+		// When view mode gets focus, ensure it's properly highlighted
+		viewMode.SetBackgroundColor(colors.Selection)
+	})
+
+	viewMode.SetBlurFunc(func() {
+		// When view mode loses focus, reset background
+		viewMode.SetBackgroundColor(colors.Background)
+	})
+
+	return input
+}
+
+// switchToViewMode switches to view mode, showing rendered variables
+func (u *URLVariableInput) switchToViewMode() {
+	u.currentMode = "view"
+	u.viewMode.SetBackgroundColor(u.colors.Background)
+	u.Pages.SwitchToPage("view")
+	u.updateViewMode()
+}
+
+// switchToEditMode switches to edit mode, showing raw text
+func (u *URLVariableInput) switchToEditMode() {
+	u.currentMode = "edit"
+	u.editMode.SetBackgroundColor(u.colors.Background)
+	u.editMode.SetFieldBackgroundColor(u.colors.Background)
+	u.editMode.SetText(u.rawText)
+	u.Pages.SwitchToPage("edit")
+}
+
+// Focus delegates focus to the appropriate child component
+func (u *URLVariableInput) Focus(delegate func(p tview.Primitive)) {
+	// Let the Pages container handle focus for the visible page
+	u.Pages.Focus(delegate)
+}
+
+// HasFocus returns whether the component or its children have focus
+func (u *URLVariableInput) HasFocus() bool {
+	if u.currentMode == "edit" {
+		return u.editMode.HasFocus()
+	}
+	return u.viewMode.HasFocus()
+}
+
+// InputHandler delegates to the Pages container
+func (u *URLVariableInput) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+	return u.Pages.InputHandler()
+}
+
+// MouseHandler delegates to the Pages container
+func (u *URLVariableInput) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+	return u.Pages.MouseHandler()
+}
+
+// updateViewMode renders the text with variables highlighted in view mode
+func (u *URLVariableInput) updateViewMode() {
+	if u.rawText == "" {
+		u.viewMode.SetText("")
+		return
+	}
+
+	// Find all variable positions
+	matches := u.variableRegex.FindAllStringIndex(u.rawText, -1)
+	if len(matches) == 0 {
+		u.viewMode.SetText(u.rawText)
+		return
+	}
+
+	// Build result with proper spacing
+	var result strings.Builder
+	lastEnd := 0
+
+	for i, match := range matches {
+		start, end := match[0], match[1]
+
+		// Add text before this variable
+		result.WriteString(u.rawText[lastEnd:start])
+
+		// Extract variable name (remove {{ and }})
+		varName := u.rawText[start+2 : end-2]
+
+		// Render variable with background color
+		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
+			config.C.Theme.DropdownFocusedBackground,
+			config.C.Theme.BorderFocusColor,
+			varName))
+
+		// Add space only if next character is another variable (no text between)
+		if i < len(matches)-1 && end == matches[i+1][0] {
+			result.WriteString(" ")
+		}
+
+		lastEnd = end
+	}
+
+	// Add remaining text after last variable
+	result.WriteString(u.rawText[lastEnd:])
+
+	u.viewMode.SetText(result.String())
+}
+
+// SetText sets the raw text and updates both modes
+func (u *URLVariableInput) SetText(text string) {
+	u.rawText = text
+	if u.currentMode == "view" {
+		u.updateViewMode()
+	} else {
+		u.editMode.SetText(text)
+	}
+	if u.onChanged != nil {
+		u.onChanged(text)
+	}
+}
+
+// GetText returns the current raw text
+func (u *URLVariableInput) GetText() string {
+	return u.rawText
+}
+
+// SetChangedFunc sets the callback for when text changes
+func (u *URLVariableInput) SetChangedFunc(callback func(string)) {
+	u.onChanged = callback
+}
+
+// SetDoneFunc sets the callback for when Enter is pressed
+func (u *URLVariableInput) SetDoneFunc(callback func()) {
+	u.onEnterPressed = callback
 }

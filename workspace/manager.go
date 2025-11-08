@@ -32,7 +32,7 @@ func createDefaultWorkspace() *Workspace {
 					{
 						Name:   "show",
 						Method: "GET",
-						URL:    "https://dummyjson.com/users/1",
+						URL:    "{{base_url}}/users/1",
 					},
 					{
 						Name:   "store",

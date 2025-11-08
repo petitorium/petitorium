@@ -21,7 +21,7 @@ type UIOrchestrator struct {
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
-	URLInput              *tview.InputField
+	URLInput              *URLVariableInput
 	SendButton            *tview.Button
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
@@ -87,7 +87,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	app := tview.NewApplication().EnableMouse(true)
 
 	// Create all UI components
-	ui := setupUIComponents(colors)
+	ui := setupUIComponents(colors, app)
 
 	header := ui.Header
 	rootNode := ui.RootNode
@@ -335,7 +335,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.CollectionsIndex:
 			uiOrchestrator.Footer.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.URLBarIndex:
-			uiOrchestrator.Footer.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.Footer.SetText(" Request: (Enter) Edit URL | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.RequestIndex:
 			uiOrchestrator.Footer.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.ResponseIndex:
