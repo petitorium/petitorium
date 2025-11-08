@@ -32,7 +32,7 @@ type UIComponents struct {
 }
 
 // setupUIComponents creates and configures all UI components
-func setupUIComponents(colors *ColorManager) *UIComponents {
+func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponents {
 	// Create header panel
 	// header := createPanel(" Petitorium ", colors, nil)
 	header := (*tview.TextView)(nil)
@@ -44,6 +44,7 @@ func setupUIComponents(colors *ColorManager) *UIComponents {
 	methodURLBar, methodDropdown, urlInput, sendButton := createMethodURLBar(
 		"",
 		colors,
+		app,
 	)
 
 	// Create both view and edit panels for body

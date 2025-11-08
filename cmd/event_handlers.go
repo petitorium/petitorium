@@ -391,6 +391,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return event
 		}
 
+		// Allow URLVariableInput to handle its own Enter key events
+		if event.Key() == tcell.KeyEnter && ui.App.GetFocus() == ui.URLInput {
+			return event
+		}
+
 		// First check if this is a global keybinding
 		if result := ui.KeyManager.HandleKeyEvent(ui, event, "global"); result != event {
 			return result
