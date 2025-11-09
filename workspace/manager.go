@@ -475,7 +475,142 @@ func LoadExpansionState(collections *[]Collection) error {
 	return nil
 }
 
-// CreateWorkspace creates a new workspace with the given name
+// DeleteWorkspace deletes a workspace (with safety checks)
+func DeleteWorkspace(name string) error {
+	if name == "" {
+		return fmt.Errorf("workspace name cannot be empty")
+	}
+
+	manager, err := LoadWorkspaceManager()
+	if err != nil {
+		return err
+	}
+
+	// Don't allow deleting the last workspace
+	if len(manager.Workspaces) <= 1 {
+		return fmt.Errorf("cannot delete the last workspace")
+	}
+
+	// Find the workspace
+	workspaceIndex := -1
+	for i, ws := range manager.Workspaces {
+		if ws.Name == name {
+			workspaceIndex = i
+			break
+		}
+	}
+
+	if workspaceIndex == -1 {
+		return fmt.Errorf("workspace %s not found", name)
+	}
+
+	// Don't allow deleting the current workspace
+	if manager.CurrentWorkspace == name {
+		return fmt.Errorf("cannot delete the current workspace, switch to another workspace first")
+	}
+
+	// Remove from manager
+	manager.Workspaces = append(manager.Workspaces[:workspaceIndex], manager.Workspaces[workspaceIndex+1:]...)
+
+	// Save manager
+	if err := SaveWorkspaceManager(manager); err != nil {
+		return err
+	}
+
+	// Remove the workspace directory
+	workspaceDir := getWorkspaceDir(name)
+	if err := os.RemoveAll(workspaceDir); err != nil {
+		return fmt.Errorf("failed to remove workspace directory: %w", err)
+	}
+
+	return nil
+}
+
+// DuplicateWorkspace creates a copy of an existing workspace
+func DuplicateWorkspace(sourceName, targetName string) (*Workspace, error) {
+	if sourceName == "" || targetName == "" {
+		return nil, fmt.Errorf("workspace names cannot be empty")
+	}
+
+	if sourceName == targetName {
+		return nil, fmt.Errorf("target name must be different from source name")
+	}
+
+	manager, err := LoadWorkspaceManager()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if target name already exists
+	for _, ws := range manager.Workspaces {
+		if ws.Name == targetName {
+			return nil, fmt.Errorf("workspace %s already exists", targetName)
+		}
+	}
+
+	// Find the source workspace
+	var sourceWorkspace *Workspace
+	for _, ws := range manager.Workspaces {
+		if ws.Name == sourceName {
+			sourceWorkspace = &ws
+			break
+		}
+	}
+
+	if sourceWorkspace == nil {
+		return nil, fmt.Errorf("source workspace %s not found", sourceName)
+	}
+
+	// Create duplicate workspace
+	now := time.Now()
+	duplicateWorkspace := &Workspace{
+		Name:         targetName,
+		Description:  fmt.Sprintf("Copy of %s", sourceWorkspace.Description),
+		Collections:  make([]Collection, len(sourceWorkspace.Collections)),
+		Environments: make([]Environment, len(sourceWorkspace.Environments)),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	// Deep copy collections
+	for i, col := range sourceWorkspace.Collections {
+		duplicateWorkspace.Collections[i] = Collection{
+			Name:     col.Name,
+			Requests: make([]Request, len(col.Requests)),
+			Expanded: col.Expanded,
+		}
+		copy(duplicateWorkspace.Collections[i].Requests, col.Requests)
+		// Note: Nested collections would need recursive copying, but keeping simple for now
+	}
+
+	// Deep copy environments
+	for i, env := range sourceWorkspace.Environments {
+		duplicateWorkspace.Environments[i] = Environment{
+			Name:      env.Name,
+			Base:      env.Base,
+			Variables: make(map[string]string),
+		}
+		for k, v := range env.Variables {
+			duplicateWorkspace.Environments[i].Variables[k] = v
+		}
+	}
+
+	// Add to manager
+	manager.Workspaces = append(manager.Workspaces, *duplicateWorkspace)
+
+	// Save manager
+	if err := SaveWorkspaceManager(manager); err != nil {
+		return nil, err
+	}
+
+	// Save workspace data
+	if err := SaveWorkspace(duplicateWorkspace); err != nil {
+		return nil, err
+	}
+
+	return duplicateWorkspace, nil
+}
+
 func CreateWorkspace(name string) (*Workspace, error) {
 	if name == "" {
 		return nil, fmt.Errorf("workspace name cannot be empty")
@@ -575,4 +710,62 @@ func ListWorkspaces() ([]string, error) {
 	}
 
 	return names, nil
+}
+
+// RenameWorkspace renames a workspace
+func RenameWorkspace(oldName, newName string) error {
+	if oldName == "" || newName == "" {
+		return fmt.Errorf("workspace names cannot be empty")
+	}
+
+	if oldName == newName {
+		return fmt.Errorf("new name must be different from current name")
+	}
+
+	manager, err := LoadWorkspaceManager()
+	if err != nil {
+		return err
+	}
+
+	// Check if new name already exists
+	for _, ws := range manager.Workspaces {
+		if ws.Name == newName {
+			return fmt.Errorf("workspace %s already exists", newName)
+		}
+	}
+
+	// Find and update the workspace
+	found := false
+	for i, ws := range manager.Workspaces {
+		if ws.Name == oldName {
+			manager.Workspaces[i].Name = newName
+			manager.Workspaces[i].UpdatedAt = time.Now()
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("workspace %s not found", oldName)
+	}
+
+	// Update current workspace if it was renamed
+	if manager.CurrentWorkspace == oldName {
+		manager.CurrentWorkspace = newName
+	}
+
+	// Save manager
+	if err := SaveWorkspaceManager(manager); err != nil {
+		return err
+	}
+
+	// Rename the workspace directory
+	oldDir := getWorkspaceDir(oldName)
+	newDir := getWorkspaceDir(newName)
+
+	if err := os.Rename(oldDir, newDir); err != nil {
+		return fmt.Errorf("failed to rename workspace directory: %w", err)
+	}
+
+	return nil
 }
