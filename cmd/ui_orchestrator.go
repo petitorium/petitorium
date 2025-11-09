@@ -157,9 +157,15 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			colors,
 			func() { saveCurrentRequest(currentRequest, workspaceData) },
 			func(p tview.Primitive) { app.SetFocus(p) },
-			func(tabIndex int) { currentTabIndex = tabIndex },
+			func(tabIndex int) {
+				currentTabIndex = tabIndex
+				updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
+			},
 			nil, // panelFocusSetter will be set later
 		)
+
+	// Initialize tab header visual state
+	updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
 
 	// Create unified Request panel containing method+URL+send and tabs
 	requestPanel := setupRequestPanel(methodURLBar, requestDataTabs, colors)
