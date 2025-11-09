@@ -24,6 +24,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		return ui.KeyManager.HandleKeyEvent(ui, event, "tree_view")
 	})
 
+	// Set up vim-style navigation for response panels
+	ui.ResponsePages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		return ui.KeyManager.HandleKeyEvent(ui, event, "response_view")
+	})
+
 	// Initialize syncBodyContent function
 	ui.SyncBodyContent = func(content string) {
 		ui.CurrentBodyContent = content

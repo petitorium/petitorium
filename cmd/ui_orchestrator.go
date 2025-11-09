@@ -345,7 +345,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.RequestIndex:
 			uiOrchestrator.Footer.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.ResponseIndex:
-			uiOrchestrator.Footer.SetText(" Response: (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.Footer.SetText(" Response: (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
 		default:
 			uiOrchestrator.Footer.SetText(" (Tab) Cycle Focus | (q) Quit")
 		}

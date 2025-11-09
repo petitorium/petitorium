@@ -16,16 +16,17 @@ type KeyBinding struct {
 	Modifiers   tcell.ModMask
 	Action      func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
 	Description string
-	Context     string // "global", "body_view", "tree_view", "body_edit"
+	Context     string // "global", "body_view", "tree_view", "body_edit", "response_view"
 }
 
 // KeyBindingManager manages all keybindings for the application
 type KeyBindingManager struct {
-	globalBindings   []KeyBinding
-	bodyViewBindings []KeyBinding
-	treeViewBindings []KeyBinding
-	bodyEditBindings []KeyBinding
-	modalBindings    []KeyBinding
+	globalBindings       []KeyBinding
+	bodyViewBindings     []KeyBinding
+	treeViewBindings     []KeyBinding
+	bodyEditBindings     []KeyBinding
+	responseViewBindings []KeyBinding
+	modalBindings        []KeyBinding
 }
 
 // NewKeyBindingManager creates a new keybinding manager with all default bindings
@@ -212,6 +213,34 @@ func NewKeyBindingManager() *KeyBindingManager {
 		},
 	}
 
+	// Response view panel keybindings (vim-style navigation)
+	manager.responseViewBindings = []KeyBinding{
+		{
+			Rune:        'j',
+			Action:      scrollResponseDown,
+			Description: "Scroll response down",
+			Context:     "response_view",
+		},
+		{
+			Rune:        'k',
+			Action:      scrollResponseUp,
+			Description: "Scroll response up",
+			Context:     "response_view",
+		},
+		{
+			Rune:        'g',
+			Action:      scrollResponseToTop,
+			Description: "Scroll response to top",
+			Context:     "response_view",
+		},
+		{
+			Rune:        'G',
+			Action:      scrollResponseToBottom,
+			Description: "Scroll response to bottom",
+			Context:     "response_view",
+		},
+	}
+
 	// Tree view keybindings (collection navigation)
 	manager.treeViewBindings = []KeyBinding{
 		{
@@ -285,6 +314,8 @@ func (kbm *KeyBindingManager) HandleKeyEvent(ui *UIOrchestrator, event *tcell.Ev
 		bindings = kbm.globalBindings
 	case "body_view":
 		bindings = kbm.bodyViewBindings
+	case "response_view":
+		bindings = kbm.responseViewBindings
 	case "tree_view":
 		bindings = kbm.treeViewBindings
 	case "body_edit":
@@ -722,6 +753,48 @@ func scrollBodyToTop(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 
 func scrollBodyToBottom(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	ui.BodyViewPanel.ScrollToEnd()
+	return nil
+}
+
+func scrollResponseDown(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Scroll the current response panel down
+	return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+}
+
+func scrollResponseUp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Scroll the current response panel up
+	return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+}
+
+func scrollResponseToTop(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Get the current response page and scroll it to top
+	currentPage, _ := ui.ResponsePages.GetFrontPage()
+	switch currentPage {
+	case "preview":
+		ui.ResponsePreviewPanel.ScrollToBeginning()
+	case "headers":
+		ui.ResponseHeadersPanel.ScrollToBeginning()
+	case "cookies":
+		ui.ResponseCookiesPanel.ScrollToBeginning()
+	case "timeline":
+		ui.ResponseTimelinePanel.ScrollToBeginning()
+	}
+	return nil
+}
+
+func scrollResponseToBottom(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Get the current response page and scroll it to bottom
+	currentPage, _ := ui.ResponsePages.GetFrontPage()
+	switch currentPage {
+	case "preview":
+		ui.ResponsePreviewPanel.ScrollToEnd()
+	case "headers":
+		ui.ResponseHeadersPanel.ScrollToEnd()
+	case "cookies":
+		ui.ResponseCookiesPanel.ScrollToEnd()
+	case "timeline":
+		ui.ResponseTimelinePanel.ScrollToEnd()
+	}
 	return nil
 }
 

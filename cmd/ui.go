@@ -1429,7 +1429,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 
 	// Add to main container
 	response.AddItem(topRow, 1, 0, false)
-	response.AddItem(responsePages, 0, 1, false)
+	response.AddItem(responsePages, 0, 1, true)
 
 	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, nil
 }
