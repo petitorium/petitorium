@@ -39,7 +39,7 @@ type UIOrchestrator struct {
 	EnvironmentPanel      *tview.Flex
 	EnvDropdown           *tview.DropDown
 	EnvConfigButton       *tview.Button
-	Header                *tview.TextView
+	WorkspaceSelector     *tview.DropDown
 	Pages                 *tview.Pages
 	Grid                  *tview.Grid
 	KeyManager            *KeyBindingManager
@@ -90,7 +90,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Create all UI components
 	ui := setupUIComponents(colors, app)
 
-	header := ui.Header
+	var header *tview.TextView = nil
+	workspaceSelector := ui.WorkspaceSelector
 	rootNode := ui.RootNode
 	methodURLBar := ui.MethodURLBar
 	methodDropdown := ui.MethodDropdown
@@ -127,6 +128,27 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				break
 			}
 		}
+	}
+
+	// Initialize workspace selector
+	workspaceNames, err := workspace.ListWorkspaces()
+	if err != nil {
+		// If there's an error, just use default
+		workspaceNames = []string{"Default"}
+	}
+	workspaceSelector.SetOptions(workspaceNames, nil)
+
+	// Set current workspace
+	manager, err := workspace.LoadWorkspaceManager()
+	if err == nil && manager.CurrentWorkspace != "" {
+		for i, name := range workspaceNames {
+			if name == manager.CurrentWorkspace {
+				workspaceSelector.SetCurrentOption(i)
+				break
+			}
+		}
+	} else {
+		workspaceSelector.SetCurrentOption(0)
 	}
 
 	// Variable declarations
@@ -180,6 +202,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Create left side layout
 	leftSide := tview.NewFlex().SetDirection(tview.FlexRow)
+	leftSide.AddItem(workspaceSelector, 3, 1, false)
 	leftSide.AddItem(environmentPanel, 3, 1, false)
 	leftSide.AddItem(collectionsTreeView, 0, 1, false)
 
@@ -291,7 +314,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		EnvironmentPanel:               environmentPanel,
 		EnvDropdown:                    envDropdown,
 		EnvConfigButton:                envConfigButton,
-		Header:                         header,
+		WorkspaceSelector:              workspaceSelector,
 		Pages:                          pages,
 		Grid:                           grid,
 		CurrentSelectedNode:            currentSelectedNode,

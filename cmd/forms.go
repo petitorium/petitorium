@@ -873,3 +873,313 @@ func createDeleteRequestConfirm(app *tview.Application,
 	form.SetBorder(true).SetTitle(" Delete Request ")
 	return form
 }
+
+func createWorkspaceManagementForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	workspaceData *workspace.Workspace,
+	workspaceSelector *tview.DropDown,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	colors *ColorManager,
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	// Get current workspace info
+	manager, err := workspace.LoadWorkspaceManager()
+	currentWorkspace := "Default"
+	if err == nil && manager.CurrentWorkspace != "" {
+		currentWorkspace = manager.CurrentWorkspace
+	}
+
+	// Display current workspace
+	form.AddTextView("Current Workspace", fmt.Sprintf(" %s ", currentWorkspace), 30, 1, true, false)
+
+	// Workspace actions
+	form.AddButton("Create New Workspace", func() {
+		pages.RemovePage("workspaceMenu")
+		createForm := createNewWorkspaceForm(app, pages, workspaceSelector, rootNode, collectionsTreeView, colors)
+		modal := createModal(createForm, 50, 8, tcell.ColorDefault)
+		pages.AddPage("createWorkspace", modal, true, true)
+		app.SetFocus(createForm)
+	})
+
+	form.AddButton("Switch Workspace", func() {
+		pages.RemovePage("workspaceMenu")
+		// Focus on workspace selector
+		app.SetFocus(workspaceSelector)
+	})
+
+	form.AddButton("Rename Current Workspace", func() {
+		pages.RemovePage("workspaceMenu")
+		renameForm := createRenameWorkspaceForm(app, pages, currentWorkspace, workspaceSelector, colors)
+		modal := createModal(renameForm, 50, 8, tcell.ColorDefault)
+		pages.AddPage("renameWorkspace", modal, true, true)
+		app.SetFocus(renameForm)
+	})
+
+	form.AddButton("Duplicate Workspace", func() {
+		pages.RemovePage("workspaceMenu")
+		duplicateForm := createDuplicateWorkspaceForm(app, pages, currentWorkspace, workspaceSelector, colors)
+		modal := createModal(duplicateForm, 50, 10, tcell.ColorDefault)
+		pages.AddPage("duplicateWorkspace", modal, true, true)
+		app.SetFocus(duplicateForm)
+	})
+
+	form.AddButton("Delete Workspace", func() {
+		pages.RemovePage("workspaceMenu")
+		deleteForm := createDeleteWorkspaceForm(app, pages, currentWorkspace, workspaceSelector, colors)
+		modal := createModal(deleteForm, 50, 8, tcell.ColorDefault)
+		pages.AddPage("deleteWorkspace", modal, true, true)
+		app.SetFocus(deleteForm)
+	})
+
+	form.AddButton("Close", func() {
+		pages.RemovePage("workspaceMenu")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.SetBorder(true).SetTitle(" Workspace Management ")
+	return form
+}
+
+func createNewWorkspaceForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	workspaceSelector *tview.DropDown,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	colors *ColorManager,
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	nameInput := tview.NewInputField().
+		SetLabel("Workspace Name: ").
+		SetFieldWidth(30)
+
+	form.AddFormItem(nameInput)
+
+	form.AddButton("Create", func() {
+		name := strings.TrimSpace(nameInput.GetText())
+		if name == "" {
+			return
+		}
+
+		_, err := workspace.CreateWorkspace(name)
+		if err != nil {
+			// Show error - for now just ignore
+			return
+		}
+
+		// Update workspace selector
+		workspaceNames, _ := workspace.ListWorkspaces()
+		workspaceSelector.SetOptions(workspaceNames, nil)
+
+		// Switch to new workspace
+		err = workspace.SwitchWorkspace(name)
+		if err == nil {
+			workspaceSelector.SetCurrentOption(len(workspaceNames) - 1)
+		}
+
+		pages.RemovePage("createWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("createWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	form.SetBorder(true).SetTitle(" Create New Workspace ")
+	return form
+}
+
+func createRenameWorkspaceForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	currentName string,
+	workspaceSelector *tview.DropDown,
+	colors *ColorManager,
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	nameInput := tview.NewInputField().
+		SetLabel("New Name: ").
+		SetText(currentName).
+		SetFieldWidth(30)
+
+	form.AddFormItem(nameInput)
+
+	form.AddButton("Rename", func() {
+		newName := strings.TrimSpace(nameInput.GetText())
+		if newName == "" || newName == currentName {
+			return
+		}
+
+		err := workspace.RenameWorkspace(currentName, newName)
+		if err != nil {
+			// Show error - for now just ignore
+			return
+		}
+
+		// Update workspace selector
+		workspaceNames, _ := workspace.ListWorkspaces()
+		workspaceSelector.SetOptions(workspaceNames, nil)
+
+		// Update current selection
+		for i, name := range workspaceNames {
+			if name == newName {
+				workspaceSelector.SetCurrentOption(i)
+				break
+			}
+		}
+
+		pages.RemovePage("renameWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(workspaceSelector)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("renameWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(workspaceSelector)
+	})
+
+	form.SetBorder(true).SetTitle(" Rename Workspace ")
+	return form
+}
+
+func createDuplicateWorkspaceForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	sourceName string,
+	workspaceSelector *tview.DropDown,
+	colors *ColorManager,
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	nameInput := tview.NewInputField().
+		SetLabel("New Workspace Name: ").
+		SetFieldWidth(30)
+
+	form.AddFormItem(nameInput)
+
+	form.AddButton("Duplicate", func() {
+		targetName := strings.TrimSpace(nameInput.GetText())
+		if targetName == "" {
+			return
+		}
+
+		_, err := workspace.DuplicateWorkspace(sourceName, targetName)
+		if err != nil {
+			// Show error - for now just ignore
+			return
+		}
+
+		// Update workspace selector
+		workspaceNames, _ := workspace.ListWorkspaces()
+		workspaceSelector.SetOptions(workspaceNames, nil)
+
+		pages.RemovePage("duplicateWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(workspaceSelector)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("duplicateWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(workspaceSelector)
+	})
+
+	form.SetBorder(true).SetTitle(" Duplicate Workspace ")
+	return form
+}
+
+func createDeleteWorkspaceForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	workspaceName string,
+	workspaceSelector *tview.DropDown,
+	colors *ColorManager,
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("Delete Workspace", fmt.Sprintf(" Are you sure you want to delete '%s'? ", workspaceName), 40, 2, true, false)
+	form.AddTextView("", " This action cannot be undone. ", 40, 1, true, false)
+
+	form.AddButton("Delete", func() {
+		err := workspace.DeleteWorkspace(workspaceName)
+		if err != nil {
+			// Show error - for now just ignore
+			return
+		}
+
+		// Update workspace selector
+		workspaceNames, _ := workspace.ListWorkspaces()
+		workspaceSelector.SetOptions(workspaceNames, nil)
+
+		// Switch to first available workspace
+		if len(workspaceNames) > 0 {
+			err = workspace.SwitchWorkspace(workspaceNames[0])
+			if err == nil {
+				workspaceSelector.SetCurrentOption(0)
+			}
+		}
+
+		pages.RemovePage("deleteWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(workspaceSelector)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("deleteWorkspace")
+		pages.SwitchToPage("main")
+		app.SetFocus(workspaceSelector)
+	})
+
+	form.SetBorder(true).SetTitle(" Delete Workspace ")
+	return form
+}

@@ -6,7 +6,8 @@ import (
 
 // UIComponents holds all UI components for the application
 type UIComponents struct {
-	Header                *tview.TextView
+	WorkspaceSelector     *tview.DropDown
+	WorkspaceIndicator    *tview.TextView
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
@@ -33,9 +34,15 @@ type UIComponents struct {
 
 // setupUIComponents creates and configures all UI components
 func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponents {
-	// Create header panel
-	// header := createPanel(" Petitorium ", colors, nil)
-	header := (*tview.TextView)(nil)
+	// Create workspace selector dropdown
+	workspaceSelector := createDropDown(
+		" Workspace ",
+		[]string{"Default"},
+		colors,
+	)
+
+	// Create workspace indicator text view
+	workspaceIndicator := createPanel("", colors, &PanelOptions{HasBorder: &[]bool{false}[0]})
 
 	// Create root node for tree
 	rootNode := tview.NewTreeNode("").SetSelectable(false)
@@ -84,7 +91,8 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		SetBorderPadding(0, 0, 0, 0)
 
 	return &UIComponents{
-		Header:                header,
+		WorkspaceSelector:     workspaceSelector,
+		WorkspaceIndicator:    workspaceIndicator,
 		RootNode:              rootNode,
 		MethodURLBar:          methodURLBar,
 		MethodDropdown:        methodDropdown,

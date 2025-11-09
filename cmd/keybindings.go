@@ -113,6 +113,13 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "global",
 		},
 		{
+			Rune:        'w',
+			Modifiers:   tcell.ModCtrl,
+			Action:      showWorkspaceMenu,
+			Description: "Show workspace menu",
+			Context:     "global",
+		},
+		{
 			Key:         tcell.KeyF4,
 			Action:      openExternalEditor,
 			Description: "Open body in external editor",
@@ -989,5 +996,14 @@ func switchToResponseTimelineTab(ui *UIOrchestrator, event *tcell.EventKey) *tce
 	ui.ResponsePages.SwitchToPage("timeline")
 	updateResponseTabHeader(ui.ResponseTabHeader, 3, ui.Colors)
 	ui.CurrentResponseTabIndex = 3
+	return nil
+}
+
+func showWorkspaceMenu(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Create workspace management modal
+	form := createWorkspaceManagementForm(ui.App, ui.Pages, ui.WorkspaceData, ui.WorkspaceSelector, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+	modal := createModal(form, 60, 15, tcell.ColorDefault)
+	ui.Pages.AddPage("workspaceMenu", modal, true, true)
+	ui.App.SetFocus(form)
 	return nil
 }

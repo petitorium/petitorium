@@ -12,8 +12,49 @@ import (
 	"github.com/hbarral/petitorium/workspace"
 )
 
+// refreshCollectionsTree refreshes the collections tree with current workspace data
+func refreshCollectionsTree(ui *UIOrchestrator) {
+	// Clear existing children
+	ui.RootNode.ClearChildren()
+
+	// Re-add workspace data to tree
+	addWorkspaceToTree(ui.WorkspaceData, ui.RootNode)
+
+	// Refresh the tree view
+	ui.CollectionsTreeView.SetRoot(ui.RootNode)
+	ui.App.Draw()
+}
+
 // SetupEventHandlers configures all event handlers for the UI
 func SetupEventHandlers(ui *UIOrchestrator) {
+	// Set up workspace selector change handler
+	ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
+		if err := workspace.SwitchWorkspace(text); err != nil {
+			// Show error in footer or modal
+			ui.Footer.SetText(fmt.Sprintf("Error switching workspace: %v", err))
+			return
+		}
+
+		// Reload workspace data
+		newWorkspace, err := workspace.LoadWorkspace()
+		if err != nil {
+			ui.Footer.SetText(fmt.Sprintf("Error loading workspace: %v", err))
+			return
+		}
+
+		// Update UI with new workspace
+		ui.WorkspaceData = newWorkspace
+
+		// Refresh collections tree
+		refreshCollectionsTree(ui)
+
+		// Clear current request selection
+		ui.CurrentRequest = nil
+		ui.CurrentSelectedNode = nil
+
+		ui.Footer.SetText(fmt.Sprintf("Switched to workspace: %s", text))
+	})
+
 	// Set up vim-style navigation for body view panel (TextView)
 	ui.BodyViewPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		return ui.KeyManager.HandleKeyEvent(ui, event, "body_view")
