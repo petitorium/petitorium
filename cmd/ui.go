@@ -1440,25 +1440,22 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	responseHeadersPanel.SetBackgroundColor(colors.Background)
 	responseHeadersPanel.SetTextColor(colors.Foreground)
 	responseHeadersPanel.SetBorder(true)
-	responseHeadersPanel.SetTitle(" Response Headers ")
 	responseHeadersPanel.SetTitleColor(colors.Title)
-	responseHeadersPanel.SetBorderColor(colors.Border)
+	responseHeadersPanel.SetBorderColor(colors.Background)
 
 	responseCookiesPanel := tview.NewTextView()
 	responseCookiesPanel.SetBackgroundColor(colors.Background)
 	responseCookiesPanel.SetTextColor(colors.Foreground)
 	responseCookiesPanel.SetBorder(true)
-	responseCookiesPanel.SetTitle(" Response Cookies ")
 	responseCookiesPanel.SetTitleColor(colors.Title)
-	responseCookiesPanel.SetBorderColor(colors.Border)
+	responseCookiesPanel.SetBorderColor(colors.Background)
 
 	responseTimelinePanel := tview.NewTextView()
 	responseTimelinePanel.SetBackgroundColor(colors.Background)
 	responseTimelinePanel.SetTextColor(colors.Foreground)
 	responseTimelinePanel.SetBorder(true)
-	responseTimelinePanel.SetTitle(" Response Timeline ")
 	responseTimelinePanel.SetTitleColor(colors.Title)
-	responseTimelinePanel.SetBorderColor(colors.Border)
+	responseTimelinePanel.SetBorderColor(colors.Background)
 
 	// Add pages
 	responsePages.AddPage("preview", responsePreviewPanel, true, true)
