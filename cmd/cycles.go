@@ -169,17 +169,8 @@ func findInnermostCycle(p tview.Primitive) Cycle {
 	return nil
 }
 
-// findRequestPtr finds the request pointer in workspace (root requests and nested collections)
+// findRequestPtr finds the request pointer in workspace collections
 func findRequestPtr(data *workspace.Workspace, req workspace.Request) *workspace.Request {
-	// Search in root requests
-	for i := range data.Requests {
-		if data.Requests[i].Name == req.Name &&
-			data.Requests[i].Method == req.Method &&
-			data.Requests[i].URL == req.URL &&
-			data.Requests[i].Body == req.Body {
-			return &data.Requests[i]
-		}
-	}
 	// Search in collections
 	for i := range data.Collections {
 		for j := range data.Collections[i].Requests {

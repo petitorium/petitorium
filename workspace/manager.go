@@ -1,8 +1,10 @@
 package workspace
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
@@ -18,175 +20,138 @@ func getWorkspaceFilePath() (string, error) {
 	return filepath.Join(configDir, "workspace.yaml"), nil
 }
 
+func getWorkspaceManagerFilePath() (string, error) {
+	home, err := homedir.Dir()
+	if err != nil {
+		return "", err
+	}
+
+	configDir := filepath.Join(home, ".config", "petitorium")
+	return filepath.Join(configDir, "workspaces.yaml"), nil
+}
+
+func getWorkspaceDir(name string) string {
+	home, _ := homedir.Dir()
+	return filepath.Join(home, ".config", "petitorium", "workspaces", name)
+}
+
+func migrateFromOldFormat() error {
+	oldPath, err := getWorkspaceFilePath()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
+		// No old file, create default
+		return createDefaultWorkspaceManager()
+	}
+
+	// Load old workspace
+	data, err := os.ReadFile(oldPath)
+	if err != nil {
+		return err
+	}
+
+	var oldWorkspace Workspace
+	if err := yaml.Unmarshal(data, &oldWorkspace); err != nil {
+		return err
+	}
+
+	// Create default workspace with old data
+	defaultWorkspace := oldWorkspace
+	defaultWorkspace.Name = "Default"
+	now := time.Now()
+	defaultWorkspace.CreatedAt = now
+	defaultWorkspace.UpdatedAt = now
+
+	// Create workspace manager
+	manager := &WorkspaceManager{
+		CurrentWorkspace: "Default",
+		Workspaces:       []Workspace{defaultWorkspace},
+	}
+
+	// Save in new format
+	if err := SaveWorkspaceManager(manager); err != nil {
+		return err
+	}
+
+	// Save workspace data
+	if err := SaveWorkspace(&defaultWorkspace); err != nil {
+		return err
+	}
+
+	// Backup old file
+	backupPath := oldPath + ".backup"
+	if err := os.Rename(oldPath, backupPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createDefaultWorkspaceManager() error {
+	defaultWorkspace := createDefaultWorkspace()
+	manager := &WorkspaceManager{
+		CurrentWorkspace: "Default",
+		Workspaces:       []Workspace{*defaultWorkspace},
+	}
+
+	if err := SaveWorkspaceManager(manager); err != nil {
+		return err
+	}
+
+	return SaveWorkspace(defaultWorkspace)
+}
+
 func createDefaultWorkspace() *Workspace {
+	now := time.Now()
 	return &Workspace{
+		Name:        "Default",
+		Description: "Default workspace created automatically",
+		CreatedAt:   now,
+		UpdatedAt:   now,
 		Collections: []Collection{
 			{
-				Name: "Users",
+				Name: "Example Requests",
 				Requests: []Request{
 					{
-						Name:   "index",
+						Name:   "Health Check",
 						Method: "GET",
-						URL:    "https://dummyjson.com/users",
+						URL:    "https://httpbin.org/status/200",
 					},
 					{
-						Name:   "show",
-						Method: "GET",
-						URL:    "{{base_url}}/users/1",
-					},
-					{
-						Name:   "store",
+						Name:   "Echo",
 						Method: "POST",
-						URL:    "https://jsonplaceholder.org/users",
-						Body: `{
-									"firstName": "James",
-									"lastName": "Davis",
-									"maidenName": "",
-									"age": 45,
-									"gender": "male",
-									"email": "james.davis@x.dummyjson.com",
-									"phone": "+49 614-958-9364",
-									"username": "jamesd",
-									"password": "jamesdpass",
-									"birthDate": "1979-5-4",
-									"image": "https://dummyjson.com/icon/jamesd/128",
-									"bloodGroup": "AB+",
-									"height": 193.31,
-									"weight": 62.1,
-									"eyeColor": "Amber",
-									"hair": {
-										"color": "Blonde",
-										"type": "Straight"
-									},
-									"ip": "101.118.131.66",
-									"address": {
-										"address": "238 Jefferson Street",
-										"city": "Seattle",
-										"state": "Pennsylvania",
-										"stateCode": "PA",
-										"postalCode": "68354",
-										"coordinates": {
-											"lat": 16.782513,
-											"lng": -139.34723
-										},
-										"country": "United States"
-									},
-									"macAddress": "10:7d:df:1f:97:58",
-									"university": "University of Southern California",
-									"bank": {
-										"cardExpire": "05/29",
-										"cardNumber": "5005519846254763",
-										"cardType": "Mastercard",
-										"currency": "INR",
-										"iban": "7N7ZH1PJ8Q4WU1K965HQQR27"
-									},
-									"company": {
-										"department": "Support",
-										"name": "Pagac and Sons",
-										"title": "Research Analyst",
-										"address": {
-											"address": "1622 Lincoln Street",
-											"city": "Fort Worth",
-											"state": "Pennsylvania",
-											"stateCode": "PA",
-											"postalCode": "27768",
-											"coordinates": {
-												"lat": 54.91193,
-												"lng": -79.498328
-											},
-											"country": "United States"
-										}
-									},
-									"ein": "904-810",
-									"ssn": "116-951-314",
-									"userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36",
-									"crypto": {
-										"coin": "Bitcoin",
-										"wallet": "0xb9fc2fe63b2a6c003f1c324c3bfa53259162181a",
-										"network": "Ethereum (ERC20)"
-									},
-									"role": "admin"
-							}`,
-					},
-					{
-						Name:   "update",
-						Method: "PUT",
-						URL:    "https://dummyjson.com/users/2",
-						Body: `{
-									"lastName": "Owais"
-							}`,
-					},
-					{
-						Name:   "delete",
-						Method: "DELETE",
-						URL:    "https://dummyjson.com/users/1",
-					},
-				},
-				Collections: []Collection{
-					{
-						Name: "Others",
-						Requests: []Request{
-							{
-								Name:   "update",
-								Method: "PATCH",
-								URL:    "https://dummyjson.com/users/2",
-								Body: `{
-									"lastName": "Owais"
-							}`,
-							},
-							{
-								Name:   "head",
-								Method: "HEAD",
-								URL:    "https://dummyjson.com/users",
-							},
-							{
-								Name:   "options",
-								Method: "OPTIONS",
-								URL:    "https://dummyjson.com/users",
-							},
-						},
-					},
-				},
-			},
-			{
-				Name: "Posts",
-				Requests: []Request{
-					{
-						Name:   "show",
-						Method: "GET",
-						URL:    "'https://dummyjson.com/posts/1'",
+						URL:    "https://httpbin.org/post",
+						Body:   `{"message": "Hello World"}`,
 					},
 				},
 			},
 		},
-		Requests: []Request{
+		Environments: []Environment{
 			{
-				Name:   "Health Check",
-				Method: "GET",
-				URL:    "https://httpbin.org/status/200",
-			},
-			{
-				Name:   "Echo",
-				Method: "POST",
-				URL:    "https://httpbin.org/post",
-				Body:   `{"message": "Hello World"}`,
+				Name: "Base",
+				Variables: map[string]string{
+					"base_url": "https://api.example.com",
+				},
 			},
 		},
 	}
 }
 
-func LoadWorkspace() (*Workspace, error) {
-	path, err := getWorkspaceFilePath()
+// LoadWorkspaceManager loads the workspace manager with all workspaces
+func LoadWorkspaceManager() (*WorkspaceManager, error) {
+	path, err := getWorkspaceManagerFilePath()
 	if err != nil {
 		return nil, err
 	}
 
+	// Check if new format exists
 	if _, err = os.Stat(path); os.IsNotExist(err) {
-		defaultWorkspace := createDefaultWorkspace()
-		if err = SaveWorkspace(defaultWorkspace); err != nil {
+		// Try to migrate from old format
+		if err := migrateFromOldFormat(); err != nil {
 			return nil, err
 		}
-		return defaultWorkspace, nil
 	}
 
 	data, err := os.ReadFile(path)
@@ -194,21 +159,127 @@ func LoadWorkspace() (*Workspace, error) {
 		return nil, err
 	}
 
-	var workspace Workspace
-	if err := yaml.Unmarshal(data, &workspace); err != nil {
+	var manager WorkspaceManager
+	if err := yaml.Unmarshal(data, &manager); err != nil {
 		return nil, err
 	}
 
-	// Load expansion state if available
-	if err := LoadExpansionState(&workspace.Collections); err != nil {
-		// If there's an error loading expansion state, continue without it
-		// This is not a critical error
+	return &manager, nil
+}
+
+// LoadWorkspace loads the current workspace
+func LoadWorkspace() (*Workspace, error) {
+	manager, err := LoadWorkspaceManager()
+	if err != nil {
+		return nil, err
 	}
 
-	return &workspace, nil
+	if manager.CurrentWorkspace == "" {
+		return nil, fmt.Errorf("no current workspace set")
+	}
+
+	return LoadWorkspaceByName(manager.CurrentWorkspace)
+}
+
+// LoadWorkspaceByName loads a specific workspace by name
+func LoadWorkspaceByName(name string) (*Workspace, error) {
+	workspaceDir := getWorkspaceDir(name)
+	collectionsPath := filepath.Join(workspaceDir, "collections.yaml")
+
+	if _, err := os.Stat(collectionsPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("workspace %s not found", name)
+	}
+
+	data, err := os.ReadFile(collectionsPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var collections []Collection
+	if err := yaml.Unmarshal(data, &collections); err != nil {
+		return nil, err
+	}
+
+	// Load environments
+	environmentsPath := filepath.Join(workspaceDir, "environments.yaml")
+	var environments []Environment
+	if envData, err := os.ReadFile(environmentsPath); err == nil {
+		if err := yaml.Unmarshal(envData, &environments); err != nil {
+			// Not critical, continue with empty environments
+		}
+	}
+
+	workspace := &Workspace{
+		Name:         name,
+		Collections:  collections,
+		Environments: environments,
+	}
+
+	// Load expansion state
+	if err := LoadExpansionState(&workspace.Collections); err != nil {
+		// Not critical
+	}
+
+	return workspace, nil
+}
+
+func SaveWorkspaceManager(manager *WorkspaceManager) error {
+	path, err := getWorkspaceManagerFilePath()
+	if err != nil {
+		return err
+	}
+
+	if err = os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+
+	data, err := yaml.Marshal(manager)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0o644)
 }
 
 func SaveWorkspace(workspace *Workspace) error {
+	workspaceDir := getWorkspaceDir(workspace.Name)
+	if err := os.MkdirAll(workspaceDir, 0o755); err != nil {
+		return err
+	}
+
+	// Save collections
+	collectionsPath := filepath.Join(workspaceDir, "collections.yaml")
+	collectionsData, err := yaml.Marshal(workspace.Collections)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(collectionsPath, collectionsData, 0o644); err != nil {
+		return err
+	}
+
+	// Save environments
+	environmentsPath := filepath.Join(workspaceDir, "environments.yaml")
+	environmentsData, err := yaml.Marshal(workspace.Environments)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(environmentsPath, environmentsData, 0o644); err != nil {
+		return err
+	}
+
+	// Save expansion state
+	if err := SaveExpansionState(&workspace.Collections); err != nil {
+		// Not critical
+	}
+
+	// Update workspace metadata
+	workspace.UpdatedAt = time.Now()
+
+	return nil
+}
+
+// Legacy SaveWorkspace for backward compatibility
+func SaveWorkspaceLegacy(workspace *Workspace) error {
 	path, err := getWorkspaceFilePath()
 	if err != nil {
 		return err
@@ -402,4 +473,106 @@ func LoadExpansionState(collections *[]Collection) error {
 
 	applyExpansionState(collections, "")
 	return nil
+}
+
+// CreateWorkspace creates a new workspace with the given name
+func CreateWorkspace(name string) (*Workspace, error) {
+	if name == "" {
+		return nil, fmt.Errorf("workspace name cannot be empty")
+	}
+
+	manager, err := LoadWorkspaceManager()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if workspace already exists
+	for _, ws := range manager.Workspaces {
+		if ws.Name == name {
+			return nil, fmt.Errorf("workspace %s already exists", name)
+		}
+	}
+
+	// Create new workspace
+	now := time.Now()
+	newWorkspace := &Workspace{
+		Name:        name,
+		Description: "",
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		Collections: []Collection{
+			{
+				Name: "Example Requests",
+				Requests: []Request{
+					{
+						Name:   "Health Check",
+						Method: "GET",
+						URL:    "https://httpbin.org/status/200",
+					},
+				},
+			},
+		},
+		Environments: []Environment{
+			{
+				Name: "Base",
+				Variables: map[string]string{
+					"base_url": "https://api.example.com",
+				},
+			},
+		},
+	}
+
+	// Add to manager
+	manager.Workspaces = append(manager.Workspaces, *newWorkspace)
+
+	// Save manager
+	if err := SaveWorkspaceManager(manager); err != nil {
+		return nil, err
+	}
+
+	// Save workspace data
+	if err := SaveWorkspace(newWorkspace); err != nil {
+		return nil, err
+	}
+
+	return newWorkspace, nil
+}
+
+// SwitchWorkspace switches to the specified workspace
+func SwitchWorkspace(name string) error {
+	manager, err := LoadWorkspaceManager()
+	if err != nil {
+		return err
+	}
+
+	// Check if workspace exists
+	found := false
+	for _, ws := range manager.Workspaces {
+		if ws.Name == name {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("workspace %s not found", name)
+	}
+
+	manager.CurrentWorkspace = name
+	return SaveWorkspaceManager(manager)
+}
+
+// ListWorkspaces returns a list of all workspace names
+func ListWorkspaces() ([]string, error) {
+	manager, err := LoadWorkspaceManager()
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, len(manager.Workspaces))
+	for i, ws := range manager.Workspaces {
+		names[i] = ws.Name
+	}
+
+	return names, nil
 }

@@ -50,12 +50,6 @@ func deleteCollectionFromData(collectionsData *[]workspace.Collection, collectio
 }
 
 func deleteRequestFromData(workspaceData *workspace.Workspace, requestName string) {
-	// Delete from root requests
-	for i := len(workspaceData.Requests) - 1; i >= 0; i-- {
-		if workspaceData.Requests[i].Name == requestName {
-			workspaceData.Requests = append(workspaceData.Requests[:i], workspaceData.Requests[i+1:]...)
-		}
-	}
 	// Delete from collections
 	for i := range workspaceData.Collections {
 		deleteRequestFromCollection(&workspaceData.Collections[i], requestName)

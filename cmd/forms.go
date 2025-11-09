@@ -221,8 +221,17 @@ func createRequestForm(app *tview.Application,
 		}
 
 		if selectedCollection == nil {
-			// Add to root requests
-			workspaceData.Requests = append(workspaceData.Requests, newRequest)
+			// Add to first collection if no collection selected
+			if len(workspaceData.Collections) > 0 {
+				workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, newRequest)
+			} else {
+				// Create a default collection
+				defaultCollection := workspace.Collection{
+					Name:     "Requests",
+					Requests: []workspace.Request{newRequest},
+				}
+				workspaceData.Collections = append(workspaceData.Collections, defaultCollection)
+			}
 		} else {
 			// Find and update the actual collection in workspaceData
 			actualCollection := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
@@ -366,31 +375,7 @@ func createRenameRequestForm(app *tview.Application,
 		}
 
 		// Find and update the request in workspaceData
-		// First check root requests
-		for i, req := range workspaceData.Requests {
-			if req.Name == selectedRequest.Name && req.Method == selectedRequest.Method && req.URL == selectedRequest.URL {
-				workspaceData.Requests[i].Name = newName
-
-				// Update tree node
-				coloredMethod := getColoredMethod(selectedRequest.Method)
-				paddedName := padNameToMinLength(newName, 4)
-				node.SetText(fmt.Sprintf("%s %s", coloredMethod, paddedName))
-
-				// Update node reference
-				updatedRequest := *selectedRequest
-				updatedRequest.Name = newName
-				node.SetReference(updatedRequest)
-
-				// Save workspace
-				if err := workspace.SaveWorkspace(workspaceData); err != nil {
-					// Handle error
-				}
-
-				cancelFunc()
-				return
-			}
-		}
-		// Then check collections
+		// Check collections
 		for i := range workspaceData.Collections {
 			for j := range workspaceData.Collections[i].Requests {
 				if workspaceData.Collections[i].Requests[j].Name == selectedRequest.Name &&
@@ -703,13 +688,6 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 
 // Helper function to remove a request from collections
 func removeRequestFromCollections(workspaceData *workspace.Workspace, name, method, url string) {
-	// Remove from root requests
-	for i, req := range workspaceData.Requests {
-		if req.Name == name && req.Method == method && req.URL == url {
-			workspaceData.Requests = append(workspaceData.Requests[:i], workspaceData.Requests[i+1:]...)
-			return
-		}
-	}
 	// Remove from collections
 	for i := range workspaceData.Collections {
 		col := &workspaceData.Collections[i]
@@ -788,9 +766,18 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 		selectedIndex, _ := collectionDropdown.GetCurrentOption()
 
 		if selectedIndex == 0 {
-			// Move to root requests - first remove from current location, then add to root
+			// Move to first collection - first remove from current location, then add to first collection
 			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
-			workspaceData.Requests = append(workspaceData.Requests, *selectedRequest)
+			if len(workspaceData.Collections) > 0 {
+				workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, *selectedRequest)
+			} else {
+				// Create default collection
+				defaultCollection := workspace.Collection{
+					Name:     "Requests",
+					Requests: []workspace.Request{*selectedRequest},
+				}
+				workspaceData.Collections = append(workspaceData.Collections, defaultCollection)
+			}
 		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
 			targetCollection := targetCollections[selectedIndex-1]
 

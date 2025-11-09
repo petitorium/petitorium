@@ -18,22 +18,6 @@ func addWorkspaceToTree(data *workspace.Workspace, root *tview.TreeNode) {
 	foregroundColor := hexToColor(theme.ForegroundColor)
 	selectionBackgroundColor := hexToColor(theme.SelectionBackground)
 
-	// Add root requests
-	for _, req := range data.Requests {
-		coloredMethod := getColoredMethod(req.Method)
-		paddedName := padNameToMinLength(req.Name, 4)
-		// Reserve space for selection icon (icon + fixed space)
-		iconWidth := getIconDisplayWidth(config.C.UI.SelectedRequestIcon) // + 1
-		spacePadding := strings.Repeat(" ", iconWidth)
-		reqNodeText := fmt.Sprintf("%s%s%s", spacePadding, coloredMethod, paddedName)
-		requestNode := tview.NewTreeNode(reqNodeText).
-			SetSelectable(true).
-			SetTextStyle(tcell.StyleDefault.Background(backgroundColor)).
-			SetSelectedTextStyle(tcell.StyleDefault.Background(selectionBackgroundColor).Foreground(foregroundColor)).
-			SetReference(req)
-		root.AddChild(requestNode)
-	}
-
 	// Add collections
 	for _, collection := range data.Collections {
 		hasChildren := len(collection.Requests) > 0 || len(collection.Collections) > 0

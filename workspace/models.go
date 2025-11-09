@@ -39,6 +39,15 @@ type Collection struct {
 }
 
 type Workspace struct {
-	Collections []Collection `yaml:"collections,omitempty"`
-	Requests    []Request    `yaml:"requests,omitempty"`
+	Name         string        `yaml:"name"`
+	Description  string        `yaml:"description,omitempty"`
+	Collections  []Collection  `yaml:"collections,omitempty"`
+	Environments []Environment `yaml:"environments,omitempty"`
+	CreatedAt    time.Time     `yaml:"created_at"`
+	UpdatedAt    time.Time     `yaml:"updated_at"`
+}
+
+type WorkspaceManager struct {
+	CurrentWorkspace string      `yaml:"current_workspace"`
+	Workspaces       []Workspace `yaml:"workspaces"`
 }
