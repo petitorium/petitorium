@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 
 	"github.com/hbarral/petitorium/config"
 	"github.com/hbarral/petitorium/workspace"
@@ -811,7 +812,9 @@ func scrollResponseToTop(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	case "preview":
 		ui.ResponsePreviewPanel.ScrollToBeginning()
 	case "headers":
-		ui.ResponseHeadersPanel.ScrollToBeginning()
+		if headersTable, ok := ui.ResponseHeadersPanel.(*tview.Table); ok {
+			headersTable.ScrollToBeginning()
+		}
 	case "cookies":
 		ui.ResponseCookiesPanel.ScrollToBeginning()
 	case "timeline":
@@ -827,7 +830,9 @@ func scrollResponseToBottom(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 	case "preview":
 		ui.ResponsePreviewPanel.ScrollToEnd()
 	case "headers":
-		ui.ResponseHeadersPanel.ScrollToEnd()
+		if headersTable, ok := ui.ResponseHeadersPanel.(*tview.Table); ok {
+			headersTable.ScrollToEnd()
+		}
 	case "cookies":
 		ui.ResponseCookiesPanel.ScrollToEnd()
 	case "timeline":

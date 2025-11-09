@@ -49,7 +49,7 @@ func syncMethodDropdown(currentRequest *workspace.Request, methodDropdown *tview
 }
 
 // updateResponseTabs updates the response tabs with new response data
-func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel *tview.TextView, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager) {
+func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager) {
 	// Update the info bar - replace it in the top row
 	newInfoBar, newTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime)
 	// The response container has: topRow (item 0), tabPages (item 1)
@@ -87,17 +87,61 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 	}
 
 	// Update headers tab
+	headersTable, ok := responseHeadersPanel.(*tview.Table)
+	if !ok {
+		// If it's not a table, skip updating headers
+		return
+	}
+	headersTable.Clear()
+
 	if resp != nil && len(resp.Headers) > 0 {
-		var headersText strings.Builder
-		headersText.WriteString("Response Headers:\n\n")
+		// Add header row
+		headersTable.SetCell(0, 0,
+			tview.NewTableCell("Name").
+				SetTextColor(colors.BorderFocus).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
+		headersTable.SetCell(0, 1,
+			tview.NewTableCell("Value").
+				SetTextColor(colors.BorderFocus).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
+
+		// Add data rows
+		row := 1
 		for key, values := range resp.Headers {
 			for _, value := range values {
-				headersText.WriteString(fmt.Sprintf("%s: %s\n", key, value))
+				// Truncate long values for display
+				truncatedValue := value
+				if len(truncatedValue) > 60 {
+					truncatedValue = truncatedValue[:57] + "..."
+				}
+
+				headersTable.SetCell(row, 0,
+					tview.NewTableCell(key).
+						SetTextColor(colors.Foreground).
+						SetAlign(tview.AlignLeft).
+						SetSelectable(true))
+				headersTable.SetCell(row, 1,
+					tview.NewTableCell(truncatedValue).
+						SetTextColor(colors.Foreground).
+						SetAlign(tview.AlignLeft).
+						SetSelectable(true))
+				row++
 			}
 		}
-		responseHeadersPanel.SetText(headersText.String())
 	} else {
-		responseHeadersPanel.SetText("No response headers")
+		// No headers - show message
+		headersTable.SetCell(0, 0,
+			tview.NewTableCell("No response headers").
+				SetTextColor(colors.Foreground).
+				SetAlign(tview.AlignCenter).
+				SetSelectable(false))
+		headersTable.SetCell(0, 1,
+			tview.NewTableCell("").
+				SetTextColor(colors.Foreground).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
 	}
 
 	// Update cookies tab

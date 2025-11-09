@@ -1395,7 +1395,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 }
 
 // createResponseTabs creates the response tabs interface
-func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, tabCallback func(int)) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
+func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, tabCallback func(int)) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, tview.Primitive, *tview.TextView, *tview.TextView, *tview.TextView) {
 	// Create main response container
 	response := tview.NewFlex().SetDirection(tview.FlexRow)
 	response.SetBackgroundColor(colors.Background)
@@ -1421,7 +1421,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	})
 
 	// Create info bar
-	responseInfoBar, _, infoBarWidth := createResponseInfoBar(colors, resp, lastTime)
+	responseInfoBar, responseTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime)
 
 	// Create top row with tab header and info bar
 	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -1436,12 +1436,14 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 		HasBorder: &[]bool{false}[0],
 	})
 
-	responseHeadersPanel := tview.NewTextView()
+	responseHeadersPanel := tview.NewTable()
+	responseHeadersPanel.SetBorders(false)
 	responseHeadersPanel.SetBackgroundColor(colors.Background)
-	responseHeadersPanel.SetTextColor(colors.Foreground)
-	responseHeadersPanel.SetBorder(true)
-	responseHeadersPanel.SetTitleColor(colors.Title)
 	responseHeadersPanel.SetBorderColor(colors.Background)
+	responseHeadersPanel.SetFixed(1, 0)
+	responseHeadersPanel.SetSelectable(true, false)
+	responseHeadersPanel.SetBorderPadding(1, 0, 1, 0)
+	responseHeadersPanel.SetTitleColor(colors.Title)
 
 	responseCookiesPanel := tview.NewTextView()
 	responseCookiesPanel.SetBackgroundColor(colors.Background)
@@ -1467,7 +1469,10 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	response.AddItem(topRow, 1, 0, false)
 	response.AddItem(responsePages, 0, 1, true)
 
-	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, nil
+	// Initialize response tabs with initial data
+	updateResponseTabs(resp, lastTime, response, responseTabHeader, &responseInfoBar, &responseTimeText, &lastTime, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, colors)
+
+	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, responseTimeText
 }
 
 // createModal creates a centered modal dialog

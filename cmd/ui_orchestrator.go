@@ -33,7 +33,7 @@ type UIOrchestrator struct {
 	ResponseInfoBar       *tview.Flex
 	ResponseTimeText      *tview.TextView
 	ResponsePreviewPanel  *tview.TextView
-	ResponseHeadersPanel  *tview.TextView
+	ResponseHeadersPanel  tview.Primitive
 	ResponseCookiesPanel  *tview.TextView
 	ResponseTimelinePanel *tview.TextView
 	EnvironmentPanel      *tview.Flex
