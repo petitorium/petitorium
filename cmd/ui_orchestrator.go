@@ -53,6 +53,7 @@ type UIOrchestrator struct {
 	TabPages                       *tview.Pages
 	TabHeader                      *tview.Flex
 	CurrentTabIndex                int
+	CurrentResponseTabIndex        int
 	EnviromentIndex                int
 	CollectionsIndex               int
 	URLBarIndex                    int
@@ -300,6 +301,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		TabPages:                       tabPages,
 		TabHeader:                      tabHeader,
 		CurrentTabIndex:                currentTabIndex,
+		CurrentResponseTabIndex:        0, // Start with preview tab
 		EnviromentIndex:                enviromentIndex,
 		CollectionsIndex:               collectionsIndex,
 		URLBarIndex:                    urlBarIndex,
@@ -345,7 +347,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.RequestIndex:
 			uiOrchestrator.Footer.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.ResponseIndex:
-			uiOrchestrator.Footer.SetText(" Response: (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.Footer.SetText(" Response: (5-8/←/→) Switch tabs | (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
 		default:
 			uiOrchestrator.Footer.SetText(" (Tab) Cycle Focus | (q) Quit")
 		}
@@ -375,6 +377,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			}
 		}
 	}()
+
+	// Initialize response tab header with preview tab active
+	updateResponseTabHeader(uiOrchestrator.ResponseTabHeader, uiOrchestrator.CurrentResponseTabIndex, uiOrchestrator.Colors)
 
 	return uiOrchestrator, nil
 }

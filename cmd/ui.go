@@ -463,6 +463,36 @@ func updateTabHeader(
 	}
 }
 
+// updateResponseTabHeader updates the active tab indicator in the response tab header
+func updateResponseTabHeader(
+	tabHeader *tview.Flex,
+	activeTabIndex int,
+	colors *ColorManager,
+) {
+	tabs := []string{"Preview", "Headers", "Cookies", "Timeline"}
+
+	// Update each tab's appearance based on whether it's active
+	for i := 0; i < len(tabs); i++ {
+		// Find the tab TextView (skip separators)
+		tabIndex := i * 2 // Every other item is a tab (alternating with separators)
+		if tabIndex < tabHeader.GetItemCount() {
+			if tab, ok := tabHeader.GetItem(tabIndex).(*tview.TextView); ok {
+				if i == activeTabIndex {
+					// Active tab - use active tab color and background
+					tab.SetText(tabs[i])
+					tab.SetTextColor(colors.ActiveTab)
+					tab.SetBackgroundColor(colors.Selection)
+				} else {
+					// Inactive tab - use regular foreground color and background
+					tab.SetText(fmt.Sprintf(" %s ", tabs[i]))
+					tab.SetTextColor(colors.Foreground)
+					tab.SetBackgroundColor(colors.Background)
+				}
+			}
+		}
+	}
+}
+
 // createAuthTab creates placeholder authentication tab content
 func createAuthTab(colors *ColorManager) *tview.TextView {
 	// Auth panel
@@ -1365,7 +1395,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 }
 
 // createResponseTabs creates the response tabs interface
-func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
+func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, tabCallback func(int)) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView, *tview.TextView) {
 	// Create main response container
 	response := tview.NewFlex().SetDirection(tview.FlexRow)
 	response.SetBackgroundColor(colors.Background)
@@ -1374,8 +1404,21 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	response.SetTitle(" Response ")
 	response.SetTitleColor(colors.Title)
 
+	// Create tab pages first
+	responsePages := tview.NewPages()
+	responsePages.SetBackgroundColor(colors.Background)
+
 	// Create tab header
-	responseTabHeader := createTabHeader([]string{"Preview", "Headers", "Cookies", "Timeline"}, colors, func(int) {})
+	responseTabHeader := createTabHeader([]string{"Preview", "Headers", "Cookies", "Timeline"}, colors, func(index int) {
+		// Switch to the selected response tab
+		pageNames := []string{"preview", "headers", "cookies", "timeline"}
+		if index >= 0 && index < len(pageNames) {
+			responsePages.SwitchToPage(pageNames[index])
+		}
+		if tabCallback != nil {
+			tabCallback(index)
+		}
+	})
 
 	// Create info bar
 	responseInfoBar, _, infoBarWidth := createResponseInfoBar(colors, resp, lastTime)
@@ -1387,10 +1430,6 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	topRow.AddItem(spacer, 0, 1, false)
 	topRow.AddItem(responseInfoBar, infoBarWidth, 0, false)
-
-	// Create tab pages
-	responsePages := tview.NewPages()
-	responsePages.SetBackgroundColor(colors.Background)
 
 	// Create individual tab panels
 	responsePreviewPanel := createPanel(" Response Body ", colors, &PanelOptions{

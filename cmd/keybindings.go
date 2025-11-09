@@ -142,6 +142,30 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "global",
 		},
 		{
+			Rune:        '5',
+			Action:      switchToResponsePreviewTab,
+			Description: "Switch to Response Preview tab",
+			Context:     "global",
+		},
+		{
+			Rune:        '6',
+			Action:      switchToResponseHeadersTab,
+			Description: "Switch to Response Headers tab",
+			Context:     "global",
+		},
+		{
+			Rune:        '7',
+			Action:      switchToResponseCookiesTab,
+			Description: "Switch to Response Cookies tab",
+			Context:     "global",
+		},
+		{
+			Rune:        '8',
+			Action:      switchToResponseTimelineTab,
+			Description: "Switch to Response Timeline tab",
+			Context:     "global",
+		},
+		{
 			Rune:        'i',
 			Action:      enterInsertMode,
 			Description: "Enter insert mode (edit body)",
@@ -684,6 +708,13 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 			ui.App.SetFocus(ui.RequestDataTabs)
 		}
 		return nil
+	} else if ui.MainCycle.current == ui.ResponseIndex {
+		// Navigate response tabs
+		ui.CurrentResponseTabIndex = (ui.CurrentResponseTabIndex - 1 + 4) % 4
+		responseTabNames := []string{"preview", "headers", "cookies", "timeline"}
+		ui.ResponsePages.SwitchToPage(responseTabNames[ui.CurrentResponseTabIndex])
+		updateResponseTabHeader(ui.ResponseTabHeader, ui.CurrentResponseTabIndex, ui.Colors)
+		return nil
 	}
 	return event
 }
@@ -712,6 +743,13 @@ func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		default:
 			ui.App.SetFocus(ui.RequestDataTabs)
 		}
+		return nil
+	} else if ui.MainCycle.current == ui.ResponseIndex {
+		// Navigate response tabs
+		ui.CurrentResponseTabIndex = (ui.CurrentResponseTabIndex + 1) % 4
+		responseTabNames := []string{"preview", "headers", "cookies", "timeline"}
+		ui.ResponsePages.SwitchToPage(responseTabNames[ui.CurrentResponseTabIndex])
+		updateResponseTabHeader(ui.ResponseTabHeader, ui.CurrentResponseTabIndex, ui.Colors)
 		return nil
 	}
 	return event
@@ -918,5 +956,33 @@ func closeModal(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	// This function is called when modal keybindings are triggered
 	// The actual modal closing logic is handled in the modal's SetInputCapture
 	// We return a special marker to indicate the modal should be closed
+	return nil
+}
+
+func switchToResponsePreviewTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ResponsePages.SwitchToPage("preview")
+	updateResponseTabHeader(ui.ResponseTabHeader, 0, ui.Colors)
+	ui.CurrentResponseTabIndex = 0
+	return nil
+}
+
+func switchToResponseHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ResponsePages.SwitchToPage("headers")
+	updateResponseTabHeader(ui.ResponseTabHeader, 1, ui.Colors)
+	ui.CurrentResponseTabIndex = 1
+	return nil
+}
+
+func switchToResponseCookiesTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ResponsePages.SwitchToPage("cookies")
+	updateResponseTabHeader(ui.ResponseTabHeader, 2, ui.Colors)
+	ui.CurrentResponseTabIndex = 2
+	return nil
+}
+
+func switchToResponseTimelineTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ResponsePages.SwitchToPage("timeline")
+	updateResponseTabHeader(ui.ResponseTabHeader, 3, ui.Colors)
+	ui.CurrentResponseTabIndex = 3
 	return nil
 }

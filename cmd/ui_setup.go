@@ -55,6 +55,7 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 	response, responsePages, responseTabHeader, _, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, responseTimeText := createResponseTabs(
 		colors,
 		nil, nil, // No initial response or last request time
+		nil, // tabCallback will be set later
 	)
 
 	// Create footer panel
