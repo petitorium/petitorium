@@ -6,8 +6,9 @@ import (
 
 // UIComponents holds all UI components for the application
 type UIComponents struct {
+	WorkspacePanel        *tview.Flex
 	WorkspaceSelector     *tview.DropDown
-	WorkspaceIndicator    *tview.TextView
+	WorkspaceConfigButton *tview.Button
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
@@ -34,15 +35,8 @@ type UIComponents struct {
 
 // setupUIComponents creates and configures all UI components
 func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponents {
-	// Create workspace selector dropdown
-	workspaceSelector := createDropDown(
-		" Workspace ",
-		[]string{"Default"},
-		colors,
-	)
-
-	// Create workspace indicator text view
-	workspaceIndicator := createPanel("", colors, &PanelOptions{HasBorder: &[]bool{false}[0]})
+	// Create workspace panel with dropdown and config button
+	workspacePanel, workspaceSelector, workspaceConfigButton := createWorkspacePanel(colors)
 
 	// Create root node for tree
 	rootNode := tview.NewTreeNode("").SetSelectable(false)
@@ -91,8 +85,9 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		SetBorderPadding(0, 0, 0, 0)
 
 	return &UIComponents{
+		WorkspacePanel:        workspacePanel,
 		WorkspaceSelector:     workspaceSelector,
-		WorkspaceIndicator:    workspaceIndicator,
+		WorkspaceConfigButton: workspaceConfigButton,
 		RootNode:              rootNode,
 		MethodURLBar:          methodURLBar,
 		MethodDropdown:        methodDropdown,
@@ -141,47 +136,47 @@ func setupRightSide(requestPanel *tview.Flex, response *tview.Flex) *tview.Flex 
 }
 
 // setupLayout creates the main grid layout
-func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.Flex, rightSide *tview.Flex) *tview.Grid {
-	leftSide := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(environmentPanel, 3, 0, false).
-		AddItem(collectionsTreeView, 0, 1, false)
-
-	grid := tview.NewGrid().
-		SetRows(0, 3).
-		SetColumns(30, 0).
-		SetBorders(false)
-
-	if header != nil {
-		grid.SetRows(3, 0, 3)
-		grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
-		grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
-		grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, true)
-		grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
-	} else {
-		grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
-		grid.AddItem(leftSide, 0, 0, 1, 1, 0, 0, true)
-		grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
-	}
-
-	return grid
-}
+// func setupLayout(header, footer *tview.TextView, collectionsTreeView *tview.TreeView, environmentPanel *tview.Flex, rightSide *tview.Flex) *tview.Grid {
+// 	leftSide := tview.NewFlex().
+// 		SetDirection(tview.FlexRow).
+// 		AddItem(environmentPanel, 3, 0, false).
+// 		AddItem(collectionsTreeView, 0, 1, false)
+//
+// 	grid := tview.NewGrid().
+// 		SetRows(0, 3).
+// 		SetColumns(30, 0).
+// 		SetBorders(false)
+//
+// 	if header != nil {
+// 		grid.SetRows(3, 0, 3)
+// 		grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
+// 		grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
+// 		grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, true)
+// 		grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
+// 	} else {
+// 		grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
+// 		grid.AddItem(leftSide, 0, 0, 1, 1, 0, 0, true)
+// 		grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
+// 	}
+//
+// 	return grid
+// }
 
 // setupPanels creates the panels slice for cycling
-func setupPanels(environmentPanel *tview.Flex, collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.TextView) []tview.Primitive {
-	return []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, response}
-}
+// func setupPanels(environmentPanel *tview.Flex, collectionsTreeView *tview.TreeView, methodURLBar *tview.Flex, requestDataTabs *tview.Flex, response *tview.TextView) []tview.Primitive {
+// 	return []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, response}
+// }
 
 // setupCycles initializes the navigation cycles
-func setupCycles(panels []tview.Primitive) {
-	mainCycle = &MainCycle{
-		panels:  panels,
-		current: 1, // start with collections
-	}
-
-	headersCycle = &HeadersCycle{
-		inputs:  []tview.Primitive{},
-		current: 0,
-		parent:  mainCycle,
-	}
-}
+// func setupCycles(panels []tview.Primitive) {
+// 	mainCycle = &MainCycle{
+// 		panels:  panels,
+// 		current: 1, // start with collections
+// 	}
+//
+// 	headersCycle = &HeadersCycle{
+// 		inputs:  []tview.Primitive{},
+// 		current: 0,
+// 		parent:  mainCycle,
+// 	}
+// }

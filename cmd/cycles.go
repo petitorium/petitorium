@@ -163,6 +163,12 @@ func findInnermostCycle(p tview.Primitive) Cycle {
 	if requestCycle != nil && requestCycle.Contains(p) {
 		return requestCycle
 	}
+	if environmentsCycle != nil && environmentsCycle.Contains(p) {
+		return environmentsCycle
+	}
+	if workspaceCycle != nil && workspaceCycle.Contains(p) {
+		return workspaceCycle
+	}
 	if mainCycle != nil && mainCycle.Contains(p) {
 		return mainCycle
 	}
@@ -258,6 +264,51 @@ func (c *EnvironmentsCycle) UpdateInputs() {
 	}
 }
 
+// WorkspaceCycle handles cycling through workspace panel inputs
+type WorkspaceCycle struct {
+	inputs   []tview.Primitive
+	current  int
+	parent   Cycle
+	children []tview.Primitive
+}
+
+func (c *WorkspaceCycle) Next() tview.Primitive {
+	if c.current < len(c.inputs)-1 {
+		c.current++
+		return c.inputs[c.current]
+	} else {
+		c.current = 0
+		return nil
+	}
+}
+
+func (c *WorkspaceCycle) Prev() tview.Primitive {
+	if c.current > 0 {
+		c.current--
+		return c.inputs[c.current]
+	} else {
+		c.current = len(c.inputs) - 1
+		return nil
+	}
+}
+
+func (c *WorkspaceCycle) GetCurrent() tview.Primitive {
+	return c.inputs[c.current]
+}
+
+func (c *WorkspaceCycle) Contains(p tview.Primitive) bool {
+	for _, input := range c.inputs {
+		if input == p {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *WorkspaceCycle) GetParent() Cycle {
+	return c.parent
+}
+
 // Global cycle instances
 var mainCycle *MainCycle
 
@@ -266,3 +317,5 @@ var requestCycle *RequestCycle
 var headersCycle *HeadersCycle
 
 var environmentsCycle *EnvironmentsCycle
+
+var workspaceCycle *WorkspaceCycle

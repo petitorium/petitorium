@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -80,6 +81,14 @@ func createDropDown(title string,
 	options []string,
 	colors *ColorManager,
 ) *tview.DropDown {
+	return createDropDownWithOpenOnFocus(title, options, colors, true)
+}
+
+func createDropDownWithOpenOnFocus(title string,
+	options []string,
+	colors *ColorManager,
+	openOnFocus bool,
+) *tview.DropDown {
 	dropdown := tview.NewDropDown()
 	dropdown.SetBorder(true)
 	dropdown.SetTitle(title)
@@ -97,7 +106,25 @@ func createDropDown(title string,
 	selectedStyle := tcell.StyleDefault.Background(colors.Selection).Foreground(colors.Foreground)
 	dropdown.SetListStyles(unselectedStyle, selectedStyle)
 
+	// Use reflection to set openOnFocus
+	if !openOnFocus {
+		v := reflect.ValueOf(dropdown).Elem()
+		field := v.FieldByName("openOnFocus")
+		if field.IsValid() && field.CanSet() {
+			field.SetBool(false)
+		}
+	}
+
 	return dropdown
+}
+
+func isDropdownOpen(dropdown *tview.DropDown) bool {
+	v := reflect.ValueOf(dropdown).Elem()
+	field := v.FieldByName("open")
+	if field.IsValid() && field.Kind() == reflect.Bool {
+		return field.Bool()
+	}
+	return false
 }
 
 func createButton(text string, colors *ColorManager) *tview.Button {

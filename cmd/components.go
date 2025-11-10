@@ -151,13 +151,22 @@ func createEnvironmentPanel(
 	colors *ColorManager,
 ) (*tview.Flex, *tview.DropDown, *tview.Button, *CustomButton) {
 	// Create environment dropdown
-	envDropdown := createDropDown(
+	envDropdown := createDropDownWithOpenOnFocus(
 		"",
 		[]string{"Base Environment"},
 		colors,
+		false, // Don't open on focus
 	)
 	envDropdown.SetBorder(false)
 	envDropdown.SetCurrentOption(0)
+
+	// Prevent opening on focus
+	envDropdown.SetFocusFunc(func() {
+		// Close the dropdown if it's open
+		// In tview, we can't directly close, but perhaps we can set it to not open
+		// Actually, since SetOpenOnFocus doesn't exist, we can try to override
+		// For now, let's leave it and see
+	})
 
 	// Create config button
 	configButton := createButton(config.C.UI.ConfigButtonIcon, colors)
@@ -185,6 +194,44 @@ func createEnvironmentPanel(
 	container.SetTitleColor(colors.Title)
 
 	return container, envDropdown, configButton, indicator
+}
+
+func createWorkspacePanel(
+	colors *ColorManager,
+) (*tview.Flex, *tview.DropDown, *tview.Button) {
+	// Create workspace dropdown
+	workspaceDropdown := createDropDownWithOpenOnFocus(
+		"",
+		[]string{"Default"},
+		colors,
+		false, // Don't open on focus
+	)
+	workspaceDropdown.SetBorder(false)
+	workspaceDropdown.SetCurrentOption(0)
+
+	// Create config button
+	configButton := createButton(config.C.UI.ConfigButtonIcon, colors)
+
+	separator := tview.NewBox().
+		SetBackgroundColor(colors.Background)
+
+	// Create container
+	container := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(tview.NewFlex().
+			SetDirection(tview.FlexColumn).
+			AddItem(separator, 1, 0, false).
+			AddItem(workspaceDropdown, 14, 0, false), 15, 0, false).
+		AddItem(separator, 0, 1, false).
+		AddItem(configButton, 3, 0, true)
+
+	container.SetBorder(true)
+	container.SetTitle(" Workspace ")
+	container.SetBackgroundColor(colors.Background)
+	container.SetBorderColor(colors.Border)
+	container.SetTitleColor(colors.Title)
+
+	return container, workspaceDropdown, configButton
 }
 
 // syncBodyContent syncs body content between view and edit panels

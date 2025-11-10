@@ -39,7 +39,9 @@ type UIOrchestrator struct {
 	EnvironmentPanel      *tview.Flex
 	EnvDropdown           *tview.DropDown
 	EnvConfigButton       *tview.Button
+	WorkspacePanel        *tview.Flex
 	WorkspaceSelector     *tview.DropDown
+	WorkspaceConfigButton *tview.Button
 	Pages                 *tview.Pages
 	Grid                  *tview.Grid
 	KeyManager            *KeyBindingManager
@@ -66,6 +68,7 @@ type UIOrchestrator struct {
 	HeadersCycle                   *HeadersCycle
 	RequestCycle                   *RequestCycle
 	EnvironmentsCycle              *EnvironmentsCycle
+	WorkspaceCycle                 *WorkspaceCycle
 	LastSelectedRequestNode        *tview.TreeNode
 	BodyEditMode                   bool
 	CurrentBodyContent             string
@@ -92,7 +95,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	ui := setupUIComponents(colors, app)
 
 	var header *tview.TextView = nil
+	workspacePanel := ui.WorkspacePanel
 	workspaceSelector := ui.WorkspaceSelector
+	workspaceConfigButton := ui.WorkspaceConfigButton
 	rootNode := ui.RootNode
 	methodURLBar := ui.MethodURLBar
 	methodDropdown := ui.MethodDropdown
@@ -204,12 +209,12 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Create left side layout
 	leftSide := tview.NewFlex().SetDirection(tview.FlexRow)
-	leftSide.AddItem(workspaceSelector, 3, 1, false)
+	leftSide.AddItem(workspacePanel, 3, 1, false)
 	leftSide.AddItem(environmentPanel, 3, 1, false)
 	leftSide.AddItem(collectionsTreeView, 0, 1, false)
 
 	// Create main panels
-	mainPanels := []tview.Primitive{workspaceSelector, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
+	mainPanels := []tview.Primitive{workspacePanel, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
 
 	mainCycle = &MainCycle{
 		panels:  mainPanels,
@@ -227,6 +232,16 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		inputs: []tview.Primitive{
 			envDropdown,
 			envConfigButton,
+		},
+		current:  0,
+		parent:   mainCycle,
+		children: nil,
+	}
+
+	workspaceCycle = &WorkspaceCycle{
+		inputs: []tview.Primitive{
+			workspaceSelector,
+			workspaceConfigButton,
 		},
 		current:  0,
 		parent:   mainCycle,
@@ -316,7 +331,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		EnvironmentPanel:               environmentPanel,
 		EnvDropdown:                    envDropdown,
 		EnvConfigButton:                envConfigButton,
+		WorkspacePanel:                 workspacePanel,
 		WorkspaceSelector:              workspaceSelector,
+		WorkspaceConfigButton:          workspaceConfigButton,
 		Pages:                          pages,
 		Grid:                           grid,
 		CurrentSelectedNode:            currentSelectedNode,
@@ -339,6 +356,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		HeadersCycle:                   headersCycle,
 		RequestCycle:                   requestCycle,
 		EnvironmentsCycle:              environmentsCycle,
+		WorkspaceCycle:                 workspaceCycle,
 		LastSelectedRequestNode:        nil,
 		BodyEditMode:                   false,
 		CurrentBodyContent:             "",
