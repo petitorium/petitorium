@@ -720,6 +720,17 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 // handleTabNavigation handles Tab key navigation
 func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// workspace panel
+	if ui.MainCycle.current == ui.WorkspaceIndex {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		nextElement := ui.MainCycle.Next()
+		ui.SetActiveBorder(nextElement)
+		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
+
+		return nil
+	}
+
 	// environment panel new - el 1
 	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 0 {
 		next := ui.EnvironmentsCycle.Next()
@@ -862,6 +873,18 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 // handleBacktabNavigation handles Backtab (Shift+Tab) key navigation
 func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// workspace panel
+	if ui.MainCycle.current == ui.WorkspaceIndex {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		prevElement := ui.MainCycle.Prev()
+		ui.SetActiveBorder(prevElement)
+		ui.App.SetFocus(prevElement)
+		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
+
+		return nil
+	}
+
 	// environment panel - cycle backward through elements
 	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 1 {
 		// Currently on config button, move to dropdown

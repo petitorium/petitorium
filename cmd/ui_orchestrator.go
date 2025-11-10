@@ -54,6 +54,7 @@ type UIOrchestrator struct {
 	TabHeader                      *tview.Flex
 	CurrentTabIndex                int
 	CurrentResponseTabIndex        int
+	WorkspaceIndex                 int
 	EnviromentIndex                int
 	CollectionsIndex               int
 	URLBarIndex                    int
@@ -163,11 +164,12 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	currentTabIndex := 0
 
 	// Tab indices
-	enviromentIndex := 0
-	collectionsIndex := 1
-	urlBarIndex := 2
-	requestIndex := 3
-	responseIndex := 4
+	workspaceIndex := 0
+	enviromentIndex := 1
+	collectionsIndex := 2
+	urlBarIndex := 3
+	requestIndex := 4
+	responseIndex := 5
 
 	// Additional UI variables
 	var requestDataTabs *tview.Flex
@@ -207,11 +209,11 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	leftSide.AddItem(collectionsTreeView, 0, 1, false)
 
 	// Create main panels
-	mainPanels := []tview.Primitive{environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
+	mainPanels := []tview.Primitive{workspaceSelector, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
 
 	mainCycle = &MainCycle{
 		panels:  mainPanels,
-		current: 1,
+		current: 2,
 	}
 
 	headersCycle = &HeadersCycle{
@@ -325,6 +327,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		TabHeader:                      tabHeader,
 		CurrentTabIndex:                currentTabIndex,
 		CurrentResponseTabIndex:        0, // Start with preview tab
+		WorkspaceIndex:                 workspaceIndex,
 		EnviromentIndex:                enviromentIndex,
 		CollectionsIndex:               collectionsIndex,
 		URLBarIndex:                    urlBarIndex,
