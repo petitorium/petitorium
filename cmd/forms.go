@@ -1010,6 +1010,18 @@ func createNewWorkspaceForm(
 	})
 
 	form.SetBorder(true).SetTitle(" Create New Workspace ")
+
+	// Add input capture to handle 'q' to cancel
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 'q' || event.Rune() == 'Q' {
+			pages.RemovePage("createWorkspace")
+			pages.SwitchToPage("main")
+			app.SetFocus(collectionsTreeView)
+			return nil
+		}
+		return event
+	})
+
 	return form
 }
 
@@ -1073,6 +1085,18 @@ func createRenameWorkspaceForm(
 	})
 
 	form.SetBorder(true).SetTitle(" Rename Workspace ")
+
+	// Add input capture to handle 'q' to cancel
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 'q' || event.Rune() == 'Q' {
+			pages.RemovePage("renameWorkspace")
+			pages.SwitchToPage("main")
+			app.SetFocus(workspaceSelector)
+			return nil
+		}
+		return event
+	})
+
 	return form
 }
 

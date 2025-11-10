@@ -437,8 +437,27 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Check if we're on a modal page (not main)
 		currentPage, _ := ui.Pages.GetFrontPage()
 		if currentPage != "main" {
+			// On modal, 'q' closes the modal
+			if event.Rune() == 'q' || event.Rune() == 'Q' {
+				ui.Pages.RemovePage(currentPage)
+				ui.Pages.SwitchToPage("main")
+				ui.App.SetFocus(ui.CollectionsTreeView)
+				return nil
+			}
 			// Let the form handle its own input
 			return event
+		}
+
+		// On main page, 'q' quits
+		if event.Rune() == 'q' || event.Rune() == 'Q' {
+			// Save expansion state before quitting if in "remember" mode
+			if config.C.UI.CollectionExpansion == "remember" {
+				if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
+					fmt.Printf("Warning: Failed to save expansion state: %v\n", err)
+				}
+			}
+			ui.App.Stop()
+			return nil
 		}
 
 		// When in body edit mode and focused on bodyEditPanel, pass all input through to allow pasting
@@ -464,17 +483,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// First check if this is a global keybinding
 		if result := ui.KeyManager.HandleKeyEvent(ui, event, "global"); result != event {
 			return result
-		}
-
-		if event.Rune() == 'q' || event.Rune() == 'Q' {
-			// Save expansion state before quitting if in "remember" mode
-			if config.C.UI.CollectionExpansion == "remember" {
-				if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
-					fmt.Printf("Warning: Failed to save expansion state: %v\n", err)
-				}
-			}
-			ui.App.Stop()
-			return nil
 		}
 
 		if event.Key() == tcell.KeyTab {
