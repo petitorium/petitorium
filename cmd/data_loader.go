@@ -16,9 +16,11 @@ func LoadData() (*workspace.Workspace, *DataManager, *[]workspace.Environment, e
 	// Create data manager for workspace operations
 	dataManager := NewDataManager(workspaceData)
 
-	// For now, return the environments from the workspace
-	// TODO: Update this when workspace switching is implemented
-	environmentsData := workspaceData.Environments
+	// Load environments from global config
+	environmentsData, err := workspace.LoadEnvironments()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to load environments: %w", err)
+	}
 
 	return workspaceData, dataManager, &environmentsData, nil
 }
