@@ -27,32 +27,37 @@ func refreshCollectionsTree(ui *UIOrchestrator) {
 
 // SetupEventHandlers configures all event handlers for the UI
 func SetupEventHandlers(ui *UIOrchestrator) {
-	// Set up workspace selector change handler
-	ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
+	ui.WorkspaceSelector.SetDoneFunc(func(key tcell.Key) {
+		if key != tcell.KeyEnter {
+			return
+		}
+		_, text := ui.WorkspaceSelector.GetCurrentOption()
 		if err := workspace.SwitchWorkspace(text); err != nil {
-			// Show error in footer or modal
 			ui.Footer.SetText(fmt.Sprintf("Error switching workspace: %v", err))
 			return
 		}
 
-		// Reload workspace data
 		newWorkspace, err := workspace.LoadWorkspace()
 		if err != nil {
 			ui.Footer.SetText(fmt.Sprintf("Error loading workspace: %v", err))
 			return
 		}
 
-		// Update UI with new workspace
 		ui.WorkspaceData = newWorkspace
 
-		// Refresh collections tree
 		refreshCollectionsTree(ui)
 
-		// Clear current request selection
 		ui.CurrentRequest = nil
 		ui.CurrentSelectedNode = nil
 
 		ui.Footer.SetText(fmt.Sprintf("Switched to workspace: %s", text))
+
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			ui.App.QueueUpdateDraw(func() {
+				ui.App.SetFocus(ui.CollectionsTreeView)
+			})
+		}()
 	})
 
 	// Set up vim-style navigation for body view panel (TextView)
@@ -155,24 +160,24 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		return ui.KeyManager.HandleKeyEvent(ui, event, "body_edit")
 	})
 
-	// Add change handler for method dropdown
-	ui.MethodDropdown.SetSelectedFunc(func(text string, index int) {
-		// Skip if we're programmatically updating from tree selection
+	ui.MethodDropdown.SetDoneFunc(func(key tcell.Key) {
+		if key != tcell.KeyEnter {
+			return
+		}
 		if ui.ProgrammaticallyUpdatingMethod {
 			return
 		}
 
 		if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
+			index, _ := ui.MethodDropdown.GetCurrentOption()
 			methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 			if index >= 0 && index < len(methods) {
 				newMethod := methods[index]
 				if newMethod != ui.CurrentRequest.Method {
 					ui.CurrentRequest.Method = newMethod
 
-					// Update the node's reference with the new request data
 					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 
-					// Update the tree node text to reflect the new method
 					coloredMethod := getColoredMethod(ui.CurrentRequest.Method)
 					paddedName := padNameToMinLength(ui.CurrentRequest.Name, 4)
 					iconColor := config.C.UI.SelectedRequestIconColor
@@ -346,18 +351,17 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.App.SetFocus(form)
 	})
 
-	// Set up environment dropdown selection handler
-	ui.EnvDropdown.SetSelectedFunc(func(text string, index int) {
-		// Update the selected environment in config
+	ui.EnvDropdown.SetDoneFunc(func(key tcell.Key) {
+		if key != tcell.KeyEnter {
+			return
+		}
+		index, _ := ui.EnvDropdown.GetCurrentOption()
 		if index == 0 {
 			config.C.SelectedEnvironment = "Base"
 		} else if index > 0 && index <= len(*ui.EnvironmentsData) {
 			config.C.SelectedEnvironment = (*ui.EnvironmentsData)[index-1].Name
 		}
-		// Save the config
 		if err := config.SaveConfig(&config.C); err != nil {
-			// Log error but don't interrupt user
-			// Could add proper logging here
 		}
 	})
 

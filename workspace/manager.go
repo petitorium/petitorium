@@ -677,6 +677,7 @@ func CreateWorkspace(name string) (*Workspace, error) {
 func SwitchWorkspace(name string) error {
 	manager, err := LoadWorkspaceManager()
 	if err != nil {
+		fmt.Printf("LoadWorkspaceManager error: %v\n", err)
 		return err
 	}
 
@@ -690,11 +691,20 @@ func SwitchWorkspace(name string) error {
 	}
 
 	if !found {
+		fmt.Printf("Workspace '%s' not found in available workspaces\n", name)
 		return fmt.Errorf("workspace %s not found", name)
 	}
 
+	fmt.Printf("Setting current workspace to: '%s'\n", name)
 	manager.CurrentWorkspace = name
-	return SaveWorkspaceManager(manager)
+
+	if err := SaveWorkspaceManager(manager); err != nil {
+		fmt.Printf("SaveWorkspaceManager error: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("SwitchWorkspace completed successfully\n")
+	return nil
 }
 
 // ListWorkspaces returns a list of all workspace names

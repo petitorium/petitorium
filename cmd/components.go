@@ -200,14 +200,35 @@ func createWorkspacePanel(
 	colors *ColorManager,
 ) (*tview.Flex, *tview.DropDown, *tview.Button) {
 	// Create workspace dropdown
+	workspaceNames := []string{"Default"}
+	// Try to load actual workspace names
+	if workspaces, err := workspace.ListWorkspaces(); err == nil {
+		workspaceNames = workspaces
+	}
+
 	workspaceDropdown := createDropDownWithOpenOnFocus(
 		"",
-		[]string{"Default"},
+		workspaceNames,
 		colors,
 		false, // Don't open on focus
 	)
 	workspaceDropdown.SetBorder(false)
-	workspaceDropdown.SetCurrentOption(0)
+
+	// Set current option based on current workspace
+	currentWorkspace := "Default"
+	if manager, err := workspace.LoadWorkspaceManager(); err == nil && manager.CurrentWorkspace != "" {
+		currentWorkspace = manager.CurrentWorkspace
+	}
+
+	// Find the index of current workspace
+	currentIndex := 0
+	for i, name := range workspaceNames {
+		if name == currentWorkspace {
+			currentIndex = i
+			break
+		}
+	}
+	workspaceDropdown.SetCurrentOption(currentIndex)
 
 	// Create config button
 	configButton := createButton(config.C.UI.ConfigButtonIcon, colors)
