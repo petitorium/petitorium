@@ -36,18 +36,10 @@ A powerful TUI (Terminal User Interface) for API interaction and testing.
 - `w` - Page down (like Ctrl+F in vim)
 - `b` - Page up (like Ctrl+B in vim)
 
-### Body Edit Panel
-
-- `Esc` - Exit insert mode back to view mode (saves changes automatically)
-- `Ctrl+s` - Save changes without leaving edit mode
-- `Ctrl+h` - Move cursor left
-- `Ctrl+j` - Move cursor down
-- `Ctrl+k` - Move cursor up
-- `Ctrl+l` - Move cursor right
-
 ### External Editor
 
-- `F4` - Open body in external editor
+- `i` - Open body in external editor for editing (main interface)
+- `F4` - Open body in external editor (main interface or new request form)
 
 ### Tab Navigation (Commented/Not Working)
 
@@ -67,10 +59,9 @@ A powerful TUI (Terminal User Interface) for API interaction and testing.
 - API request management with collections
 - Multiple HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
 - **Send HTTP requests** with headers and body
-- Request body editing with syntax highlighting
-- **Automatic save on exit from edit mode**
-- **Save without leaving edit mode** (Ctrl+s)
-- Vim-style navigation
+- Request body editing with external editor integration
+- Full syntax highlighting and editing capabilities in external editor
+- Vim-style navigation for response viewing
 - External editor integration
 - Configurable themes and colors
 - Persistent collection expansion state
@@ -98,10 +89,9 @@ go build -o petitorium .
 
 ### Body Editing Workflow
 
-- Press `i` to enter insert mode for body editing
-- Press `Esc` to exit insert mode and **automatically save changes**
-- Press `Ctrl+s` to save changes **without leaving edit mode**
-- Use `Ctrl+hjkl` for navigation while in edit mode
+- Press `i` to open body in external editor for editing (main interface)
+- Press `F4` to open body in external editor (main interface or when creating new requests)
+- The external editor provides full support for pasting, complex editing, and syntax highlighting
 
 ## Configuration
 
@@ -110,4 +100,3 @@ Configuration files are stored in `~/.config/petitorium/`:
 - `config.yaml` - Application settings and themes
 - `collections.yaml` - API collections and requests
 - `expansion_state.yaml` - Collection expansion states
-
