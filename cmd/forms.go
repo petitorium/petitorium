@@ -269,6 +269,33 @@ func createRequestForm(app *tview.Application,
 
 	form.SetCancelFunc(cancelFunc)
 
+	// Add F4 support for external editor on Body field
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyF4 {
+			// Check if we're on the Body field (index 3)
+			formItemIndex, _ := form.GetFocusedItemIndex()
+			if formItemIndex == 3 { // Body field is at index 3
+				bodyField := form.GetFormItem(3).(*tview.InputField)
+				currentBody := bodyField.GetText()
+
+				// Suspend the app to open external editor
+				app.Suspend(func() {
+					modifiedContent, err := openInExternalEditor(currentBody)
+					if err != nil {
+						// Could show error but for now just continue
+						return
+					}
+
+					// Update the body field with the edited content
+					bodyField.SetText(modifiedContent)
+				})
+
+				return nil
+			}
+		}
+		return event
+	})
+
 	form.SetBorder(true).SetTitle(" New Request ")
 	return form
 }
