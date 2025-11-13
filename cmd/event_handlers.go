@@ -12,45 +12,65 @@ import (
 	"github.com/hbarral/petitorium/workspace"
 )
 
-// refreshCollectionsTree refreshes the collections tree with current workspace data
 func refreshCollectionsTree(ui *UIOrchestrator) {
-	// Clear existing children
 	ui.RootNode.ClearChildren()
 
-	// Re-add workspace data to tree
 	addWorkspaceToTree(ui.WorkspaceData, ui.RootNode)
 
-	// Refresh the tree view
 	ui.CollectionsTreeView.SetRoot(ui.RootNode)
-	ui.App.Draw()
+	ui.CollectionsTreeView.SetCurrentNode(ui.RootNode)
 }
 
 // SetupEventHandlers configures all event handlers for the UI
 func SetupEventHandlers(ui *UIOrchestrator) {
-	ui.WorkspaceSelector.SetDoneFunc(func(key tcell.Key) {
-		if key != tcell.KeyEnter {
+	manager, _ := workspace.LoadWorkspaceManager()
+	lastWorkspace := ""
+	if manager != nil {
+		lastWorkspace = manager.CurrentWorkspace
+	}
+
+	// Store workspace names for lookup
+	workspaceNames, err := workspace.ListWorkspaces()
+	if err != nil {
+		workspaceNames = []string{"Default"}
+	}
+
+	switchWorkspace := func(text string) {
+		if text == lastWorkspace {
 			return
 		}
-		_, text := ui.WorkspaceSelector.GetCurrentOption()
+		lastWorkspace = text
+
 		if err := workspace.SwitchWorkspace(text); err != nil {
-			ui.Footer.SetText(fmt.Sprintf("Error switching workspace: %v", err))
+			// ui.FooterRight.SetText(fmt.Sprintf("Error switching workspace: %v", err))
 			return
 		}
 
 		newWorkspace, err := workspace.LoadWorkspace()
 		if err != nil {
-			ui.Footer.SetText(fmt.Sprintf("Error loading workspace: %v", err))
+			// ui.FooterRight.SetText(fmt.Sprintf("Error switching workspace: %v", err))
 			return
 		}
 
 		ui.WorkspaceData = newWorkspace
+		ui.DataManager = NewDataManager(newWorkspace)
 
 		refreshCollectionsTree(ui)
 
 		ui.CurrentRequest = nil
 		ui.CurrentSelectedNode = nil
+		ui.LastSelectedRequestNode = nil
 
-		ui.Footer.SetText(fmt.Sprintf("Switched to workspace: %s", text))
+		ui.ProgrammaticallyUpdatingURL = true
+		ui.URLInput.SetText("")
+		ui.ProgrammaticallyUpdatingURL = false
+
+		ui.SyncBodyContent("")
+		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
+
+		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
+
+		// ui.FooterRight.SetText(fmt.Sprintf("Switched to workspace: %s (%d collections)", text, len(newWorkspace.Collections)))
 
 		go func() {
 			time.Sleep(50 * time.Millisecond)
@@ -58,7 +78,25 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				ui.App.SetFocus(ui.CollectionsTreeView)
 			})
 		}()
+	}
+
+	ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
+		// ui.FooterRight.SetText(fmt.Sprintf("Text %s, Index: %d, workspace name: %s", text, index, workspaceNames[index]))
+		if index >= 0 && index < len(workspaceNames) {
+			switchWorkspace(workspaceNames[index])
+		}
 	})
+
+	// ui.WorkspaceSelector.SetDoneFunc(func(key tcell.Key) {
+	// if key != tcell.KeyEnter {
+	// 	return
+	// }
+	// index, _ := ui.WorkspaceSelector.GetCurrentOption()
+	// if index >= 0 && index < len(workspaceNames) {
+	// 	ui.FooterRight.SetText(fmt.Sprintf("Workspace: %s", index))
+	// 	// switchWorkspace(workspaceNames[index])
+	// }
+	// })
 
 	// Set up vim-style navigation for body view panel (TextView)
 	ui.BodyViewPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

@@ -17,7 +17,9 @@ type UIComponents struct {
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
 	Response              *tview.Flex
-	Footer                *tview.TextView
+	Footer                *tview.Flex
+	FooterLeft            *tview.TextView
+	FooterRight           *tview.TextView
 	CollectionsTreeView   *tview.TreeView
 	ResponsePages         *tview.Pages
 	ResponseTabHeader     *tview.Flex
@@ -59,8 +61,26 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		nil, // tabCallback will be set later
 	)
 
+	activeBoder := false
 	// Create footer panel
-	footer := createPanel("", colors, nil)
+	footerLeft := createPanel("", colors, nil)
+	footerLeft.SetBorder(activeBoder)
+
+	footerRight := createPanel("", colors, nil)
+	footerRight.SetBorder(activeBoder).
+		SetTitleColor(colors.Title)
+
+	footerFlex := tview.NewFlex().
+		AddItem(footerLeft, 0, 1, false).
+		AddItem(footerRight, 30, 0, false)
+
+	footerFlex.SetBorder(true).
+		SetBorderColor(colors.Border).
+		SetBackgroundColor(colors.Background)
+
+	footer := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(footerFlex, 0, 1, false)
 
 	// Create environment panel with dropdown and config button
 	environmentPanel, envDropdown, envConfigButton, envIndicatorButton := createEnvironmentPanel(
@@ -97,6 +117,8 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		BodyEditPanel:         bodyEditPanel,
 		Response:              response,
 		Footer:                footer,
+		FooterLeft:            footerLeft,
+		FooterRight:           footerRight,
 		CollectionsTreeView:   collectionsTreeView,
 		ResponsePages:         responsePages,
 		ResponseTabHeader:     responseTabHeader,

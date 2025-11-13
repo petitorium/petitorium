@@ -47,7 +47,14 @@ type Workspace struct {
 	UpdatedAt    time.Time     `yaml:"updated_at"`
 }
 
+type WorkspaceMetadata struct {
+	Name        string    `yaml:"name"`
+	Description string    `yaml:"description,omitempty"`
+	CreatedAt   time.Time `yaml:"created_at"`
+	UpdatedAt   time.Time `yaml:"updated_at"`
+}
+
 type WorkspaceManager struct {
-	CurrentWorkspace string      `yaml:"current_workspace"`
-	Workspaces       []Workspace `yaml:"workspaces"`
+	CurrentWorkspace string              `yaml:"current_workspace"`
+	Workspaces       []WorkspaceMetadata `yaml:"workspaces"`
 }

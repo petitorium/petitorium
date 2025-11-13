@@ -26,7 +26,9 @@ type UIOrchestrator struct {
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
 	Response              *tview.Flex
-	Footer                *tview.TextView
+	Footer                *tview.Flex
+	FooterLeft            *tview.TextView
+	FooterRight           *tview.TextView
 	CollectionsTreeView   *tview.TreeView
 	ResponsePages         *tview.Pages
 	ResponseTabHeader     *tview.Flex
@@ -94,7 +96,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Create all UI components
 	ui := setupUIComponents(colors, app)
 
-	var header *tview.TextView = nil
 	workspacePanel := ui.WorkspacePanel
 	workspaceSelector := ui.WorkspaceSelector
 	workspaceConfigButton := ui.WorkspaceConfigButton
@@ -107,6 +108,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	bodyEditPanel := ui.BodyEditPanel
 	responsePanel := ui.Response
 	footer := ui.Footer
+	footerLeft := ui.FooterLeft
+	footerRight := ui.FooterRight
 	collectionsTreeView := ui.CollectionsTreeView
 	responsePages := ui.ResponsePages
 	responseTabHeader := ui.ResponseTabHeader
@@ -156,6 +159,12 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	} else {
 		workspaceSelector.SetCurrentOption(0)
 	}
+
+	// Set initial workspace name in right footer
+	// currentWorkspaceIndex, _ := workspaceSelector.GetCurrentOption()
+	// if currentWorkspaceIndex >= 0 && currentWorkspaceIndex < len(workspaceNames) {
+	// 	footerRight.SetText(fmt.Sprintf("the Workspace: %s", workspaceNames[currentWorkspaceIndex]))
+	// }
 
 	// Variable declarations
 	var currentSelectedNode *tview.TreeNode
@@ -255,18 +264,10 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		SetColumns(30, 0).
 		SetBorders(false)
 
-	if header != nil {
-		grid.SetRows(3, 0, 3)
-		grid.AddItem(header, 0, 0, 1, 2, 0, 0, false)
-		grid.AddItem(leftSide, 1, 0, 1, 1, 0, 0, false)
-		grid.AddItem(rightSide, 1, 1, 1, 1, 0, 0, false)
-		grid.AddItem(footer, 2, 0, 1, 2, 0, 0, false)
-	} else {
-		grid.SetRows(0, 3)
-		grid.AddItem(leftSide, 0, 0, 1, 1, 0, 0, false)
-		grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
-		grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
-	}
+	grid.SetRows(0, 3)
+	grid.AddItem(leftSide, 0, 0, 1, 1, 0, 0, false)
+	grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
+	grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	// Initial focus is on requestPanel (panels[1])
 	currentFocus := collectionsIndex
@@ -319,6 +320,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		BodyEditPanel:                  bodyEditPanel,
 		Response:                       responsePanel,
 		Footer:                         footer,
+		FooterLeft:                     footerLeft,
+		FooterRight:                    footerRight,
 		CollectionsTreeView:            collectionsTreeView,
 		ResponsePages:                  responsePages,
 		ResponseTabHeader:              responseTabHeader,
@@ -378,22 +381,22 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	updateFooterFunc := func() {
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
 		if currentPage == "envVariables" {
-			uiOrchestrator.Footer.SetText(" Environment Config: (j/k) Navigate | (Enter) Select | (n) New Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close")
+			uiOrchestrator.FooterLeft.SetText(" Environment Config: (j/k) Navigate | (Enter) Select | (n) New Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close")
 			return
 		}
 		switch uiOrchestrator.MainCycle.current {
 		case uiOrchestrator.EnviromentIndex:
-			uiOrchestrator.Footer.SetText(" Environment: (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Environment: (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.CollectionsIndex:
-			uiOrchestrator.Footer.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.URLBarIndex:
-			uiOrchestrator.Footer.SetText(" Request: (Enter) Edit URL | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Request: (Enter) Edit URL | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.RequestIndex:
-			uiOrchestrator.Footer.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.ResponseIndex:
-			uiOrchestrator.Footer.SetText(" Response: (5-8/←/→) Switch tabs | (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Response: (5-8/←/→) Switch tabs | (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
 		default:
-			uiOrchestrator.Footer.SetText(" (Tab) Cycle Focus | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" (Tab) Cycle Focus | (q) Quit")
 		}
 	}
 	uiOrchestrator.UpdateFooter = updateFooterFunc

@@ -64,10 +64,16 @@ func migrateFromOldFormat() error {
 	defaultWorkspace.CreatedAt = now
 	defaultWorkspace.UpdatedAt = now
 
-	// Create workspace manager
 	manager := &WorkspaceManager{
 		CurrentWorkspace: "Default",
-		Workspaces:       []Workspace{defaultWorkspace},
+		Workspaces: []WorkspaceMetadata{
+			{
+				Name:        defaultWorkspace.Name,
+				Description: defaultWorkspace.Description,
+				CreatedAt:   defaultWorkspace.CreatedAt,
+				UpdatedAt:   defaultWorkspace.UpdatedAt,
+			},
+		},
 	}
 
 	// Save in new format
@@ -93,7 +99,14 @@ func createDefaultWorkspaceManager() error {
 	defaultWorkspace := createDefaultWorkspace()
 	manager := &WorkspaceManager{
 		CurrentWorkspace: "Default",
-		Workspaces:       []Workspace{*defaultWorkspace},
+		Workspaces: []WorkspaceMetadata{
+			{
+				Name:        defaultWorkspace.Name,
+				Description: defaultWorkspace.Description,
+				CreatedAt:   defaultWorkspace.CreatedAt,
+				UpdatedAt:   defaultWorkspace.UpdatedAt,
+			},
+		},
 	}
 
 	if err := SaveWorkspaceManager(manager); err != nil {
@@ -548,31 +561,33 @@ func DuplicateWorkspace(sourceName, targetName string) (*Workspace, error) {
 		}
 	}
 
-	// Find the source workspace
-	var sourceWorkspace *Workspace
+	var sourceMetadata *WorkspaceMetadata
 	for _, ws := range manager.Workspaces {
 		if ws.Name == sourceName {
-			sourceWorkspace = &ws
+			sourceMetadata = &ws
 			break
 		}
 	}
 
-	if sourceWorkspace == nil {
+	if sourceMetadata == nil {
 		return nil, fmt.Errorf("source workspace %s not found", sourceName)
 	}
 
-	// Create duplicate workspace
+	sourceWorkspace, err := LoadWorkspaceByName(sourceName)
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now()
 	duplicateWorkspace := &Workspace{
 		Name:         targetName,
-		Description:  fmt.Sprintf("Copy of %s", sourceWorkspace.Description),
+		Description:  fmt.Sprintf("Copy of %s", sourceMetadata.Description),
 		Collections:  make([]Collection, len(sourceWorkspace.Collections)),
 		Environments: make([]Environment, len(sourceWorkspace.Environments)),
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
 
-	// Deep copy collections
 	for i, col := range sourceWorkspace.Collections {
 		duplicateWorkspace.Collections[i] = Collection{
 			Name:     col.Name,
@@ -580,10 +595,8 @@ func DuplicateWorkspace(sourceName, targetName string) (*Workspace, error) {
 			Expanded: col.Expanded,
 		}
 		copy(duplicateWorkspace.Collections[i].Requests, col.Requests)
-		// Note: Nested collections would need recursive copying, but keeping simple for now
 	}
 
-	// Deep copy environments
 	for i, env := range sourceWorkspace.Environments {
 		duplicateWorkspace.Environments[i] = Environment{
 			Name:      env.Name,
@@ -595,8 +608,12 @@ func DuplicateWorkspace(sourceName, targetName string) (*Workspace, error) {
 		}
 	}
 
-	// Add to manager
-	manager.Workspaces = append(manager.Workspaces, *duplicateWorkspace)
+	manager.Workspaces = append(manager.Workspaces, WorkspaceMetadata{
+		Name:        duplicateWorkspace.Name,
+		Description: duplicateWorkspace.Description,
+		CreatedAt:   duplicateWorkspace.CreatedAt,
+		UpdatedAt:   duplicateWorkspace.UpdatedAt,
+	})
 
 	// Save manager
 	if err := SaveWorkspaceManager(manager); err != nil {
@@ -628,7 +645,6 @@ func CreateWorkspace(name string) (*Workspace, error) {
 		}
 	}
 
-	// Create new workspace
 	now := time.Now()
 	newWorkspace := &Workspace{
 		Name:        name,
@@ -657,8 +673,12 @@ func CreateWorkspace(name string) (*Workspace, error) {
 		},
 	}
 
-	// Add to manager
-	manager.Workspaces = append(manager.Workspaces, *newWorkspace)
+	manager.Workspaces = append(manager.Workspaces, WorkspaceMetadata{
+		Name:        newWorkspace.Name,
+		Description: newWorkspace.Description,
+		CreatedAt:   newWorkspace.CreatedAt,
+		UpdatedAt:   newWorkspace.UpdatedAt,
+	})
 
 	// Save manager
 	if err := SaveWorkspaceManager(manager); err != nil {
@@ -673,15 +693,12 @@ func CreateWorkspace(name string) (*Workspace, error) {
 	return newWorkspace, nil
 }
 
-// SwitchWorkspace switches to the specified workspace
 func SwitchWorkspace(name string) error {
 	manager, err := LoadWorkspaceManager()
 	if err != nil {
-		fmt.Printf("LoadWorkspaceManager error: %v\n", err)
 		return err
 	}
 
-	// Check if workspace exists
 	found := false
 	for _, ws := range manager.Workspaces {
 		if ws.Name == name {
@@ -691,19 +708,15 @@ func SwitchWorkspace(name string) error {
 	}
 
 	if !found {
-		fmt.Printf("Workspace '%s' not found in available workspaces\n", name)
 		return fmt.Errorf("workspace %s not found", name)
 	}
 
-	fmt.Printf("Setting current workspace to: '%s'\n", name)
 	manager.CurrentWorkspace = name
 
 	if err := SaveWorkspaceManager(manager); err != nil {
-		fmt.Printf("SaveWorkspaceManager error: %v\n", err)
 		return err
 	}
 
-	fmt.Printf("SwitchWorkspace completed successfully\n")
 	return nil
 }
 
