@@ -72,12 +72,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// ui.FooterRight.SetText(fmt.Sprintf("Switched to workspace: %s (%d collections)", text, len(newWorkspace.Collections)))
 
-		go func() {
-			time.Sleep(50 * time.Millisecond)
-			ui.App.QueueUpdateDraw(func() {
-				ui.App.SetFocus(ui.CollectionsTreeView)
-			})
-		}()
+		// go func() {
+		// 	time.Sleep(50 * time.Millisecond)
+		// 	ui.App.QueueUpdateDraw(func() {
+		// 		ui.App.SetFocus(ui.CollectionsTreeView)
+		// 	})
+		// }()
 	}
 
 	ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
@@ -725,8 +725,24 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Vim-style modal editing: 'i' to enter insert mode
 		if event.Rune() == 'i' && ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
-			ui.SwitchBodyMode() // Switch to edit mode
-			ui.App.SetFocus(ui.BodyEditPanel)
+			// Instead of switching to inline editor, open external editor for better paste support
+			if ui.CurrentRequest != nil {
+				ui.App.Suspend(func() {
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent)
+					if err != nil {
+						// Could show error but for now just continue with current content
+						return
+					}
+
+					// Update the body with modified content
+					ui.SyncBodyContent(modifiedContent)
+					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
+						ui.CurrentRequest.Body = modifiedContent
+						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
+						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+					}
+				})
+			}
 			return nil
 		}
 
