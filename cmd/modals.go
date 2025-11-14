@@ -59,10 +59,15 @@ func showEnvironmentModal(
 	// Define callbacks
 	onEnvironmentSelected := func(env *workspace.Environment) {
 		selectedEnvironment = env
-		// Update the JSON editor with the selected environment's variables
-		effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
-		jsonBytes, _ := json.MarshalIndent(effectiveVars, "", "  ")
-		jsonEditor.SetText(string(jsonBytes), false)
+		if env != nil {
+			// Update the JSON editor with the selected environment's variables
+			effectiveVars := env.GetEffectiveVariables(*ui.EnvironmentsData)
+			jsonBytes, _ := json.MarshalIndent(effectiveVars, "", "  ")
+			jsonEditor.SetText(string(jsonBytes), false)
+		} else {
+			// Clear the JSON editor when no environment is selected
+			jsonEditor.SetText("{}", false)
+		}
 	}
 
 	var onCreateNew func()
@@ -174,10 +179,50 @@ func showEnvironmentModal(
 		onRename,
 	)
 
-	// Create split layout: left 40%, right 60%
+	// Function to save environment variables
+	saveEnvironmentVariables := func() {
+		// Save the JSON back to environment variables if editing existing environment
+		if selectedEnvironment != nil {
+			jsonText := jsonEditor.GetText()
+			var newVars map[string]string
+			if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
+				// If JSON is invalid, keep the original variables
+				// Could show an error message here
+			} else {
+				selectedEnvironment.Variables = newVars
+				if saveErr := workspace.SaveEnvironments(*ui.EnvironmentsData); saveErr != nil {
+					// Handle save error
+				}
+			}
+		}
+	}
+
+	// Create save button
+	// saveButton := createButton("Save", ui.Colors)
+	// saveButton.SetSelectedFunc(func() {
+	// 	// Save environment variables
+	// 	saveEnvironmentVariables()
+	// 	// Close modal and return focus to config button
+	// 	ui.Pages.RemovePage("envVariables")
+	// 	ui.UpdateFooter()
+	// 	ui.App.SetFocus(ui.EnvConfigButton)
+	// })
+
+	// Create button container
+	buttonContainer := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false).
+		// AddItem(saveButton, 10, 0, true).
+		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false)
+
+	// Create split layout: left 40%, right 60%, with button bar at bottom
 	content := tview.NewFlex().
-		AddItem(leftPanel, 0, 4, false). // 40% for left panel
-		AddItem(jsonEditor, 0, 6, false) // 60% for JSON editor
+		SetDirection(tview.FlexRow).
+		AddItem(tview.NewFlex().
+			AddItem(leftPanel, 0, 4, false).  // 40% for left panel
+			AddItem(jsonEditor, 0, 6, false), // 60% for JSON editor
+							0, 9, false).
+		AddItem(buttonContainer, 1, 0, false) // Button bar at bottom
 
 	content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
@@ -194,6 +239,18 @@ func showEnvironmentModal(
 	modal := createModal(content, 120, 40, ui.Colors.Background)
 	ui.Pages.AddPage("envVariables", modal, true, true)
 	ui.UpdateFooter()
+
+	// Set initial selection on the environment list to match the currently selected environment
+	if env != nil {
+		// Find the index of the selected environment in the list (add 1 because index 0 is "Create New Environment")
+		for i, listEnv := range *ui.EnvironmentsData {
+			if listEnv.Name == env.Name {
+				leftPanel.SetCurrentItem(i + 1) // +1 because index 0 is "Create New Environment"
+				break
+			}
+		}
+	}
+
 	ui.App.SetFocus(leftPanel)
 
 	// Add keybinding to close modal with Escape, q, or Q using the keybinding manager
@@ -204,20 +261,8 @@ func showEnvironmentModal(
 		}
 		// First try modal keybindings
 		if result := ui.KeyManager.HandleKeyEvent(ui, event, "modal"); result != event {
-			// Save the JSON back to environment variables if editing existing environment
-			if selectedEnvironment != nil {
-				jsonText := jsonEditor.GetText()
-				var newVars map[string]string
-				if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
-					// If JSON is invalid, keep the original variables
-					// Could show an error message here
-				} else {
-					selectedEnvironment.Variables = newVars
-					if saveErr := workspace.SaveEnvironments(*ui.EnvironmentsData); saveErr != nil {
-						// Handle save error
-					}
-				}
-			}
+			// Save environment variables before closing
+			saveEnvironmentVariables()
 
 			// Close modal and return focus to config button
 			ui.Pages.RemovePage("envVariables")

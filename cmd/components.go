@@ -111,6 +111,19 @@ func createEnvironmentListPanel(
 		})
 	}
 
+	// Add selection change handler to show variables on hover
+	list.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		if index > 0 && index <= len(environments) {
+			// Show variables for the selected environment (index 0 is "Create New Environment")
+			env := &environments[index-1]
+			onEnvironmentSelected(env)
+		} else if index == 0 {
+			// Clear the JSON editor when "Create New Environment" is selected
+			// This is just a button, not an actual environment
+			onEnvironmentSelected(nil)
+		}
+	})
+
 	// Add vim-style navigation (j/k for down/up) and delete (d)
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
