@@ -389,18 +389,32 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.App.SetFocus(form)
 	})
 
+	// Save environment selection function
+	saveEnvironmentSelection := func(index int) {
+		var selectedEnvName string
+		if index == 0 {
+			selectedEnvName = "Base"
+		} else if index > 0 && index <= len(*ui.EnvironmentsData) {
+			selectedEnvName = (*ui.EnvironmentsData)[index-1].Name
+		}
+
+		// Save selected environment to workspace
+		ui.WorkspaceData.SelectedEnvironment = selectedEnvName
+		if err := workspace.SaveWorkspace(ui.WorkspaceData); err != nil {
+			// Handle error silently for now
+		}
+	}
+
+	ui.EnvDropdown.SetSelectedFunc(func(text string, index int) {
+		saveEnvironmentSelection(index)
+	})
+
 	ui.EnvDropdown.SetDoneFunc(func(key tcell.Key) {
 		if key != tcell.KeyEnter {
 			return
 		}
 		index, _ := ui.EnvDropdown.GetCurrentOption()
-		if index == 0 {
-			config.C.SelectedEnvironment = "Base"
-		} else if index > 0 && index <= len(*ui.EnvironmentsData) {
-			config.C.SelectedEnvironment = (*ui.EnvironmentsData)[index-1].Name
-		}
-		if err := config.SaveConfig(&config.C); err != nil {
-		}
+		saveEnvironmentSelection(index)
 	})
 
 	// Add send button functionality

@@ -197,6 +197,22 @@ func LoadWorkspace() (*Workspace, error) {
 // LoadWorkspaceByName loads a specific workspace by name
 func LoadWorkspaceByName(name string) (*Workspace, error) {
 	workspaceDir := getWorkspaceDir(name)
+	workspacePath := filepath.Join(workspaceDir, "workspace.yaml")
+
+	// Try to load workspace metadata first
+	var workspace *Workspace
+	if workspaceData, err := os.ReadFile(workspacePath); err == nil {
+		if err := yaml.Unmarshal(workspaceData, &workspace); err == nil {
+			// Successfully loaded workspace metadata
+			// Load expansion state
+			if err := LoadExpansionState(&workspace.Collections); err != nil {
+				// Not critical
+			}
+			return workspace, nil
+		}
+	}
+
+	// Fallback to old format: load collections and environments separately
 	collectionsPath := filepath.Join(workspaceDir, "collections.yaml")
 
 	if _, err := os.Stat(collectionsPath); os.IsNotExist(err) {
@@ -222,7 +238,7 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 		}
 	}
 
-	workspace := &Workspace{
+	workspace = &Workspace{
 		Name:         name,
 		Collections:  collections,
 		Environments: environments,
@@ -260,6 +276,17 @@ func SaveWorkspace(workspace *Workspace) error {
 		return err
 	}
 
+	// Save workspace metadata
+	workspacePath := filepath.Join(workspaceDir, "workspace.yaml")
+	workspace.UpdatedAt = time.Now()
+	workspaceData, err := yaml.Marshal(workspace)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(workspacePath, workspaceData, 0o644); err != nil {
+		return err
+	}
+
 	// Save collections
 	collectionsPath := filepath.Join(workspaceDir, "collections.yaml")
 	collectionsData, err := yaml.Marshal(workspace.Collections)
@@ -284,9 +311,6 @@ func SaveWorkspace(workspace *Workspace) error {
 	if err := SaveExpansionState(&workspace.Collections); err != nil {
 		// Not critical
 	}
-
-	// Update workspace metadata
-	workspace.UpdatedAt = time.Now()
 
 	return nil
 }

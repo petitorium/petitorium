@@ -39,12 +39,13 @@ type Collection struct {
 }
 
 type Workspace struct {
-	Name         string        `yaml:"name"`
-	Description  string        `yaml:"description,omitempty"`
-	Collections  []Collection  `yaml:"collections,omitempty"`
-	Environments []Environment `yaml:"environments,omitempty"`
-	CreatedAt    time.Time     `yaml:"created_at"`
-	UpdatedAt    time.Time     `yaml:"updated_at"`
+	Name                string        `yaml:"name"`
+	Description         string        `yaml:"description,omitempty"`
+	Collections         []Collection  `yaml:"collections,omitempty"`
+	Environments        []Environment `yaml:"environments,omitempty"`
+	SelectedEnvironment string        `yaml:"selected_environment,omitempty"`
+	CreatedAt           time.Time     `yaml:"created_at"`
+	UpdatedAt           time.Time     `yaml:"updated_at"`
 }
 
 type WorkspaceMetadata struct {

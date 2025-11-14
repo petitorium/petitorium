@@ -7,7 +7,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
 	"github.com/hbarral/petitorium/workspace"
 )
 
@@ -126,13 +125,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Update environment dropdown with loaded environments
 	updateEnvironmentDropdown(envDropdown, *environmentsData)
 
-	// Set initial environment selection based on config
-	if config.C.SelectedEnvironment == "Base" {
+	// Set initial environment selection based on workspace
+	selectedEnv := workspaceData.SelectedEnvironment
+	if selectedEnv == "" || selectedEnv == "Base" {
 		envDropdown.SetCurrentOption(0)
 	} else {
 		// Find the environment by name
 		for i, env := range *environmentsData {
-			if env.Name == config.C.SelectedEnvironment {
+			if env.Name == selectedEnv {
 				envDropdown.SetCurrentOption(i + 1) // +1 because 0 is "Base"
 				break
 			}
