@@ -1234,3 +1234,147 @@ func createDeleteWorkspaceForm(
 	form.SetBorder(true).SetTitle(" Delete Workspace ")
 	return form
 }
+
+// createDuplicateRequestForm creates a form for duplicating an existing request
+func createDuplicateRequestForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	originalRequest *workspace.Request,
+	selectedCollection *workspace.Collection,
+	workspaceData *workspace.Workspace,
+	rootNode *tview.TreeNode,
+	collectionsTreeView *tview.TreeView,
+	colors *ColorManager,
+) *tview.Form {
+
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	// Pre-populate form with original request data, adding "(Copy)" to name
+	duplicatedName := originalRequest.Name + " (Copy)"
+
+	// Find method index for dropdown
+	methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"}
+	methodIndex := 0
+	for i, method := range methods {
+		if method == originalRequest.Method {
+			methodIndex = i
+			break
+		}
+	}
+
+	form.AddInputField("Request Name", duplicatedName, 43, nil, nil)
+	form.AddDropDown("Method", methods, methodIndex, nil)
+	form.AddInputField("URL", originalRequest.URL, 43, nil, nil)
+	form.AddInputField("Body", originalRequest.Body, 43, nil, nil)
+
+	form.AddButton("Save", func() {
+		name := form.GetFormItem(0).(*tview.InputField).GetText()
+		_, method := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+		url := form.GetFormItem(2).(*tview.InputField).GetText()
+		body := form.GetFormItem(3).(*tview.InputField).GetText()
+
+		if strings.TrimSpace(name) == "" || strings.TrimSpace(url) == "" {
+			return
+		}
+
+		// Create new request with duplicated data (excluding response history)
+		newRequest := workspace.Request{
+			Name:    name,
+			Method:  method,
+			URL:     url,
+			Body:    body,
+			Headers: make(map[string]string), // Copy headers from original
+		}
+
+		// Copy headers from original request
+		for key, value := range originalRequest.Headers {
+			newRequest.Headers[key] = value
+		}
+
+		if selectedCollection == nil {
+			// Add to first collection if no collection selected
+			if len(workspaceData.Collections) > 0 {
+				workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, newRequest)
+			} else {
+				// Create a default collection
+				defaultCollection := workspace.Collection{
+					Name:     "Requests",
+					Requests: []workspace.Request{newRequest},
+				}
+				workspaceData.Collections = append(workspaceData.Collections, defaultCollection)
+			}
+		} else {
+			// Find and update the actual collection in workspaceData
+			actualCollection := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
+
+			if actualCollection != nil {
+				// Add request to the actual collection in workspaceData
+				actualCollection.Requests = append(actualCollection.Requests, newRequest)
+			}
+		}
+
+		// Rebuild the entire tree to reflect changes
+		rootNode.ClearChildren()
+		addWorkspaceToTree(workspaceData, rootNode)
+
+		// Save workspace
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			// Handle error
+		}
+
+		pages.RemovePage("duplicateRequest")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("duplicateRequest")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	})
+
+	cancelFunc := func() {
+		pages.RemovePage("duplicateRequest")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	}
+
+	form.SetCancelFunc(cancelFunc)
+
+	// Add F4 support for external editor on Body field
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyF4 {
+			// Check if we're on the Body field (index 3)
+			formItemIndex, _ := form.GetFocusedItemIndex()
+			if formItemIndex == 3 { // Body field is at index 3
+				bodyField := form.GetFormItem(3).(*tview.InputField)
+				currentBody := bodyField.GetText()
+
+				// Suspend the app to open external editor
+				app.Suspend(func() {
+					modifiedContent, err := openInExternalEditor(currentBody)
+					if err != nil {
+						// Could show error but for now just continue
+						return
+					}
+
+					// Update the body field with the edited content
+					bodyField.SetText(modifiedContent)
+				})
+
+				return nil
+			}
+		}
+		return event
+	})
+
+	form.SetBorder(true).SetTitle(" Duplicate Request ")
+	return form
+}

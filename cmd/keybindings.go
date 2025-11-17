@@ -95,6 +95,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "global",
 		},
 		{
+			Rune:        'D',
+			Action:      duplicateRequest,
+			Description: "Duplicate request",
+			Context:     "tree_view",
+		},
+		{
 			Rune:        'R',
 			Action:      renameItem,
 			Description: "Rename collection/request",
@@ -287,6 +293,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Expand collection or select request",
 			Context:     "tree_view",
 		},
+		{
+			Rune:        'D',
+			Action:      duplicateRequest,
+			Description: "Duplicate selected request",
+			Context:     "tree_view",
+		},
 	}
 
 	// Body edit panel keybindings
@@ -443,6 +455,28 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 				ui.Pages.AddPage("newRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
+			}
+		}
+	}
+	return event
+}
+
+func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if ui.MainCycle.current == ui.CollectionsIndex {
+		// Duplicate request - check if a request is selected
+		node := ui.CollectionsTreeView.GetCurrentNode()
+		if node != nil {
+			if req, ok := node.GetReference().(workspace.Request); ok {
+				// Request is selected - find its parent collection
+				selectedCollection := findParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.Name, req.Method, req.URL)
+
+				if selectedCollection != nil {
+					form := createDuplicateRequestForm(ui.App, ui.Pages, &req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+					modal := createModal(form, 60, 14, tcell.ColorDefault)
+					ui.Pages.AddPage("duplicateRequest", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
+				}
 			}
 		}
 	}
