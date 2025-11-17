@@ -83,6 +83,17 @@ type UIOrchestrator struct {
 	SyncBodyContent                func(content string)
 	SwitchBodyMode                 func()
 	UpdateFooter                   func()
+	WorkspaceSelectorIndex         int
+	WorkspaceConfigButtonIndex     int
+	EnvironmentSelectorIndex       int
+	EnvironmentConfigButtonIndex   int
+	URLBarSelectorIndex            int
+	URLBarInputIndex               int
+	URLBarSendButtonIndex          int
+	RPBodyTabIndex                 int
+	RPAuthTabIndex                 int
+	RPQueryTabIndex                int
+	RPHeadersTabIndex              int
 }
 
 // SetupUI initializes all UI components and layout
@@ -184,6 +195,21 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	urlBarIndex := 3
 	requestIndex := 4
 	responseIndex := 5
+
+	workspaceSelectorIndex := 0
+	workspaceConfigButtonIndex := 1
+
+	environmentSelectorIndex := 0
+	environmentConfigButtonIndex := 1
+
+	urlBarSelectorIndex := 0
+	urlBarInputIndex := 1
+	urlBarSendButtonIndex := 2
+
+	RPBodyTabIndex := 0
+	RPAuthTabIndex := 1
+	RPQueryTabIndex := 2
+	RPHeadersTabIndex := 3
 
 	// Additional UI variables
 	var requestDataTabs *tview.Flex
@@ -375,7 +401,21 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		UpdateFooter:                   func() {}, // Will be set below
 		KeyManager:                     NewKeyBindingManager(),
 		LastResponseTime:               nil,
+		WorkspaceSelectorIndex:         workspaceSelectorIndex,
+		WorkspaceConfigButtonIndex:     workspaceConfigButtonIndex,
+		EnvironmentSelectorIndex:       environmentSelectorIndex,
+		EnvironmentConfigButtonIndex:   environmentConfigButtonIndex,
+		URLBarSelectorIndex:            urlBarSelectorIndex,
+		URLBarInputIndex:               urlBarInputIndex,
+		URLBarSendButtonIndex:          urlBarSendButtonIndex,
+		RPBodyTabIndex:                 RPBodyTabIndex,
+		RPAuthTabIndex:                 RPAuthTabIndex,
+		RPQueryTabIndex:                RPQueryTabIndex,
+		RPHeadersTabIndex:              RPHeadersTabIndex,
 	}
+
+	// Set initial footer right text
+	uiOrchestrator.FooterRight.SetText("Petitorium")
 
 	// Function to update footer based on current focus
 	updateFooterFunc := func() {
@@ -392,9 +432,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.URLBarIndex:
 			uiOrchestrator.FooterLeft.SetText(" Request: (Enter) Edit URL | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.RequestIndex:
-			uiOrchestrator.FooterLeft.SetText(" Request: (1-4) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Request: (1-4/←/→) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.ResponseIndex:
-			uiOrchestrator.FooterLeft.SetText(" Response: (5-8/←/→) Switch tabs | (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Response: (1-4/←/→) Switch tabs | (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
 		default:
 			uiOrchestrator.FooterLeft.SetText(" (Tab) Cycle Focus | (q) Quit")
 		}

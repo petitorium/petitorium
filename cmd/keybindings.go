@@ -125,54 +125,54 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Open body in external editor",
 			Context:     "global",
 		},
-		{
-			Rune:        '1',
-			Action:      switchToBodyTab,
-			Description: "Switch to Body tab",
-			Context:     "global",
-		},
-		{
-			Rune:        '2',
-			Action:      switchToAuthTab,
-			Description: "Switch to Auth tab",
-			Context:     "global",
-		},
-		{
-			Rune:        '3',
-			Action:      switchToQueryTab,
-			Description: "Switch to Query tab",
-			Context:     "global",
-		},
-		{
-			Rune:        '4',
-			Action:      switchToHeadersTab,
-			Description: "Switch to Headers tab",
-			Context:     "global",
-		},
-		{
-			Rune:        '5',
-			Action:      switchToResponsePreviewTab,
-			Description: "Switch to Response Preview tab",
-			Context:     "global",
-		},
-		{
-			Rune:        '6',
-			Action:      switchToResponseHeadersTab,
-			Description: "Switch to Response Headers tab",
-			Context:     "global",
-		},
-		{
-			Rune:        '7',
-			Action:      switchToResponseCookiesTab,
-			Description: "Switch to Response Cookies tab",
-			Context:     "global",
-		},
-		{
-			Rune:        '8',
-			Action:      switchToResponseTimelineTab,
-			Description: "Switch to Response Timeline tab",
-			Context:     "global",
-		},
+		// {
+		// 	Rune:        '1',
+		// 	Action:      switchToBodyTab,
+		// 	Description: "Switch to Body tab",
+		// 	Context:     "global",
+		// },
+		// {
+		// 	Rune:        '2',
+		// 	Action:      switchToAuthTab,
+		// 	Description: "Switch to Auth tab",
+		// 	Context:     "global",
+		// },
+		// {
+		// 	Rune:        '3',
+		// 	Action:      switchToQueryTab,
+		// 	Description: "Switch to Query tab",
+		// 	Context:     "global",
+		// },
+		// {
+		// 	Rune:        '4',
+		// 	Action:      switchToHeadersTab,
+		// 	Description: "Switch to Headers tab",
+		// 	Context:     "global",
+		// },
+		// {
+		// 	Rune:        '5',
+		// 	Action:      switchToResponsePreviewTab,
+		// 	Description: "Switch to Response Preview tab",
+		// 	Context:     "response_view",
+		// },
+		// {
+		// 	Rune:        '6',
+		// 	Action:      switchToResponseHeadersTab,
+		// 	Description: "Switch to Response Headers tab",
+		// 	Context:     "response_view",
+		// },
+		// {
+		// 	Rune:        '7',
+		// 	Action:      switchToResponseCookiesTab,
+		// 	Description: "Switch to Response Cookies tab",
+		// 	Context:     "global",
+		// },
+		// {
+		// 	Rune:        '8',
+		// 	Action:      switchToResponseTimelineTab,
+		// 	Description: "Switch to Response Timeline tab",
+		// 	Context:     "global",
+		// },
 		{
 			Rune:        'i',
 			Action:      enterInsertMode,
@@ -567,7 +567,7 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 }
 
 func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.URLBarIndex {
+	if ui.CurrentFocus == ui.RequestIndex {
 		// Check if focus is on an input field (don't switch tabs if typing)
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
@@ -605,7 +605,7 @@ func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 }
 
 func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.URLBarIndex {
+	if ui.CurrentFocus == ui.RequestIndex {
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
 
@@ -631,7 +631,7 @@ func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 }
 
 func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.URLBarIndex {
+	if ui.CurrentFocus == ui.RequestIndex {
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
 
@@ -657,7 +657,7 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 }
 
 func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.URLBarIndex {
+	if ui.CurrentFocus == ui.RequestIndex {
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
 

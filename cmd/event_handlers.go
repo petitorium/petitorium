@@ -681,23 +681,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Tab switching with number keys (1-4) when request data tabs are focused
-		if ui.CurrentFocus == ui.URLBarIndex {
+		if ui.CurrentFocus == ui.RequestIndex {
 			// Check if focus is on an input field (don't switch tabs if typing)
 			currentFocusedElement := ui.App.GetFocus()
 			isOnInputField := false
 
-			// Check if focused on method dropdown
-			if currentFocusedElement == ui.MethodDropdown {
-				isOnInputField = true
-			}
-			// Check if focused on URL input
-			if currentFocusedElement == ui.URLInput {
-				isOnInputField = true
-			}
-			// Check if focused on body edit panel
-			if currentFocusedElement == ui.BodyEditPanel {
-				isOnInputField = true
-			}
 			// Check if focused on any header input fields
 			for _, row := range currentHeaderRows {
 				if currentFocusedElement == row.KeyInput || currentFocusedElement == row.ValueInput {
@@ -734,6 +722,32 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					ui.CurrentTabIndex = 3
 					return nil
 				}
+			}
+		}
+
+		// Tab switching with number keys (1-4) when response data tabs are focused
+		if ui.CurrentFocus == ui.ResponseIndex {
+			switch event.Rune() {
+			case '1':
+				ui.ResponsePages.SwitchToPage("preview")
+				updateResponseTabHeader(ui.ResponseTabHeader, 0, ui.Colors)
+				ui.CurrentResponseTabIndex = 0
+				return nil
+			case '2':
+				ui.ResponsePages.SwitchToPage("headers")
+				updateResponseTabHeader(ui.ResponseTabHeader, 1, ui.Colors)
+				ui.CurrentResponseTabIndex = 1
+				return nil
+			case '3':
+				ui.ResponsePages.SwitchToPage("cookies")
+				updateResponseTabHeader(ui.ResponseTabHeader, 2, ui.Colors)
+				ui.CurrentResponseTabIndex = 2
+				return nil
+			case '4':
+				ui.ResponsePages.SwitchToPage("timeline")
+				updateResponseTabHeader(ui.ResponseTabHeader, 3, ui.Colors)
+				ui.CurrentResponseTabIndex = 3
+				return nil
 			}
 		}
 
@@ -820,7 +834,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 // handleTabNavigation handles Tab key navigation
 func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	// workspace panel - cycle through elements
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == 0 {
+	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
 		next := ui.WorkspaceCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -829,9 +843,9 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// workspace panel - move to next main panel
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == 1 {
+	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceConfigButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
-		ui.EnvironmentsCycle.current = 0
+		ui.EnvironmentsCycle.current = ui.EnvironmentSelectorIndex
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
 
@@ -842,17 +856,18 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		return nil
 	}
 
-	// environment panel new - el 1
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 0 {
+	// environment panel new - el 0
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentSelectorIndex {
 		next := ui.EnvironmentsCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 
 		return nil
 	}
 
-	// environment panel new - el 2
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 1 {
+	// environment panel new - el 1
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentConfigButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -867,11 +882,9 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	// collections panel
 	if ui.MainCycle.current == ui.CollectionsIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
-		// It can advance to the next panel
 		nextElement := ui.MainCycle.Next()
-		ui.RequestCycle.current = 0
+		ui.RequestCycle.current = ui.URLBarSelectorIndex
 		ui.SetActiveBorder(nextElement)
-
 		ui.App.SetFocus(ui.MethodDropdown)
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
@@ -880,7 +893,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & dropdown
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == 0 {
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSelectorIndex {
 		next := ui.RequestCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -889,7 +902,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & url input
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == 1 {
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarInputIndex {
 		next := ui.RequestCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -898,7 +911,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & send button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == 2 {
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSendButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -910,7 +923,31 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// requests editor/viewer panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPBodyTabIndex && !ui.BodyEditMode {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		nextElement := ui.MainCycle.Next()
+		ui.SetActiveBorder(nextElement)
+		ui.App.SetFocus(nextElement)
+		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
+
+		return nil
+	}
+
+	// requests auth panel
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPAuthTabIndex {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		nextElement := ui.MainCycle.Next()
+		ui.SetActiveBorder(nextElement)
+		ui.App.SetFocus(nextElement)
+		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
+
+		return nil
+	}
+
+	// requests query panel
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPQueryTabIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -922,7 +959,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// requests headers panel - cycle through header inputs
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 3 {
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPHeadersTabIndex {
 		// Cycle through header key/value/delete inputs, then jump to next panel
 		currentFocusedElement := ui.App.GetFocus()
 
@@ -950,6 +987,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					nextElement := ui.MainCycle.Next()
 					ui.SetActiveBorder(nextElement)
 					ui.App.SetFocus(nextElement)
+					ui.CurrentFocus = ui.MainCycle.current
 					ui.UpdateFooter()
 				}
 				found = true
@@ -968,7 +1006,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	// response panel
 	if ui.MainCycle.current == ui.ResponseIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
-		ui.WorkspaceCycle.current = 0
+		ui.WorkspaceCycle.current = ui.WorkspaceSelectorIndex
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
 		// Set focus to the first element in the workspace cycle (dropdown)
@@ -984,22 +1022,21 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 // handleBacktabNavigation handles Backtab (Shift+Tab) key navigation
 func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// workspace panel - cycle backward through elements
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == 1 {
-		// Currently on config button, move to dropdown
-		prev := ui.WorkspaceCycle.Prev()
-		ui.App.SetFocus(prev)
+	// workspace panel - move to previous main panel
+	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		prevElement := ui.MainCycle.Prev()
+		ui.SetActiveBorder(prevElement)
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
 
 		return nil
 	}
 
-	// workspace panel - move to previous main panel
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == 0 {
-		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
-		prevElement := ui.MainCycle.Prev()
-		ui.SetActiveBorder(prevElement)
-		ui.App.SetFocus(ui.WorkspaceCycle.inputs[0])
+	// workspace panel - cycle backward through elements
+	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceConfigButtonIndex {
+		prev := ui.WorkspaceCycle.Prev()
+		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -1007,22 +1044,24 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// environment panel - cycle backward through elements
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 1 {
-		// Currently on config button, move to dropdown
-		prev := ui.EnvironmentsCycle.Prev()
-		ui.App.SetFocus(prev)
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentSelectorIndex {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		prevElement := ui.MainCycle.Prev()
+		ui.SetActiveBorder(prevElement)
+		ui.WorkspaceCycle.current = 1
+		ui.App.SetFocus(ui.WorkspaceCycle.inputs[1])
 		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
+
 		return nil
 	}
 
 	// environment panel - move to previous main panel
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == 0 {
-		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
-		prevElement := ui.MainCycle.Prev()
-		ui.SetActiveBorder(prevElement)
-		ui.App.SetFocus(ui.WorkspaceCycle.inputs[1])
-		ui.CurrentFocus = ui.MainCycle.current
+	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentConfigButtonIndex {
+		ui.App.SetFocus(ui.EnvironmentsCycle.inputs[0])
+		ui.EnvironmentsCycle.current = ui.EnvironmentSelectorIndex
 		ui.UpdateFooter()
+
 		return nil
 	}
 
@@ -1031,7 +1070,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
-		ui.EnvironmentsCycle.current = 1
+		ui.EnvironmentsCycle.current = ui.EnvironmentConfigButtonIndex
 		ui.App.SetFocus(ui.EnvironmentsCycle.inputs[1])
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
@@ -1040,7 +1079,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & dropdown
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == 0 {
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSelectorIndex {
 		prev := ui.RequestCycle.Prev()
 		if prev != nil {
 			ui.App.SetFocus(prev)
@@ -1053,39 +1092,69 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			ui.CurrentFocus = ui.MainCycle.current
 			ui.UpdateFooter()
 		}
+
 		return nil
 	}
 
 	// urlbar panel & url input
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == 1 {
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarInputIndex {
 		prev := ui.RequestCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
+
 		return nil
 	}
 
 	// urlbar panel & send button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == 2 {
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSendButtonIndex {
 		prev := ui.RequestCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
+
 		return nil
 	}
 
 	// requests editor/viewer panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPBodyTabIndex && !ui.BodyEditMode {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
 		ui.App.SetFocus(ui.SendButton)
-		ui.RequestCycle.current = 2
+		ui.RequestCycle.current = ui.URLBarSendButtonIndex
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
+
+		return nil
+	}
+
+	// requests auth panel
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPAuthTabIndex {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		prevElement := ui.MainCycle.Prev()
+		ui.SetActiveBorder(prevElement)
+		ui.App.SetFocus(ui.SendButton)
+		ui.RequestCycle.current = ui.URLBarSendButtonIndex
+		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
+
+		return nil
+	}
+
+	// requests query panel
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPQueryTabIndex {
+		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+		prevElement := ui.MainCycle.Prev()
+		ui.SetActiveBorder(prevElement)
+		ui.App.SetFocus(ui.SendButton)
+		ui.RequestCycle.current = ui.URLBarSendButtonIndex
+		ui.CurrentFocus = ui.MainCycle.current
+		ui.UpdateFooter()
+
 		return nil
 	}
 
 	// requests headers panel - cycle backward through header inputs
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 3 {
+	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPHeadersTabIndex {
 		// Cycle backward through header key/value/delete inputs
 		currentFocusedElement := ui.App.GetFocus()
 
@@ -1103,7 +1172,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					prevElement := ui.MainCycle.Prev()
 					ui.SetActiveBorder(prevElement)
 					ui.App.SetFocus(ui.SendButton)
-					ui.RequestCycle.current = 2
+					ui.RequestCycle.current = ui.URLBarSendButtonIndex
+					ui.CurrentFocus = ui.MainCycle.current
 					ui.UpdateFooter()
 				}
 				found = true
