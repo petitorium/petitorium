@@ -426,7 +426,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	}
 
 	// Set initial footer right text
-	uiOrchestrator.FooterRight.SetText("Petitorium")
+	uiOrchestrator.FooterRight.
+		SetText("Petitorium ").
+		SetTextAlign(tview.AlignRight)
 
 	// Function to update footer based on current focus
 	updateFooterFunc := func() {
