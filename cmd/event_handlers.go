@@ -53,7 +53,29 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		ui.WorkspaceData = newWorkspace
+		ui.EnvironmentsData = &newWorkspace.Environments
 		ui.DataManager = NewDataManager(newWorkspace)
+
+		// Update environment dropdown with new workspace's environments
+		updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
+
+		// Set selected environment based on workspace
+		selectedEnv := newWorkspace.SelectedEnvironment
+		if selectedEnv == "" {
+			ui.EnvDropdown.SetCurrentOption(0) // Default to "Base Environment"
+		} else {
+			found := false
+			for i, env := range *ui.EnvironmentsData {
+				if env.Name == selectedEnv {
+					ui.EnvDropdown.SetCurrentOption(i + 1) // +1 because 0 is "Base Environment"
+					found = true
+					break
+				}
+			}
+			if !found {
+				ui.EnvDropdown.SetCurrentOption(0) // Default to "Base Environment"
+			}
+		}
 
 		refreshCollectionsTree(ui)
 
@@ -490,30 +512,34 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 	// Set up main application input capture for navigation and shortcuts
 	ui.App.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// Check if we're on a modal page (not main)
-		currentPage, _ := ui.Pages.GetFrontPage()
-		if currentPage != "main" {
-			// On modal, 'q' closes the modal
-			if event.Rune() == 'q' || event.Rune() == 'Q' {
+		// Handle 'q' to quit or close modals, but disable when focused on an input
+		if event.Rune() == 'q' || event.Rune() == 'Q' {
+			focus := ui.App.GetFocus()
+			if _, ok := focus.(*tview.InputField); ok {
+				return event
+			}
+			if _, ok := focus.(*tview.TextArea); ok {
+				return event
+			}
+
+			currentPage, _ := ui.Pages.GetFrontPage()
+			if currentPage != "main" && currentPage != "envVariables" {
+				// On modal, 'q' closes the modal
 				ui.Pages.RemovePage(currentPage)
 				ui.Pages.SwitchToPage("main")
 				ui.App.SetFocus(ui.CollectionsTreeView)
 				return nil
-			}
-			// Let the form handle its own input
-			return event
-		}
-
-		// On main page, 'q' quits
-		if event.Rune() == 'q' || event.Rune() == 'Q' {
-			// Save expansion state before quitting if in "remember" mode
-			if config.C.UI.CollectionExpansion == "remember" {
-				if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
-					fmt.Printf("Warning: Failed to save expansion state: %v\n", err)
+			} else if currentPage == "main" {
+				// On main page, 'q' quits
+				// Save expansion state before quitting if in "remember" mode
+				if config.C.UI.CollectionExpansion == "remember" {
+					if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
+						fmt.Printf("Warning: Failed to save expansion state: %v\n", err)
+					}
 				}
+				ui.App.Stop()
+				return nil
 			}
-			ui.App.Stop()
-			return nil
 		}
 
 		// When in body edit mode and focused on bodyEditPanel, pass all input through to allow pasting
@@ -833,6 +859,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 // handleTabNavigation handles Tab key navigation
 func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// If a modal is open, let it handle Tab navigation
+	if name, _ := ui.Pages.GetFrontPage(); name != "main" {
+		return event
+	}
+
 	// workspace panel - cycle through elements
 	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
 		next := ui.WorkspaceCycle.Next()
@@ -1022,6 +1053,11 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 // handleBacktabNavigation handles Backtab (Shift+Tab) key navigation
 func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// If a modal is open, let it handle Backtab navigation
+	if name, _ := ui.Pages.GetFrontPage(); name != "main" {
+		return event
+	}
+
 	// workspace panel - move to previous main panel
 	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])

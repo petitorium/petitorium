@@ -513,7 +513,7 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 			env := &(*ui.EnvironmentsData)[currentEnvIndex-1] // -1 because dropdown has "Base Environment" at index 0
 
 			// Create a simple rename form
-			form := createRenameEnvironmentForm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.EnvDropdown, ui.EnvConfigButton, ui.Colors, ui.EnvConfigButton)
+			form := createRenameEnvironmentForm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.WorkspaceData, ui.EnvDropdown, ui.EnvConfigButton, ui.Colors, ui.EnvConfigButton)
 			modal := createModal(form, 30, 8, tcell.ColorDefault)
 			ui.Pages.AddPage("renameEnvironment", modal, true, true)
 			ui.App.SetFocus(form)

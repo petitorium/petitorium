@@ -138,15 +138,26 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Set initial environment selection based on workspace
 	selectedEnv := workspaceData.SelectedEnvironment
-	if selectedEnv == "" || selectedEnv == "Base" {
-		envDropdown.SetCurrentOption(0)
+	if selectedEnv == "" {
+		// Default to first environment or "Base" if no environments exist
+		if len(*environmentsData) > 0 {
+			envDropdown.SetCurrentOption(0)
+		} else {
+			envDropdown.SetCurrentOption(0) // "Base Environment"
+		}
 	} else {
 		// Find the environment by name
+		found := false
 		for i, env := range *environmentsData {
 			if env.Name == selectedEnv {
-				envDropdown.SetCurrentOption(i + 1) // +1 because 0 is "Base"
+				envDropdown.SetCurrentOption(i + 1) // +1 because 0 is "Base Environment"
+				found = true
 				break
 			}
+		}
+		if !found {
+			// Selected environment not found, default to first option
+			envDropdown.SetCurrentOption(0)
 		}
 	}
 

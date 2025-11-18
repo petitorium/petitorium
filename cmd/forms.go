@@ -445,6 +445,7 @@ func createDeleteEnvironmentConfirm(
 	pages *tview.Pages,
 	selectedEnvironment *workspace.Environment,
 	environmentsData *[]workspace.Environment,
+	workspaceData *workspace.Workspace,
 	envDropdown *tview.DropDown,
 	envConfigButton *tview.Button,
 	colors *ColorManager,
@@ -470,8 +471,9 @@ func createDeleteEnvironmentConfirm(
 			}
 		}
 
-		// Save environments
-		if err := workspace.SaveEnvironments(*environmentsData); err != nil {
+		// Save workspace data (which includes environments)
+		workspaceData.Environments = *environmentsData
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 
@@ -508,6 +510,7 @@ func createRenameEnvironmentForm(
 	pages *tview.Pages,
 	selectedEnvironment *workspace.Environment,
 	environmentsData *[]workspace.Environment,
+	workspaceData *workspace.Workspace,
 	envDropdown *tview.DropDown,
 	envConfigButton *tview.Button,
 	colors *ColorManager,
@@ -542,8 +545,9 @@ func createRenameEnvironmentForm(
 		// Update dropdown
 		updateEnvironmentDropdown(envDropdown, *environmentsData)
 
-		// Save environments
-		if err := workspace.SaveEnvironments(*environmentsData); err != nil {
+		// Save workspace data (which includes environments)
+		workspaceData.Environments = *environmentsData
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error
 		}
 

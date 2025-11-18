@@ -229,19 +229,20 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 		return nil, err
 	}
 
-	// Load environments
-	environmentsPath := filepath.Join(workspaceDir, "environments.yaml")
-	var environments []Environment
-	if envData, err := os.ReadFile(environmentsPath); err == nil {
-		if err := yaml.Unmarshal(envData, &environments); err != nil {
-			// Not critical, continue with empty environments
-		}
+	// Load environments - use default environments since workspace.yaml should contain them
+	defaultEnvs := []Environment{
+		{
+			Name: "Base",
+			Variables: map[string]string{
+				"base_url": "https://api.example.com",
+			},
+		},
 	}
 
 	workspace = &Workspace{
 		Name:         name,
 		Collections:  collections,
-		Environments: environments,
+		Environments: defaultEnvs,
 	}
 
 	// Load expansion state
@@ -294,16 +295,6 @@ func SaveWorkspace(workspace *Workspace) error {
 		return err
 	}
 	if err := os.WriteFile(collectionsPath, collectionsData, 0o644); err != nil {
-		return err
-	}
-
-	// Save environments
-	environmentsPath := filepath.Join(workspaceDir, "environments.yaml")
-	environmentsData, err := yaml.Marshal(workspace.Environments)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(environmentsPath, environmentsData, 0o644); err != nil {
 		return err
 	}
 
