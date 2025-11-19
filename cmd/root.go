@@ -5,10 +5,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
 	"github.com/hbarral/petitorium/config"
+	"github.com/hbarral/petitorium/plugins"
 )
 
 var rootCmd = &cobra.Command{
@@ -40,11 +43,21 @@ func runTUI(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Failed to load data: %v", err))
 	}
 
+	// Setup plugin manager
+	home, _ := homedir.Dir()
+	pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
+	os.MkdirAll(pluginDir, 0755)
+	pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
+	if err := pm.LoadPlugins(); err != nil {
+		fmt.Printf("Warning: Failed to load plugins: %v\n", err)
+	}
+
 	// Setup UI
 	ui, err := SetupUI(workspaceData, dataManager, environmentsData)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup UI: %v", err))
 	}
+	ui.PluginManager = pm
 
 	// Setup event handlers
 	SetupEventHandlers(ui)

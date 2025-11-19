@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"plugin"
+	"time"
 )
 
 // PluginManager manages the loading and execution of plugins
@@ -47,7 +48,7 @@ func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 	return nil
 }
 
-// ExecuteHooks executes all hooks of the given type
+// ExecuteHooks executes all hooks of the given type with timeout and error isolation
 func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error {
 	hooks, exists := pm.hooks[hookType]
 	if !exists {
@@ -55,8 +56,24 @@ func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error
 	}
 
 	for _, hook := range hooks {
-		if err := hook(ctx); err != nil {
-			return fmt.Errorf("hook execution failed: %w", err)
+		done := make(chan error, 1)
+		go func(h PluginHook) {
+			defer func() {
+				if r := recover(); r != nil {
+					done <- fmt.Errorf("hook panicked: %v", r)
+				}
+			}()
+			done <- h(ctx)
+		}(hook)
+
+		select {
+		case err := <-done:
+			if err != nil {
+				// Log error but continue for graceful degradation
+				// For now, just continue
+			}
+		case <-time.After(5 * time.Second):
+			// Timeout, continue
 		}
 	}
 	return nil
