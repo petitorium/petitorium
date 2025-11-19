@@ -79,3 +79,9 @@ type HTTPResponse struct {
 
 // PluginHook defines the function signature for plugin hooks
 type PluginHook func(ctx *HookContext) error
+
+// PluginConfig holds configuration for plugins
+type PluginConfig struct {
+	Enabled []string               `yaml:"enabled"`
+	Config  map[string]interface{} `yaml:"config,omitempty"`
+}
