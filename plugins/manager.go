@@ -3,21 +3,25 @@ package plugins
 
 import (
 	"fmt"
+	"path/filepath"
+	"plugin"
 )
 
 // PluginManager manages the loading and execution of plugins
 type PluginManager struct {
-	plugins map[string]Plugin
-	hooks   map[HookType][]PluginHook
-	config  *PluginConfig
+	plugins   map[string]Plugin
+	hooks     map[HookType][]PluginHook
+	config    *PluginConfig
+	pluginDir string
 }
 
 // NewPluginManager creates a new PluginManager instance
-func NewPluginManager(config *PluginConfig) *PluginManager {
+func NewPluginManager(config *PluginConfig, pluginDir string) *PluginManager {
 	return &PluginManager{
-		plugins: make(map[string]Plugin),
-		hooks:   make(map[HookType][]PluginHook),
-		config:  config,
+		plugins:   make(map[string]Plugin),
+		hooks:     make(map[HookType][]PluginHook),
+		config:    config,
+		pluginDir: pluginDir,
 	}
 }
 
@@ -30,12 +34,14 @@ func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 	pm.plugins[name] = p
 
 	// Register hooks
+	hookFuncs := p.HookFuncs()
 	for _, hookType := range p.Hooks() {
 		if pm.hooks[hookType] == nil {
 			pm.hooks[hookType] = []PluginHook{}
 		}
-		// Note: In a real implementation, the plugin would provide the hook functions
-		// For now, this is a placeholder
+		if hookFunc, exists := hookFuncs[hookType]; exists {
+			pm.hooks[hookType] = append(pm.hooks[hookType], hookFunc)
+		}
 	}
 
 	return nil
@@ -58,22 +64,23 @@ func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error
 
 // LoadPlugins loads plugins from the configured directory
 func (pm *PluginManager) LoadPlugins() error {
-	// Placeholder implementation
-	// In a real implementation, this would scan the plugin directory
-	// and load .so files using Go's plugin package
 	for _, name := range pm.config.Enabled {
-		// Simulate loading
-		// p, err := plugin.Open(filepath.Join(pluginDir, name+".so"))
-		// if err != nil {
-		//     return err
-		// }
-		// sym, err := p.Lookup("Plugin")
-		// if err != nil {
-		//     return err
-		// }
-		// plg := sym.(Plugin)
-		// pm.RegisterPlugin(plg)
-		_ = name // Placeholder
+		pluginPath := filepath.Join(pm.pluginDir, name+".so")
+		p, err := plugin.Open(pluginPath)
+		if err != nil {
+			return fmt.Errorf("failed to open plugin %s: %w", name, err)
+		}
+		sym, err := p.Lookup("Plugin")
+		if err != nil {
+			return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)
+		}
+		plg, ok := sym.(Plugin)
+		if !ok {
+			return fmt.Errorf("plugin %s does not implement Plugin interface", name)
+		}
+		if err := pm.RegisterPlugin(plg); err != nil {
+			return fmt.Errorf("failed to register plugin %s: %w", name, err)
+		}
 	}
 	return nil
 }

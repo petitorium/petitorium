@@ -12,6 +12,7 @@ type Plugin interface {
 	Version() string
 	Description() string
 	Hooks() []HookType
+	HookFuncs() map[HookType]PluginHook
 }
 
 // HookType defines when a plugin hook executes
