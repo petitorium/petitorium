@@ -18,6 +18,7 @@ type AppConfig struct {
 	StatusColors        StatusColorsConfig `mapstructure:"statusColors"`
 	SyntaxTheme         string             `mapstructure:"syntaxTheme"`
 	SelectedEnvironment string             `mapstructure:"selectedEnvironment"`
+	RequestTimeout      int                `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
 }
 
 type ThemeConfig struct {
@@ -126,6 +127,9 @@ syntaxTheme: "tokyonight-night"
 
 # Selected environment name (defaults to "Base")
 selectedEnvironment: "Base"
+
+# HTTP request timeout in seconds (default: 30)
+requestTimeout: 30
 
 methodColors:
   GET: "#6EA5A0"

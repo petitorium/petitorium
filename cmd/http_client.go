@@ -11,6 +11,7 @@ import (
 
 	"github.com/rivo/tview"
 
+	"github.com/hbarral/petitorium/config"
 	"github.com/hbarral/petitorium/workspace"
 )
 
@@ -28,9 +29,10 @@ type HTTPResponse struct {
 
 // SendRequest sends an HTTP request with the given parameters
 func SendRequest(method, url, body string, headers map[string]string) (*HTTPResponse, error) {
-	// Create HTTP client with timeout
+	// Create HTTP client with configurable timeout
+	timeout := time.Duration(config.C.RequestTimeout) * time.Second
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: timeout,
 	}
 
 	// Create request body
