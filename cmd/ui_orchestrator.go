@@ -7,6 +7,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/rivo/tview"
 
+	"github.com/hbarral/petitorium/plugins"
 	"github.com/hbarral/petitorium/workspace"
 )
 
@@ -17,6 +18,7 @@ type UIOrchestrator struct {
 	DataManager           *DataManager
 	EnvironmentsData      *[]workspace.Environment
 	Colors                *ColorManager
+	PluginManager         *plugins.PluginManager
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown

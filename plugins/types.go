@@ -1,11 +1,6 @@
 // Package plugins provides the core interfaces and types for the Petitorium plugin ecosystem.
 package plugins
 
-import (
-	"net/http"
-	"time"
-)
-
 // Plugin represents a loaded plugin
 type Plugin interface {
 	Name() string
@@ -51,7 +46,7 @@ const (
 // HookContext provides context data to plugin hooks
 type HookContext struct {
 	Request     *RequestData
-	Response    *HTTPResponse
+	Response    interface{} // *HTTPResponse from cmd
 	Environment map[string]string
 	Config      map[string]interface{}
 }
@@ -64,18 +59,6 @@ type RequestData struct {
 	Body        string
 	Collection  string
 	RequestName string
-}
-
-// HTTPResponse represents the response from an HTTP request
-type HTTPResponse struct {
-	StatusCode int
-	Status     string
-	Headers    map[string][]string
-	Cookies    []*http.Cookie
-	Body       string
-	Duration   time.Duration
-	Timestamp  time.Time
-	BodySize   int
 }
 
 // PluginHook defines the function signature for plugin hooks
