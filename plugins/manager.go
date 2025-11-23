@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"plugin"
 	"time"
@@ -87,14 +88,30 @@ func (pm *PluginManager) LoadPlugins() error {
 		if err != nil {
 			return fmt.Errorf("failed to open plugin %s: %w", name, err)
 		}
-		sym, err := p.Lookup("Plugin")
+
+		// Try to find the plugin symbol - first try simple name, then fully qualified
+		var sym plugin.Symbol
+		sym, err = p.Lookup("Plugin")
 		if err != nil {
-			return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)
+			// Try fully qualified name based on plugin name
+			qualifiedName := fmt.Sprintf("github.com/hbarral/petitorium/plugins/examples/%s.Plugin", name)
+			sym, err = p.Lookup(qualifiedName)
+			if err != nil {
+				return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)
+			}
 		}
+
+		// The symbol is **PluginType, need to dereference once
 		plg, ok := sym.(Plugin)
 		if !ok {
-			return fmt.Errorf("plugin %s does not implement Plugin interface", name)
+			// Try dereferencing once
+			if ptr, ok := sym.(*Plugin); ok {
+				plg = *ptr
+			} else {
+				return fmt.Errorf("plugin %s does not implement Plugin interface", name)
+			}
 		}
+
 		if err := pm.RegisterPlugin(plg); err != nil {
 			return fmt.Errorf("failed to register plugin %s: %w", name, err)
 		}
@@ -104,7 +121,9 @@ func (pm *PluginManager) LoadPlugins() error {
 
 // EnablePlugin enables a plugin by name
 func (pm *PluginManager) EnablePlugin(name string) error {
-	if _, exists := pm.plugins[name]; !exists {
+	// Check if plugin file exists
+	pluginPath := filepath.Join(pm.pluginDir, name+".so")
+	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
 		return fmt.Errorf("plugin %s not found", name)
 	}
 	// Add to enabled list if not already

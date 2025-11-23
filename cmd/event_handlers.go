@@ -471,7 +471,16 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		context := &plugins.HookContext{
 			Request:     requestData,
 			Environment: nil,
-			Config:      make(map[string]interface{}),
+			Config: map[string]any{
+				"logFile": config.C.LogFile,
+			},
+		}
+
+		// Ensure config is available for all hooks
+		if context.Config == nil {
+			context.Config = map[string]any{
+				"logFile": config.C.LogFile,
+			}
 		}
 
 		if ui.PluginManager != nil {
@@ -540,6 +549,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		context.Response = resp
+
+		// Ensure config is available for PostReceive hook
+		if context.Config == nil {
+			context.Config = map[string]any{
+				"logFile": config.C.LogFile,
+			}
+		}
 
 		if ui.PluginManager != nil {
 			ui.PluginManager.ExecuteHooks(plugins.PostReceive, context)
