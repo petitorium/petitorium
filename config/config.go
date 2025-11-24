@@ -6,10 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hbarral/petitorium/plugins"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/petitorium/petitorium/plugins"
 )
 
 type AppConfig struct {

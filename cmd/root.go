@@ -10,8 +10,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
-	"github.com/hbarral/petitorium/config"
-	"github.com/hbarral/petitorium/plugins"
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/plugins"
 )
 
 var rootCmd = &cobra.Command{
@@ -50,6 +50,8 @@ func runTUI(cmd *cobra.Command, args []string) {
 	pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
 	if err := pm.LoadPlugins(); err != nil {
 		fmt.Printf("Warning: Failed to load plugins: %v\n", err)
+		fmt.Printf("Plugin directory: %s\n", pluginDir)
+		fmt.Printf("Make sure plugins are built and copied to the plugin directory.\n")
 	}
 
 	// Setup UI

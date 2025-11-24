@@ -94,7 +94,7 @@ func (pm *PluginManager) LoadPlugins() error {
 		sym, err = p.Lookup("Plugin")
 		if err != nil {
 			// Try fully qualified name based on plugin name
-			qualifiedName := fmt.Sprintf("github.com/hbarral/petitorium/plugins/examples/%s.Plugin", name)
+			qualifiedName := fmt.Sprintf("github.com/petitorium/petitorium/plugins/examples/%s.Plugin", name)
 			sym, err = p.Lookup(qualifiedName)
 			if err != nil {
 				return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)

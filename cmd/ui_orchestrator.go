@@ -7,8 +7,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/plugins"
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/plugins"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // UIOrchestrator holds all UI components and state

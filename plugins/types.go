@@ -1,71 +1,53 @@
 // Package plugins provides the core interfaces and types for the Petitorium plugin ecosystem.
+// This package now uses type aliases to the shared plugin SDK for better compatibility.
 package plugins
 
-// Plugin represents a loaded plugin
-type Plugin interface {
-	Name() string
-	Version() string
-	Description() string
-	Hooks() []HookType
-	HookFuncs() map[HookType]PluginHook
-}
-
-// HookType defines when a plugin hook executes
-type HookType string
-
-const (
-	PreRequest               HookType = "pre_request"
-	PostRequest              HookType = "post_request"
-	PostReceive              HookType = "post_receive"
-	PreSend                  HookType = "pre_send"
-	PostSend                 HookType = "post_send"
-	RequestValidation        HookType = "request_validation"
-	ResponseValidation       HookType = "response_validation"
-	PreVariableSubstitution  HookType = "pre_variable_substitution"
-	PostVariableSubstitution HookType = "post_variable_substitution"
-	PreSave                  HookType = "pre_save"
-	PostSave                 HookType = "post_save"
-	PreUIUpdate              HookType = "pre_ui_update"
-	PostUIUpdate             HookType = "post_ui_update"
-	OnUIInit                 HookType = "on_ui_init"
-	OnUIClose                HookType = "on_ui_close"
-	OnCollectionLoad         HookType = "on_collection_load"
-	OnCollectionSave         HookType = "on_collection_save"
-	OnEnvironmentLoad        HookType = "on_environment_load"
-	OnEnvironmentSave        HookType = "on_environment_save"
-	OnConfigLoad             HookType = "on_config_load"
-	OnConfigSave             HookType = "on_config_save"
-	OnError                  HookType = "on_error"
-	OnSuccess                HookType = "on_success"
-	RequestRetry             HookType = "request_retry"
-	RequestTimeout           HookType = "request_timeout"
-	ResponseTransform        HookType = "response_transform"
-	ResponseCache            HookType = "response_cache"
+import (
+	"github.com/petitorium/petitorium-plugin-sdk/types"
 )
 
-// HookContext provides context data to plugin hooks
-type HookContext struct {
-	Request     *RequestData
-	Response    interface{} // *HTTPResponse from cmd
-	Environment map[string]string
-	Config      map[string]interface{}
-}
+// Type aliases for backward compatibility
+type Plugin = types.Plugin
 
-// RequestData represents the request being processed
-type RequestData struct {
-	Method      string
-	URL         string
-	Headers     map[string]string
-	Body        string
-	Collection  string
-	RequestName string
-}
+type HookType = types.HookType
 
-// PluginHook defines the function signature for plugin hooks
-type PluginHook func(ctx *HookContext) error
+type HookContext = types.HookContext
 
-// PluginConfig holds configuration for plugins
-type PluginConfig struct {
-	Enabled []string               `yaml:"enabled"`
-	Config  map[string]interface{} `yaml:"config,omitempty"`
-}
+type RequestData = types.RequestData
+
+type PluginHook = types.PluginHook
+
+type PluginConfig = types.PluginConfig
+
+type ResponseData = types.ResponseData
+
+// Re-export all hook type constants
+const (
+	PreRequest               = types.PreRequest
+	PostRequest              = types.PostRequest
+	PostReceive              = types.PostReceive
+	PreSend                  = types.PreSend
+	PostSend                 = types.PostSend
+	RequestValidation        = types.RequestValidation
+	ResponseValidation       = types.ResponseValidation
+	PreVariableSubstitution  = types.PreVariableSubstitution
+	PostVariableSubstitution = types.PostVariableSubstitution
+	PreSave                  = types.PreSave
+	PostSave                 = types.PostSave
+	PreUIUpdate              = types.PreUIUpdate
+	PostUIUpdate             = types.PostUIUpdate
+	OnUIInit                 = types.OnUIInit
+	OnUIClose                = types.OnUIClose
+	OnCollectionLoad         = types.OnCollectionLoad
+	OnCollectionSave         = types.OnCollectionSave
+	OnEnvironmentLoad        = types.OnEnvironmentLoad
+	OnEnvironmentSave        = types.OnEnvironmentSave
+	OnConfigLoad             = types.OnConfigLoad
+	OnConfigSave             = types.OnConfigSave
+	OnError                  = types.OnError
+	OnSuccess                = types.OnSuccess
+	RequestRetry             = types.RequestRetry
+	RequestTimeout           = types.RequestTimeout
+	ResponseTransform        = types.ResponseTransform
+	ResponseCache            = types.ResponseCache
+)

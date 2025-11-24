@@ -5,8 +5,8 @@ import (
 
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // updateCollectionExpansionState updates the expansion state of a collection in the collections data

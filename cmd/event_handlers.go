@@ -8,9 +8,9 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
-	"github.com/hbarral/petitorium/plugins"
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/plugins"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 func refreshCollectionsTree(ui *UIOrchestrator) {

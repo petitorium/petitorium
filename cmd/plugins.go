@@ -10,8 +10,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
-	"github.com/hbarral/petitorium/config"
-	"github.com/hbarral/petitorium/plugins"
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/plugins"
 )
 
 var pluginsCmd = &cobra.Command{

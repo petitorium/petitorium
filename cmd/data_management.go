@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // DataManager handles data operations for workspace and requests

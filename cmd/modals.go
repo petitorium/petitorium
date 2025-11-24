@@ -6,7 +6,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // showEnvironmentModal displays the environment variables modal

@@ -13,7 +13,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
+	"github.com/petitorium/petitorium/config"
 )
 
 type PanelOptions struct {

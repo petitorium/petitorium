@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hbarral/petitorium/config"
+	"github.com/petitorium/petitorium/config"
 )
 
 var initCmd = &cobra.Command{
