@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // LoadData loads all necessary data for the application

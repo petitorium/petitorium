@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // Cycle interface for Tab navigation

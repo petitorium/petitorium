@@ -8,7 +8,7 @@ import (
 
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // updateEnvironmentDropdown updates the environment dropdown with current environments

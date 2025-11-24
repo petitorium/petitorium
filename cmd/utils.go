@@ -14,7 +14,7 @@ import (
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/gdamore/tcell/v2"
 
-	"github.com/hbarral/petitorium/config"
+	"github.com/petitorium/petitorium/config"
 )
 
 // hexToColor converts a hex color string to tcell.Color

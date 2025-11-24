@@ -9,16 +9,20 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/petitorium/petitorium/plugins"
 )
 
 type AppConfig struct {
-	Theme               ThemeConfig        `mapstructure:"theme"`
-	UI                  UIConfig           `mapstructure:"ui"`
-	MethodColors        MethodColorsConfig `mapstructure:"methodColors"`
-	StatusColors        StatusColorsConfig `mapstructure:"statusColors"`
-	SyntaxTheme         string             `mapstructure:"syntaxTheme"`
-	SelectedEnvironment string             `mapstructure:"selectedEnvironment"`
-	RequestTimeout      int                `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
+	Theme               ThemeConfig          `mapstructure:"theme"`
+	UI                  UIConfig             `mapstructure:"ui"`
+	MethodColors        MethodColorsConfig   `mapstructure:"methodColors"`
+	StatusColors        StatusColorsConfig   `mapstructure:"statusColors"`
+	SyntaxTheme         string               `mapstructure:"syntaxTheme"`
+	SelectedEnvironment string               `mapstructure:"selectedEnvironment"`
+	RequestTimeout      int                `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests	
+	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
+	LogFile             string               `mapstructure:"logFile"`
 }
 
 type ThemeConfig struct {
@@ -130,6 +134,13 @@ selectedEnvironment: "Base"
 
 # HTTP request timeout in seconds (default: 30)
 requestTimeout: 30
+
+# Log file path (defaults to ~/petitorium.log)
+logFile: "~/petitorium.log"
+
+plugins:
+  enabled: []
+  config: {}
 
 methodColors:
   GET: "#6EA5A0"

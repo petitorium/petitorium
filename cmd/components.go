@@ -6,8 +6,8 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // createInlineEditInput creates an input field for inline editing of environment names

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hbarral/petitorium/cmd"
+	"github.com/petitorium/petitorium/cmd"
 )
 
 func main() {

@@ -8,8 +8,9 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
-	"github.com/hbarral/petitorium/workspace"
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/plugins"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 func refreshCollectionsTree(ui *UIOrchestrator) {
@@ -450,6 +451,42 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 		headers := getHeadersFromUI()
 
+		// Determine collection and request name
+		collection := ""
+		requestName := ""
+		if ui.CurrentRequest != nil {
+			requestName = ui.CurrentRequest.Name
+			// TODO: find collection name
+		}
+
+		requestData := &plugins.RequestData{
+			Method:      method,
+			URL:         url,
+			Headers:     headers,
+			Body:        body,
+			Collection:  collection,
+			RequestName: requestName,
+		}
+
+		context := &plugins.HookContext{
+			Request:     requestData,
+			Environment: nil,
+			Config: map[string]any{
+				"logFile": config.C.LogFile,
+			},
+		}
+
+		// Ensure config is available for all hooks
+		if context.Config == nil {
+			context.Config = map[string]any{
+				"logFile": config.C.LogFile,
+			}
+		}
+
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PreRequest, context)
+		}
+
 		// Get current environment variables
 		var envVars map[string]string
 		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
@@ -467,10 +504,24 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
 		}
 
+		context.Environment = envVars
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, context)
+		}
+
 		// Substitute variables in URL, body, and headers
 		url = substituteVariables(url, envVars)
 		body = substituteVariables(body, envVars)
 		headers = substituteVariablesInHeaders(headers, envVars)
+
+		// Update context with substituted values
+		context.Request.URL = url
+		context.Request.Body = body
+		context.Request.Headers = headers
+
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PostVariableSubstitution, context)
+		}
 
 		// Validate URL
 		if url == "" {
@@ -478,12 +529,39 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return
 		}
 
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.RequestValidation, context)
+		}
+
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PreSend, context)
+		}
+
 		// Send the request
 		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors) // Show loading state
 		resp, err := SendRequest(method, url, body, headers)
 		if err != nil {
+			if ui.PluginManager != nil {
+				ui.PluginManager.ExecuteHooks(plugins.OnError, context)
+			}
 			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors) // Show error state
 			return
+		}
+
+		context.Response = resp
+
+		// Ensure config is available for PostReceive hook
+		if context.Config == nil {
+			context.Config = map[string]any{
+				"logFile": config.C.LogFile,
+			}
+		}
+
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PostReceive, context)
+			ui.PluginManager.ExecuteHooks(plugins.ResponseValidation, context)
+			ui.PluginManager.ExecuteHooks(plugins.ResponseTransform, context)
+			ui.PluginManager.ExecuteHooks(plugins.PreUIUpdate, context)
 		}
 
 		// Store the response in the current request's history
@@ -505,9 +583,19 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PostSave, context)
+			ui.PluginManager.ExecuteHooks(plugins.PostRequest, context)
+		}
+
 		// Update the response tabs with the new response
 		now := time.Now()
 		updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
+
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PostUIUpdate, context)
+			ui.PluginManager.ExecuteHooks(plugins.PreSave, context)
+		}
 	})
 
 	// Set up main application input capture for navigation and shortcuts

@@ -4,7 +4,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/hbarral/petitorium/config"
+	"github.com/petitorium/petitorium/config"
 )
 
 // ColorManager centralizes all color management for the application
