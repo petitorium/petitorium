@@ -480,9 +480,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Ensure config is available for all hooks
 		if context.Config == nil {
-			context.Config = map[string]any{
-				"logFile": config.C.LogFile,
-			}
+			context.Config = config.C.Plugins.Config
 		}
 
 		if ui.PluginManager != nil {

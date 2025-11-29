@@ -20,9 +20,8 @@ type AppConfig struct {
 	StatusColors        StatusColorsConfig   `mapstructure:"statusColors"`
 	SyntaxTheme         string               `mapstructure:"syntaxTheme"`
 	SelectedEnvironment string               `mapstructure:"selectedEnvironment"`
-	RequestTimeout      int                `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests	
+	RequestTimeout      int                  `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
 	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
-	LogFile             string               `mapstructure:"logFile"`
 }
 
 type ThemeConfig struct {
@@ -134,9 +133,6 @@ selectedEnvironment: "Base"
 
 # HTTP request timeout in seconds (default: 30)
 requestTimeout: 30
-
-# Log file path (defaults to ~/petitorium.log)
-logFile: "~/petitorium.log"
 
 plugins:
   enabled: []
