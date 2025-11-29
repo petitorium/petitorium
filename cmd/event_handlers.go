@@ -439,15 +439,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// TODO: find collection name
 		}
 
-		requestData := &plugins.RequestData{
-			Method:      method,
-			URL:         url,
-			Headers:     headers,
-			Body:        body,
-			Collection:  collection,
-			RequestName: requestName,
-		}
-
 		// Get current environment variables
 		var envVars map[string]string
 		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
@@ -465,6 +456,20 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
 				envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
 			}
+		}
+
+		// Substitute environment variables in URL, body, and headers
+		url = substituteVariables(url, envVars)
+		body = substituteVariables(body, envVars)
+		headers = substituteVariablesInHeaders(headers, envVars)
+
+		requestData := &plugins.RequestData{
+			Method:      method,
+			URL:         url,
+			Headers:     headers,
+			Body:        body,
+			Collection:  collection,
+			RequestName: requestName,
 		}
 
 		context := &plugins.HookContext{
