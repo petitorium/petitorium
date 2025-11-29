@@ -92,15 +92,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
 
 		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
-
-		// ui.FooterRight.SetText(fmt.Sprintf("Switched to workspace: %s (%d collections)", text, len(newWorkspace.Collections)))
-
-		// go func() {
-		// 	time.Sleep(50 * time.Millisecond)
-		// 	ui.App.QueueUpdateDraw(func() {
-		// 		ui.App.SetFocus(ui.CollectionsTreeView)
-		// 	})
-		// }()
 	}
 
 	ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
@@ -109,17 +100,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			switchWorkspace(workspaceNames[index])
 		}
 	})
-
-	// ui.WorkspaceSelector.SetDoneFunc(func(key tcell.Key) {
-	// if key != tcell.KeyEnter {
-	// 	return
-	// }
-	// index, _ := ui.WorkspaceSelector.GetCurrentOption()
-	// if index >= 0 && index < len(workspaceNames) {
-	// 	ui.FooterRight.SetText(fmt.Sprintf("Workspace: %s", index))
-	// 	// switchWorkspace(workspaceNames[index])
-	// }
-	// })
 
 	// Set up vim-style navigation for body view panel (TextView)
 	ui.BodyViewPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -468,25 +448,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			RequestName: requestName,
 		}
 
-		context := &plugins.HookContext{
-			Request:     requestData,
-			Environment: nil,
-			Config: map[string]any{
-				"logFile": config.C.LogFile,
-			},
-		}
-
-		// Ensure config is available for all hooks
-		if context.Config == nil {
-			context.Config = map[string]any{
-				"logFile": config.C.LogFile,
-			}
-		}
-
-		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PreRequest, context)
-		}
-
 		// Get current environment variables
 		var envVars map[string]string
 		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
@@ -498,44 +459,36 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					break
 				}
 			}
-		} else if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
-			// Other environment selected
-			env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
-			envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+		} else {
+			// Specific environment selected
+			if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
+				env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
+				envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+			}
 		}
 
-		context.Environment = envVars
-		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, context)
+		context := &plugins.HookContext{
+			Request:     requestData,
+			Environment: envVars,
+			Config:      config.C.Plugins.Config,
 		}
 
-		// Substitute variables in URL, body, and headers
-		url = substituteVariables(url, envVars)
-		body = substituteVariables(body, envVars)
-		headers = substituteVariablesInHeaders(headers, envVars)
-
-		// Update context with substituted values
-		context.Request.URL = url
-		context.Request.Body = body
-		context.Request.Headers = headers
-
-		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PostVariableSubstitution, context)
-		}
-
-		// Validate URL
-		if url == "" {
-			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors)
-			return
-		}
-
-		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.RequestValidation, context)
+		// Ensure config is available for all hooks
+		if context.Config == nil {
+			context.Config = map[string]any{
+				"logFile": config.C.LogFile,
+			}
 		}
 
 		if ui.PluginManager != nil {
 			ui.PluginManager.ExecuteHooks(plugins.PreSend, context)
 		}
+
+		// Update headers from context (plugins may have modified them)
+		headers = context.Request.Headers
+
+		// Also update the request data in context to reflect the final headers for logging
+		context.Request.Headers = headers
 
 		// Send the request
 		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors) // Show loading state
@@ -552,9 +505,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Ensure config is available for PostReceive hook
 		if context.Config == nil {
-			context.Config = map[string]any{
-				"logFile": config.C.LogFile,
-			}
+			context.Config = config.C.Plugins.Config
 		}
 
 		if ui.PluginManager != nil {
@@ -597,6 +548,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.PluginManager.ExecuteHooks(plugins.PreSave, context)
 		}
 	})
+
+	// Track popup/form state
+	var isFormPopupActive bool = false
+
+	// Helper function to set popup state
+	setFormPopupActive := func(active bool) {
+		isFormPopupActive = active
+	}
 
 	// Set up main application input capture for navigation and shortcuts
 	ui.App.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -665,16 +624,38 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return handleBacktabNavigation(ui, event)
 		}
 
-		// Collection shortcuts
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'n' {
+		// Check if we're focused on a form input field
+		focus := ui.App.GetFocus()
+
+		// If we're in a form input field, don't handle collection shortcuts
+		if _, isInput := focus.(*tview.InputField); isInput {
+			return event // Let input fields handle their own keys
+		}
+		if _, isTextArea := focus.(*tview.TextArea); isTextArea {
+			return event // Let text areas handle their own keys
+		}
+
+		// Also check if we're in a form by looking at the current page
+		currentPage, _ := ui.Pages.GetFrontPage()
+		if currentPage == "newCollection" || currentPage == "newRequest" || currentPage == "workspaceMenu" || currentPage == "envVariables" {
+			// We're in a popup form, check if focus is on the form itself
+			if event.Rune() == 'n' || event.Rune() == 'r' {
+				// Let the form handle these keys
+				return event
+			}
+		}
+
+		// Collection shortcuts (only when not in input fields and no form popup is active)
+		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'n' && !isFormPopupActive {
 			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 			modal := createModal(form, 50, 12, tcell.ColorDefault)
+			setFormPopupActive(true)
 			ui.Pages.AddPage("newCollection", modal, true, true)
 			ui.App.SetFocus(form)
 			return nil
 		}
 
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'r' {
+		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'r' && !isFormPopupActive {
 			// New request - check if a collection or request is selected
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
@@ -691,9 +672,59 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				if selectedCollection != nil {
 					form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 					modal := createModal(form, 60, 14, tcell.ColorDefault)
+					setFormPopupActive(true)
 					ui.Pages.AddPage("newRequest", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
+				}
+			}
+		}
+
+		// Collection shortcuts - handle both normal operation and popup forms
+		if ui.MainCycle.current == ui.CollectionsIndex {
+			// Handle Esc to close popups
+			if event.Key() == tcell.KeyEsc && isFormPopupActive {
+				return event // Let Esc pass through to close the popup
+			}
+
+			// Handle 'n' and 'r' keys
+			if event.Rune() == 'n' || event.Rune() == 'r' {
+				if isFormPopupActive {
+					// We're in a popup form, let the key pass through to the form input
+					return event
+				} else {
+					// Normal operation - create new collection/request
+					if event.Rune() == 'n' {
+						form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+						modal := createModal(form, 50, 12, tcell.ColorDefault)
+						setFormPopupActive(true)
+						ui.Pages.AddPage("newCollection", modal, true, true)
+						ui.App.SetFocus(form)
+						return nil
+					} else if event.Rune() == 'r' {
+						// New request - check if a collection or request is selected
+						node := ui.CollectionsTreeView.GetCurrentNode()
+						if node != nil {
+							var selectedCollection *workspace.Collection
+
+							if col, ok := node.GetReference().(workspace.Collection); ok {
+								// Collection is selected
+								selectedCollection = &col
+							} else if req, ok := node.GetReference().(workspace.Request); ok {
+								// Request is selected - find its parent collection
+								selectedCollection = findParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.Name, req.Method, req.URL)
+							}
+
+							if selectedCollection != nil {
+								form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+								modal := createModal(form, 60, 14, tcell.ColorDefault)
+								setFormPopupActive(true)
+								ui.Pages.AddPage("newRequest", modal, true, true)
+								ui.App.SetFocus(form)
+								return nil
+							}
+						}
+					}
 				}
 			}
 		}

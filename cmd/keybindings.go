@@ -424,6 +424,10 @@ func handleBacktabNavigationAction(ui *UIOrchestrator, event *tcell.EventKey) *t
 }
 
 func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+
 	if ui.MainCycle.current == ui.CollectionsIndex {
 		form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 		modal := createModal(form, 50, 12, tcell.ColorDefault)
@@ -435,6 +439,10 @@ func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 }
 
 func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+
 	if ui.MainCycle.current == ui.CollectionsIndex {
 		// New request - check if a collection or request is selected
 		node := ui.CollectionsTreeView.GetCurrentNode()
@@ -523,7 +531,35 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
+// isInFormPopup checks if the current page is a form popup
+func isInFormPopup(ui *UIOrchestrator) bool {
+	currentPage, _ := ui.Pages.GetFrontPage()
+	formPopups := []string{
+		"newCollection",
+		"newRequest",
+		"workspaceMenu",
+		"envVariables",
+		"moveCollection",
+		"moveRequest",
+		"renameCollection",
+		"renameRequest",
+		"deleteCollection",
+		"deleteRequest",
+	}
+
+	for _, popup := range formPopups {
+		if currentPage == popup {
+			return true
+		}
+	}
+	return false
+}
+
 func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+
 	if ui.MainCycle.current == ui.CollectionsIndex {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
@@ -550,6 +586,10 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 }
 
 func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+
 	if ui.MainCycle.current == ui.CollectionsIndex {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {

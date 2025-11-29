@@ -96,7 +96,7 @@ func SendRequest(method, url, body string, headers map[string]string) (*HTTPResp
 		headersMap[key] = values
 	}
 
-	return &HTTPResponse{
+	result := &HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 		Headers:    headersMap,
@@ -105,27 +105,14 @@ func SendRequest(method, url, body string, headers map[string]string) (*HTTPResp
 		Duration:   duration,
 		Timestamp:  time.Now(),
 		BodySize:   len(respBody),
-	}, nil
+	}
+
+	return result, nil
 }
 
 // FormatResponse formats the HTTP response for display in the UI
 func FormatResponse(response *HTTPResponse) string {
 	var result strings.Builder
-
-	// Status line - hidden for now
-	// result.WriteString(fmt.Sprintf("Status: %d %s\n", response.StatusCode, response.Status))
-	// result.WriteString(fmt.Sprintf("Time: %v\n\n", response.Duration.Round(time.Millisecond)))
-
-	// Headers - hidden for now
-	// if len(response.Headers) > 0 {
-	// 	result.WriteString("Headers:\n")
-	// 	for key, values := range response.Headers {
-	// 		for _, value := range values {
-	// 			result.WriteString(fmt.Sprintf("  %s: %s\n", key, value))
-	// 		}
-	// 	}
-	// 	result.WriteString("\n")
-	// }
 
 	// Body
 	if response.Body != "" {
