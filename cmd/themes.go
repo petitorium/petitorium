@@ -23,14 +23,15 @@ in the configuration file's syntaxTheme setting.`,
 		sort.Strings(allThemes)
 
 		// Get supported unified theming themes
-		supportedThemes := getSupportedUnifiedThemes()
+		tm := GetThemeManager()
+		supportedThemes := tm.GetAvailableThemes()
 		supportedMap := make(map[string]bool)
 		for _, theme := range supportedThemes {
 			supportedMap[theme] = true
 		}
 
 		// Current theme
-		currentTheme := getSyntaxTheme()
+		currentTheme := GetThemeManager().GetCurrentTheme()
 
 		fmt.Println("\nUnified Theming Supported Themes (★):")
 		fmt.Println("=====================================")

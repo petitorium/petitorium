@@ -102,8 +102,9 @@ type UIOrchestrator struct {
 
 // SetupUI initializes all UI components and layout
 func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, environmentsData *[]workspace.Environment) (*UIOrchestrator, error) {
-	// Initialize centralized color management
-	colors := NewColorManager()
+	// Initialize centralized color management with theme manager
+	tm := GetThemeManager()
+	colors := tm.GetColorManager()
 
 	app := tview.NewApplication().EnableMouse(true)
 

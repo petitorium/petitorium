@@ -22,6 +22,7 @@ type AppConfig struct {
 	SelectedEnvironment string               `mapstructure:"selectedEnvironment"`
 	RequestTimeout      int                  `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
 	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
+	UnifiedTheming      bool                 `mapstructure:"unifiedTheming"` // Enable unified theming system
 }
 
 type ThemeConfig struct {
@@ -133,6 +134,9 @@ selectedEnvironment: "Base"
 
 # HTTP request timeout in seconds (default: 30)
 requestTimeout: 30
+
+# Enable unified theming system (applies syntax theme colors to entire UI)
+unifiedTheming: true
 
 plugins:
   enabled: []

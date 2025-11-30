@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -392,110 +391,25 @@ func tokenTypeToChroma(tokenName string) chroma.TokenType {
 	}
 }
 
-// extractThemeColors extracts UI colors from a Chroma syntax highlighting theme using custom mappings
+// extractThemeColors extracts UI colors from a Chroma syntax highlighting theme
 func extractThemeColors(themeName string) (background, foreground, border, borderFocus, title, selectionBackground, activeTab, buttonSelected, dropdownFocused string) {
-	style := styles.Get(themeName)
-	if style == nil {
+	// Use the ThemeManager to get unified theme colors
+	tm := GetThemeManager()
+	theme, err := tm.GetTheme(themeName)
+	if err != nil {
 		// Fallback to default colors if theme not found
 		return "#102529", "#e4e4e4", "#95CEDA", "#FF9F77", "#EBEBEB", "#1B4248", "#FF9F77", "#FFD700", "#636DA6"
 	}
 
-	// Get theme mapping from config
-	mapping, hasMapping := config.C.ThemeMappings[themeName]
-
-	// If no custom mapping exists, use intelligent defaults
-	if !hasMapping {
-		return extractThemeColorsIntelligent(themeName)
-	}
-
-	// Extract colors based on custom mapping
-	background = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.Background)).Colour)
-	foreground = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.Foreground)).Colour)
-	border = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.Border)).Colour)
-	borderFocus = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.BorderFocus)).Colour)
-	title = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.Title)).Colour)
-	selectionBackground = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.SelectionBackground)).Colour)
-	activeTab = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.ActiveTab)).Colour)
-	buttonSelected = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.ButtonSelected)).Colour)
-	dropdownFocused = chromaColorToHex(style.Get(tokenTypeToChroma(mapping.DropdownFocused)).Colour)
-
-	// Apply fallbacks for invalid colors
-	background = applyFallback(background, "#102529")
-	foreground = applyFallback(foreground, "#e4e4e4")
-	border = applyFallback(border, "#95CEDA")
-	borderFocus = applyFallback(borderFocus, "#FF9F77")
-	title = applyFallback(title, "#EBEBEB")
-	selectionBackground = applyFallback(selectionBackground, "#1B4248")
-	activeTab = applyFallback(activeTab, "#FF9F77")
-	buttonSelected = applyFallback(buttonSelected, "#FFD700")
-	dropdownFocused = applyFallback(dropdownFocused, "#636DA6")
-
-	return
-}
-
-// extractThemeColorsIntelligent provides intelligent color extraction when no custom mapping exists
-func extractThemeColorsIntelligent(themeName string) (background, foreground, border, borderFocus, title, selectionBackground, activeTab, buttonSelected, dropdownFocused string) {
-	style := styles.Get(themeName)
-	if style == nil {
-		return "#102529", "#e4e4e4", "#95CEDA", "#FF9F77", "#EBEBEB", "#1B4248", "#FF9F77", "#FFD700", "#636DA6"
-	}
-
-	// Extract base colors from Chroma theme
-	backgroundEntry := style.Get(chroma.Background)
-	foregroundEntry := style.Get(chroma.Text)
-	commentEntry := style.Get(chroma.Comment)
-	keywordEntry := style.Get(chroma.Keyword)
-	stringEntry := style.Get(chroma.String)
-	numberEntry := style.Get(chroma.Number)
-
-	// Convert to hex strings
-	backgroundHex := chromaColorToHex(backgroundEntry.Colour)
-	foregroundHex := chromaColorToHex(foregroundEntry.Colour)
-	commentHex := chromaColorToHex(commentEntry.Colour)
-	keywordHex := chromaColorToHex(keywordEntry.Colour)
-	stringHex := chromaColorToHex(stringEntry.Colour)
-	numberHex := chromaColorToHex(numberEntry.Colour)
-
-	// Determine if this is a light or dark theme based on background brightness
-	isLightTheme := isLightColor(backgroundHex)
-
-	// Apply intelligent color mapping based on theme type
-	if isLightTheme {
-		// Light theme: use darker colors for backgrounds, lighter for text
-		background = backgroundHex
-		foreground = foregroundHex
-		border = commentHex
-		borderFocus = keywordHex
-		title = foregroundHex
-		selectionBackground = stringHex
-		activeTab = keywordHex
-		buttonSelected = numberHex
-		dropdownFocused = keywordHex
-	} else {
-		// Dark theme: use existing mapping
-		background = backgroundHex
-		foreground = foregroundHex
-		border = commentHex
-		borderFocus = keywordHex
-		title = foregroundHex
-		selectionBackground = stringHex
-		activeTab = keywordHex
-		buttonSelected = numberHex
-		dropdownFocused = keywordHex
-	}
-
-	// Apply fallbacks
-	background = applyFallback(background, "#102529")
-	foreground = applyFallback(foreground, "#e4e4e4")
-	border = applyFallback(border, "#95CEDA")
-	borderFocus = applyFallback(borderFocus, "#FF9F77")
-	title = applyFallback(title, "#EBEBEB")
-	selectionBackground = applyFallback(selectionBackground, "#1B4248")
-	activeTab = applyFallback(activeTab, "#FF9F77")
-	buttonSelected = applyFallback(buttonSelected, "#FFD700")
-	dropdownFocused = applyFallback(dropdownFocused, "#636DA6")
-
-	return
+	return theme.UIColors.Background,
+		theme.UIColors.Foreground,
+		theme.UIColors.Border,
+		theme.UIColors.BorderFocus,
+		theme.UIColors.Title,
+		theme.UIColors.Selection,
+		theme.UIColors.ActiveTab,
+		theme.UIColors.ButtonSelected,
+		theme.UIColors.DropdownFocused
 }
 
 // applyFallback applies a fallback color if the input color is invalid
@@ -544,8 +458,8 @@ func hexToRGB(hex string) (int, int, int) {
 
 // shouldUseUnifiedTheming determines if unified theming should be applied
 func shouldUseUnifiedTheming() bool {
-	// Check if unified theming is enabled in config and a syntax theme is set
-	return config.C.UnifiedTheming && config.C.SyntaxTheme != ""
+	// Unified theming is always enabled when using the ThemeManager
+	return config.C.SyntaxTheme != ""
 }
 
 // openInExternalEditor opens content in an external editor and returns the modified content
@@ -571,7 +485,7 @@ func openInExternalEditor(content string) (string, error) {
 
 	// Create a temporary file
 	tmpDir := os.TempDir()
-	tmpFile, err := ioutil.TempFile(tmpDir, "petitorium-body-*.json")
+	tmpFile, err := os.CreateTemp(tmpDir, "petitorium-body-*.json")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %v", err)
 	}
@@ -595,7 +509,7 @@ func openInExternalEditor(content string) (string, error) {
 	}
 
 	// Read back the content
-	modifiedContent, err := ioutil.ReadFile(tmpFile.Name())
+	modifiedContent, err := os.ReadFile(tmpFile.Name())
 	if err != nil {
 		return "", fmt.Errorf("failed to read modified content: %v", err)
 	}
