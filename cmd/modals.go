@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -292,4 +293,221 @@ func showEnvironmentModal(
 		}
 		return event
 	})
+}
+
+// showWorkspaceModal displays a modal for workspace configuration with a split-panel layout
+func showWorkspaceModal(
+	ui *UIOrchestrator,
+) {
+	// Load workspace manager
+	manager, err := workspace.LoadWorkspaceManager()
+	if err != nil {
+		// Handle error - could show a message but for now just return
+		return
+	}
+
+	// Create workspace info display (right panel)
+	workspaceInfo := createTextArea(" Workspace Information ", ui.Colors.Background, ui.Colors.Border, ui.Colors.Title, ui.Colors.Foreground)
+	workspaceInfo.SetText("Select a workspace to view its information", false)
+	workspaceInfo.SetBorder(true)
+
+	// Create left panel (workspace list)
+	var selectedWorkspace *workspace.WorkspaceMetadata
+	var leftPanel *tview.List
+
+	// Define callbacks
+	onWorkspaceSelected := func(ws *workspace.WorkspaceMetadata) {
+		selectedWorkspace = ws
+		if ws != nil {
+			// Load full workspace data to show information
+			fullWorkspace, err := workspace.LoadWorkspaceByName(ws.Name)
+			if err != nil {
+				workspaceInfo.SetText(fmt.Sprintf("Error loading workspace: %v", err), false)
+				return
+			}
+
+			// Display workspace information
+			info := fmt.Sprintf("Name: %s\nDescription: %s\nCollections: %d\nEnvironments: %d\nCreated: %s\nUpdated: %s",
+				fullWorkspace.Name,
+				fullWorkspace.Description,
+				len(fullWorkspace.Collections),
+				len(fullWorkspace.Environments),
+				fullWorkspace.CreatedAt.Format("2006-01-02 15:04:05"),
+				fullWorkspace.UpdatedAt.Format("2006-01-02 15:04:05"))
+			workspaceInfo.SetText(info, false)
+		} else {
+			workspaceInfo.SetText("Select a workspace to view its information", false)
+		}
+	}
+
+	var onCreateNew func()
+	var onDelete func(*workspace.WorkspaceMetadata)
+	var onRename func(*workspace.WorkspaceMetadata)
+	var onDuplicate func(*workspace.WorkspaceMetadata)
+
+	onDelete = func(ws *workspace.WorkspaceMetadata) {
+		currentFocus := ui.App.GetFocus()
+		form := createDeleteWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceSelector, ui.Colors)
+		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("deleteWorkspace")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
+		modal := createModal(form, 50, 8, ui.Colors.Background)
+		ui.Pages.AddPage("deleteWorkspace", modal, true, true)
+		ui.App.SetFocus(form)
+	}
+
+	onRename = func(ws *workspace.WorkspaceMetadata) {
+		currentFocus := ui.App.GetFocus()
+		form := createRenameWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceSelector, ui.Colors)
+		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("renameWorkspace")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
+		modal := createModal(form, 50, 8, ui.Colors.Background)
+		ui.Pages.AddPage("renameWorkspace", modal, true, true)
+		ui.App.SetFocus(form)
+	}
+
+	onDuplicate = func(ws *workspace.WorkspaceMetadata) {
+		currentFocus := ui.App.GetFocus()
+		form := createDuplicateWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceSelector, ui.Colors)
+		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("duplicateWorkspace")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
+		modal := createModal(form, 50, 10, ui.Colors.Background)
+		ui.Pages.AddPage("duplicateWorkspace", modal, true, true)
+		ui.App.SetFocus(form)
+	}
+
+	onCreateNew = func() {
+		currentFocus := ui.App.GetFocus()
+		form := createNewWorkspaceForm(ui.App, ui.Pages, ui.WorkspaceSelector, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("createWorkspace")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
+		modal := createModal(form, 50, 8, ui.Colors.Background)
+		ui.Pages.AddPage("createWorkspace", modal, true, true)
+		ui.App.SetFocus(form)
+	}
+
+	leftPanel = createWorkspaceListPanel(
+		ui.Colors.Background,
+		ui.Colors.Border,
+		ui.Colors.BorderFocus,
+		ui.Colors.Title,
+		ui.Colors.Foreground,
+		ui.Colors.ButtonSelect,
+		manager.Workspaces,
+		manager.CurrentWorkspace,
+		onWorkspaceSelected,
+		onCreateNew,
+		onDelete,
+		onRename,
+		onDuplicate,
+	)
+
+	// Create switch workspace button
+	switchButton := createButton("Switch to Selected", ui.Colors)
+	switchButton.SetSelectedFunc(func() {
+		if selectedWorkspace != nil && selectedWorkspace.Name != manager.CurrentWorkspace {
+			// Switch to the selected workspace
+			if err := workspace.SwitchWorkspace(selectedWorkspace.Name); err != nil {
+				// Handle error - could show message
+				return
+			}
+
+			// Update UI
+			ui.WorkspaceSelector.SetCurrentOption(findWorkspaceIndex(manager.Workspaces, selectedWorkspace.Name))
+
+			// Reload workspace data
+			if newWorkspace, err := workspace.LoadWorkspace(); err == nil {
+				ui.WorkspaceData = newWorkspace
+				ui.EnvironmentsData = &newWorkspace.Environments
+				updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
+				refreshCollectionsTree(ui)
+			}
+
+			// Close modal
+			ui.Pages.RemovePage("workspaceModal")
+			ui.App.SetFocus(ui.WorkspaceConfigButton)
+			ui.UpdateFooter()
+		}
+	})
+
+	// Create close button
+	closeButton := createButton("Close", ui.Colors)
+	closeButton.SetSelectedFunc(func() {
+		ui.Pages.RemovePage("workspaceModal")
+		ui.App.SetFocus(ui.WorkspaceConfigButton)
+	})
+
+	// Create button container
+	buttonContainer := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false).
+		AddItem(switchButton, 18, 0, true).
+		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false).
+		AddItem(closeButton, 8, 0, true).
+		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false)
+
+	// Create split layout: left 40%, right 60%, with button bar at bottom
+	content := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(tview.NewFlex().
+			AddItem(leftPanel, 0, 4, false).     // 40% for left panel
+			AddItem(workspaceInfo, 0, 6, false), // 60% for workspace info
+							0, 9, false).
+		AddItem(buttonContainer, 1, 0, false) // Button bar at bottom
+
+	content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			if ui.App.GetFocus() == leftPanel {
+				ui.App.SetFocus(workspaceInfo)
+			} else {
+				ui.App.SetFocus(leftPanel)
+			}
+			return nil
+		}
+		if event.Key() == tcell.KeyEsc {
+			ui.Pages.RemovePage("workspaceModal")
+			ui.App.SetFocus(ui.WorkspaceConfigButton)
+			return nil
+		}
+		return event
+	})
+
+	modal := createModal(content, 120, 40, ui.Colors.Background)
+	ui.Pages.RemovePage("workspaceModal")
+	ui.Pages.AddPage("workspaceModal", modal, true, true)
+	ui.UpdateFooter()
+	ui.App.SetFocus(leftPanel)
+}
+
+// Helper function to find workspace index in dropdown
+func findWorkspaceIndex(workspaces []workspace.WorkspaceMetadata, name string) int {
+	for i, ws := range workspaces {
+		if ws.Name == name {
+			return i + 1 // +1 because dropdown has "Create New Workspace" at index 0
+		}
+	}
+	return 0
 }

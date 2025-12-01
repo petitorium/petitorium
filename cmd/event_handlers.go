@@ -385,11 +385,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 	// Set up workspace config button click handler
 	ui.WorkspaceConfigButton.SetSelectedFunc(func() {
-		// Create workspace management modal
-		form := createWorkspaceManagementForm(ui.App, ui.Pages, ui.WorkspaceData, ui.WorkspaceSelector, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-		modal := createModal(form, 60, 15, tcell.ColorDefault)
-		ui.Pages.AddPage("workspaceMenu", modal, true, true)
-		ui.App.SetFocus(form)
+		// Show workspace configuration modal
+		showWorkspaceModal(ui)
 	})
 
 	// Save environment selection function

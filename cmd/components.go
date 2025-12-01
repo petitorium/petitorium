@@ -159,6 +159,99 @@ func createEnvironmentListPanel(
 	return list
 }
 
+// createWorkspaceListPanel creates a list panel for selecting workspaces using tview.NewList
+func createWorkspaceListPanel(
+	backgroundColor,
+	borderColor,
+	borderFocusColor,
+	titleColor,
+	foregroundColor,
+	buttonSelectedColor tcell.Color,
+	workspaces []workspace.WorkspaceMetadata,
+	currentWorkspace string,
+	onWorkspaceSelected func(*workspace.WorkspaceMetadata),
+	onCreateNew func(),
+	onDelete func(*workspace.WorkspaceMetadata),
+	onRename func(*workspace.WorkspaceMetadata),
+	onDuplicate func(*workspace.WorkspaceMetadata),
+) *tview.List {
+	list := tview.NewList()
+	list.SetBackgroundColor(backgroundColor)
+	list.SetBorderColor(borderColor)
+	list.SetTitleColor(titleColor)
+	list.SetBorder(true).SetTitle(" Workspaces ")
+
+	// Add "Create New Workspace" option at the top
+	list.AddItem("➕ Create New Workspace", "", 0, onCreateNew)
+
+	// Add all existing workspaces
+	for i, ws := range workspaces {
+		ws := ws // Capture loop variable
+
+		var itemText string
+		if ws.Name == currentWorkspace {
+			itemText = ws.Name + " (current)"
+		} else {
+			itemText = ws.Name
+		}
+
+		list.AddItem(itemText, "", 0, func() {
+			onWorkspaceSelected(&workspaces[i])
+		})
+	}
+
+	// Add selection change handler to show workspace info on hover
+	list.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		if index > 0 && index <= len(workspaces) {
+			// Show info for the selected workspace (index 0 is "Create New Workspace")
+			ws := &workspaces[index-1]
+			onWorkspaceSelected(ws)
+		} else if index == 0 {
+			// Clear when "Create New Workspace" is selected
+			onWorkspaceSelected(nil)
+		}
+	})
+
+	// Add vim-style navigation (j/k for down/up) and actions (d delete, n new, r rename, c duplicate)
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j':
+			return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+		case 'k':
+			return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+		case 'd':
+			currentItem := list.GetCurrentItem()
+			if currentItem > 0 && currentItem <= len(workspaces) {
+				ws := &workspaces[currentItem-1]
+				if ws.Name != currentWorkspace {
+					onDelete(ws)
+				}
+			}
+			return nil // Consume the event
+		case 'n':
+			onCreateNew()
+			return nil // Consume the event
+		case 'r', 'R':
+			currentItem := list.GetCurrentItem()
+			if currentItem > 0 && currentItem <= len(workspaces) {
+				ws := &workspaces[currentItem-1]
+				onRename(ws)
+			}
+			return nil // Consume the event
+		case 'c', 'C':
+			currentItem := list.GetCurrentItem()
+			if currentItem > 0 && currentItem <= len(workspaces) {
+				ws := &workspaces[currentItem-1]
+				onDuplicate(ws)
+			}
+			return nil // Consume the event
+		}
+		return event
+	})
+
+	return list
+}
+
 // createEnvironmentPanel creates the environment panel with dropdown and config button
 func createEnvironmentPanel(
 	colors *ColorManager,

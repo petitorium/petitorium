@@ -1074,10 +1074,7 @@ func switchToResponseTimelineTab(ui *UIOrchestrator, event *tcell.EventKey) *tce
 }
 
 func showWorkspaceMenu(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// Create workspace management modal
-	form := createWorkspaceManagementForm(ui.App, ui.Pages, ui.WorkspaceData, ui.WorkspaceSelector, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-	modal := createModal(form, 60, 15, tcell.ColorDefault)
-	ui.Pages.AddPage("workspaceMenu", modal, true, true)
-	ui.App.SetFocus(form)
+	// Show workspace configuration modal
+	showWorkspaceModal(ui)
 	return nil
 }
