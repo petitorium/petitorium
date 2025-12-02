@@ -32,6 +32,7 @@ type ThemeConfig struct {
 	BorderFocusColor          string       `mapstructure:"borderFocusColor"`
 	TitleColor                string       `mapstructure:"titleColor"`
 	SelectionBackground       string       `mapstructure:"selectionBackground"`
+	TreeSelectionBackground   string       `mapstructure:"treeSelectionBackground"`
 	ActiveTabColor            string       `mapstructure:"activeTabColor"`
 	ButtonBackgroundColor     string       `mapstructure:"buttonBackgroundColor"`
 	ButtonSelectedColor       string       `mapstructure:"buttonSelectedColor"`
@@ -95,6 +96,7 @@ const defaultConfigYAML = `theme:
   borderFocusColor: "#FF9F77"
   titleColor: "#EBEBEB"
   selectionBackground: "#1B4248"  # background color for selected items
+  treeSelectionBackground: "#7AA2F7"  # background color for tree selection
   activeTabColor: "#FF9F77"       # color for active tab indicator
   buttonBackgroundColor: "#1B4248" # background color for buttons (normal state)
   buttonSelectedColor: "#FFD700"  # color for selected buttons

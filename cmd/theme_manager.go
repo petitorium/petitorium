@@ -6,6 +6,7 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/styles"
+
 	"github.com/petitorium/petitorium/config"
 )
 
@@ -24,6 +25,7 @@ type ThemeColors struct {
 	BorderFocus      string
 	Title            string
 	Selection        string
+	TreeSelection    string
 	ActiveTab        string
 	ButtonBackground string
 	ButtonSelected   string
@@ -157,6 +159,10 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 		numberColor = "#ff9e64" // Default orange
 	}
 
+	// Create a selection background color that's appropriate for highlighting
+	// This should be a subtle background color, not too bright
+	treeSelection := tm.createSelectionBackground(background, keywordColor, style)
+
 	// Create UI color scheme based on extracted colors
 	return ThemeColors{
 		Background:       background,
@@ -165,6 +171,7 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 		BorderFocus:      keywordColor,
 		Title:            foreground,
 		Selection:        tm.adjustBrightness(background, 1.2), // Lighter than background
+		TreeSelection:    treeSelection,                        // Appropriate selection background
 		ActiveTab:        keywordColor,
 		ButtonBackground: tm.adjustBrightness(keywordColor, 0.7), // Similar to border color
 		ButtonSelected:   stringColor,
@@ -210,6 +217,7 @@ func (tm *ThemeManager) createDefaultTheme(themeName, background string) *Unifie
 			BorderFocus:      "#ff9f77",
 			Title:            "#ebebeb",
 			Selection:        "#1b4248",
+			TreeSelection:    "#7aa2f7",
 			ActiveTab:        "#ff9f77",
 			ButtonBackground: "#95ceda",
 			ButtonSelected:   "#ffd700",
@@ -250,6 +258,36 @@ func (tm *ThemeManager) colorToHex(color chroma.Colour) string {
 		return ""
 	}
 	return fmt.Sprintf("#%06x", int(color))
+}
+
+// createSelectionBackground creates an appropriate selection background color for tree highlighting
+func (tm *ThemeManager) createSelectionBackground(background, keywordColor string, style *chroma.Style) string {
+	// For specific themes, use known good selection colors
+	switch style.Name {
+	case "tokyonight-night":
+		return "#262837"
+	case "github-dark":
+		return "#21262d"
+	case "dracula":
+		return "#373844"
+	case "monokai":
+		return "#3e3d32"
+	case "solarized-dark":
+		return "#073642"
+	case "nord":
+		return "#3b4252"
+	case "one-dark":
+		return "#353b45"
+	case "vim":
+		return "#262626"
+	case "gruvbox":
+		return "#32302f"
+	case "catppuccin-mocha":
+		return "#2a2a37"
+	default:
+		// For unknown themes, create a selection color by slightly lightening the background
+		return tm.adjustBrightness(background, 1.15)
+	}
 }
 
 // adjustBrightness adjusts the brightness of a hex color
@@ -336,6 +374,7 @@ func (tm *ThemeManager) ApplyTheme(themeName string) error {
 	config.C.Theme.BorderFocusColor = theme.UIColors.BorderFocus
 	config.C.Theme.TitleColor = theme.UIColors.Title
 	config.C.Theme.SelectionBackground = theme.UIColors.Selection
+	config.C.Theme.TreeSelectionBackground = theme.UIColors.TreeSelection
 	config.C.Theme.ActiveTabColor = theme.UIColors.ActiveTab
 	config.C.Theme.ButtonBackgroundColor = theme.UIColors.ButtonBackground
 	config.C.Theme.ButtonSelectedColor = theme.UIColors.ButtonSelected

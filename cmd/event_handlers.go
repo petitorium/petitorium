@@ -20,10 +20,17 @@ func refreshCollectionsTree(ui *UIOrchestrator) {
 
 	ui.CollectionsTreeView.SetRoot(ui.RootNode)
 	ui.CollectionsTreeView.SetCurrentNode(ui.RootNode)
+	// If there are children, select the first one instead of the root
+	if len(ui.RootNode.GetChildren()) > 0 {
+		ui.CollectionsTreeView.SetCurrentNode(ui.RootNode.GetChildren()[0])
+	}
 }
 
 // SetupEventHandlers configures all event handlers for the UI
 func SetupEventHandlers(ui *UIOrchestrator) {
+	// Populate the collections tree initially
+	refreshCollectionsTree(ui)
+
 	manager, _ := workspace.LoadWorkspaceManager()
 	lastWorkspace := ""
 	if manager != nil {
@@ -261,9 +268,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 	})
 
-	// Set up collections tree view selected function
-	ui.CollectionsTreeView.SetSelectedFunc(func(node *tview.TreeNode) {
-		node.SetSelectedTextStyle(tcell.StyleDefault.Background(tcell.ColorDefault).Foreground(tcell.ColorDefault))
+	// Handle tree highlighting (for navigation)
+	highlightTreeNode := func(node *tview.TreeNode) {
+		node.SetSelectedTextStyle(tcell.StyleDefault.Background(ui.Colors.TreeSelection).Foreground(ui.Colors.Foreground))
+	}
+
+	// Handle tree selection
+	handleTreeSelection := func(node *tview.TreeNode) {
+		node.SetSelectedTextStyle(tcell.StyleDefault.Background(ui.Colors.TreeSelection).Foreground(ui.Colors.Foreground))
 
 		// Remove icon from previously selected request only when another request is selected
 		if ui.LastSelectedRequestNode != nil && ui.LastSelectedRequestNode != node {
@@ -332,6 +344,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						Timestamp:  lastResponse.Timestamp,
 						BodySize:   len(lastResponse.Body),
 					}
+
 					// For historical responses, show when that specific request was made
 					updateResponseTabs(cmdResp, &lastResponse.Timestamp, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
 				} else {
@@ -339,7 +352,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
 				}
 			}
-		} else if col, ok := reference.(workspace.Collection); ok {
+		} else if _, ok := reference.(workspace.Collection); ok {
 			// Save current request headers before clearing
 			if ui.CurrentRequest != nil {
 				ui.CurrentRequest.Headers = getHeadersFromUI()
@@ -349,34 +362,36 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.CurrentRequest = nil
 			ui.CurrentSelectedNode = nil
 
-			// Handle collection expansion
-			expanded := !node.IsExpanded()
-			node.SetExpanded(expanded)
-
-			if expanded {
-				node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
-				if len(node.GetChildren()) == 0 {
-					addChildrenToCollectionNode(node, col)
-				}
-				if config.C.UI.CollectionExpansion == "remember" {
-					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, true)
-				}
-			} else {
-				node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
-				node.ClearChildren()
-				if config.C.UI.CollectionExpansion == "remember" {
-					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, false)
+			// Track the last selected request node
+			if reference := node.GetReference(); reference != nil {
+				if _, ok := reference.(workspace.Request); ok {
+					ui.LastSelectedRequestNode = node
 				}
 			}
 		}
+	}
 
-		// Track the last selected request node
-		if reference := node.GetReference(); reference != nil {
-			if _, ok := reference.(workspace.Request); ok {
-				ui.LastSelectedRequestNode = node
-			}
-		}
+	// Set the tree selection handler
+	ui.TreeSelectionHandler = handleTreeSelection
+
+	// Set the tree highlight handler for navigation
+	ui.TreeHighlightHandler = highlightTreeNode
+
+	// Set up collections tree view changed function (called on current node change)
+	ui.CollectionsTreeView.SetChangedFunc(func(node *tview.TreeNode) {
+		// Do nothing on current node change - loading only on explicit selection
 	})
+
+	// Set up collections tree view selected function
+	ui.CollectionsTreeView.SetSelectedFunc(func(node *tview.TreeNode) {
+		handleTreeSelection(node)
+	})
+
+	// Set the initial selected style for the current node
+	currentNode := ui.CollectionsTreeView.GetCurrentNode()
+	if currentNode != nil {
+		currentNode.SetSelectedTextStyle(tcell.StyleDefault.Background(ui.Colors.TreeSelection).Foreground(ui.Colors.Foreground))
+	}
 
 	// Set up environment config button click handler
 	ui.EnvConfigButton.SetSelectedFunc(func() {

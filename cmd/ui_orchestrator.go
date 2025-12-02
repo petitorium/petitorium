@@ -31,6 +31,8 @@ type UIOrchestrator struct {
 	FooterLeft            *tview.TextView
 	FooterRight           *tview.TextView
 	CollectionsTreeView   *tview.TreeView
+	TreeSelectionHandler  func(*tview.TreeNode)
+	TreeHighlightHandler  func(*tview.TreeNode)
 	ResponsePages         *tview.Pages
 	ResponseTabHeader     *tview.Flex
 	ResponseInfoBar       *tview.Flex
@@ -54,6 +56,7 @@ type UIOrchestrator struct {
 	// State variables
 	CurrentSelectedNode            *tview.TreeNode
 	CurrentRequest                 *workspace.Request
+	Navigating                     bool
 	ProgrammaticallyUpdatingMethod bool
 	ProgrammaticallyUpdatingURL    bool
 	TabPages                       *tview.Pages
@@ -383,6 +386,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		Grid:                           grid,
 		CurrentSelectedNode:            currentSelectedNode,
 		CurrentRequest:                 currentRequest,
+		Navigating:                     false,
 		ProgrammaticallyUpdatingMethod: programmaticallyUpdatingMethod,
 		ProgrammaticallyUpdatingURL:    programmaticallyUpdatingURL,
 		TabPages:                       tabPages,
@@ -403,6 +407,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		EnvironmentsCycle:              environmentsCycle,
 		WorkspaceCycle:                 workspaceCycle,
 		LastSelectedRequestNode:        nil,
+		TreeHighlightHandler:           nil,
 		BodyEditMode:                   false,
 		CurrentBodyContent:             "",
 		RequestPanel:                   requestPanel,

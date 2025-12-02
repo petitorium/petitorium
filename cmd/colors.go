@@ -16,6 +16,7 @@ type ColorManager struct {
 	BorderFocus      tcell.Color
 	Title            tcell.Color
 	Selection        tcell.Color
+	TreeSelection    tcell.Color
 	ActiveTab        tcell.Color
 	ButtonBackground tcell.Color // Button background color (normal state)
 	ButtonSelect     tcell.Color
@@ -42,6 +43,7 @@ func NewColorManager() *ColorManager {
 		BorderFocus:      hexToColor(theme.BorderFocusColor),
 		Title:            hexToColor(theme.TitleColor),
 		Selection:        hexToColor(theme.SelectionBackground),
+		TreeSelection:    hexToColor(theme.TreeSelectionBackground),
 		ActiveTab:        hexToColor(theme.ActiveTabColor),
 		ButtonBackground: hexToColor(theme.ButtonBackgroundColor),
 		ButtonSelect:     hexToColor(theme.ButtonSelectedColor),

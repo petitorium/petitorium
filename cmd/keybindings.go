@@ -30,6 +30,33 @@ type KeyBindingManager struct {
 	modalBindings        []KeyBinding
 }
 
+// Tree navigation functions
+var (
+	navigateTreeDown func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
+	navigateTreeUp   func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
+)
+
+// getVisibleNodes collects all visible nodes in the tree
+func getVisibleNodes(root *tview.TreeNode) []*tview.TreeNode {
+	var nodes []*tview.TreeNode
+	var collect func(*tview.TreeNode)
+	collect = func(node *tview.TreeNode) {
+		if node == nil {
+			return
+		}
+		nodes = append(nodes, node)
+		if node.IsExpanded() {
+			for _, child := range node.GetChildren() {
+				collect(child)
+			}
+		}
+	}
+	if root != nil {
+		collect(root)
+	}
+	return nodes
+}
+
 // NewKeyBindingManager creates a new keybinding manager with all default bindings
 func NewKeyBindingManager() *KeyBindingManager {
 	manager := &KeyBindingManager{}
@@ -279,12 +306,65 @@ func NewKeyBindingManager() *KeyBindingManager {
 		},
 	}
 
+	// Define tree navigation functions
+	navigateTreeDown = func(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+		root := ui.CollectionsTreeView.GetRoot()
+		if root == nil {
+			return nil
+		}
+		visibleNodes := getVisibleNodes(root)
+		current := ui.CollectionsTreeView.GetCurrentNode()
+		for i, node := range visibleNodes {
+			if node == current && i < len(visibleNodes)-1 {
+				next := visibleNodes[i+1]
+				ui.CollectionsTreeView.SetCurrentNode(next)
+				if ui.TreeHighlightHandler != nil {
+					ui.TreeHighlightHandler(next)
+				}
+				break
+			}
+		}
+		return nil
+	}
+
+	navigateTreeUp = func(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+		root := ui.CollectionsTreeView.GetRoot()
+		if root == nil {
+			return nil
+		}
+		visibleNodes := getVisibleNodes(root)
+		current := ui.CollectionsTreeView.GetCurrentNode()
+		for i, node := range visibleNodes {
+			if node == current && i > 0 {
+				prev := visibleNodes[i-1]
+				ui.CollectionsTreeView.SetCurrentNode(prev)
+				if ui.TreeHighlightHandler != nil {
+					ui.TreeHighlightHandler(prev)
+				}
+				break
+			}
+		}
+		return nil
+	}
+
 	// Tree view keybindings (collection navigation)
 	manager.treeViewBindings = []KeyBinding{
 		{
 			Rune:        'h',
 			Action:      collapseOrMoveToParent,
 			Description: "Collapse collection or move to parent",
+			Context:     "tree_view",
+		},
+		{
+			Rune:        'j',
+			Action:      navigateTreeDown,
+			Description: "Navigate down in tree",
+			Context:     "tree_view",
+		},
+		{
+			Rune:        'k',
+			Action:      navigateTreeUp,
+			Description: "Navigate up in tree",
 			Context:     "tree_view",
 		},
 		{
