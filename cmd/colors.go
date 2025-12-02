@@ -10,15 +10,16 @@ import (
 // ColorManager centralizes all color management for the application
 type ColorManager struct {
 	// Theme colors from configuration
-	Background    tcell.Color
-	Foreground    tcell.Color
-	Border        tcell.Color
-	BorderFocus   tcell.Color
-	Title         tcell.Color
-	Selection     tcell.Color
-	ActiveTab     tcell.Color
-	ButtonSelect  tcell.Color
-	DropdownFocus tcell.Color
+	Background       tcell.Color
+	Foreground       tcell.Color
+	Border           tcell.Color
+	BorderFocus      tcell.Color
+	Title            tcell.Color
+	Selection        tcell.Color
+	ActiveTab        tcell.Color
+	ButtonBackground tcell.Color // Button background color (normal state)
+	ButtonSelect     tcell.Color
+	DropdownFocus    tcell.Color
 
 	// Semantic colors for consistent usage across the app
 	Placeholder tcell.Color // Placeholder text color
@@ -35,19 +36,20 @@ func NewColorManager() *ColorManager {
 	setupBorders(theme)
 
 	return &ColorManager{
-		Background:    hexToColor(theme.BackgroundColor),
-		Foreground:    hexToColor(theme.ForegroundColor),
-		Border:        hexToColor(theme.BorderColor),
-		BorderFocus:   hexToColor(theme.BorderFocusColor),
-		Title:         hexToColor(theme.TitleColor),
-		Selection:     hexToColor(theme.SelectionBackground),
-		ActiveTab:     hexToColor(theme.ActiveTabColor),
-		ButtonSelect:  hexToColor(theme.ButtonSelectedColor),
-		DropdownFocus: hexToColor(theme.DropdownFocusedBackground),
-		Placeholder:   hexToColor("#4A5053"),
-		Success:       hexToColor("#28a745"),
-		Error:         hexToColor("#dc3545"),
-		Warning:       hexToColor("#fd7e14"),
+		Background:       hexToColor(theme.BackgroundColor),
+		Foreground:       hexToColor(theme.ForegroundColor),
+		Border:           hexToColor(theme.BorderColor),
+		BorderFocus:      hexToColor(theme.BorderFocusColor),
+		Title:            hexToColor(theme.TitleColor),
+		Selection:        hexToColor(theme.SelectionBackground),
+		ActiveTab:        hexToColor(theme.ActiveTabColor),
+		ButtonBackground: hexToColor(theme.ButtonBackgroundColor),
+		ButtonSelect:     hexToColor(theme.ButtonSelectedColor),
+		DropdownFocus:    hexToColor(theme.DropdownFocusedBackground),
+		Placeholder:      hexToColor("#4A5053"),
+		Success:          hexToColor("#28a745"),
+		Error:            hexToColor("#dc3545"),
+		Warning:          hexToColor("#fd7e14"),
 	}
 }
 

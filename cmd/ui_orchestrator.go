@@ -41,10 +41,10 @@ type UIOrchestrator struct {
 	ResponseTimelinePanel *tview.TextView
 	EnvironmentPanel      *tview.Flex
 	EnvDropdown           *tview.DropDown
-	EnvConfigButton       *tview.Button
+	EnvConfigButton       *CustomButton
 	WorkspacePanel        *tview.Flex
 	WorkspaceSelector     *tview.DropDown
-	WorkspaceConfigButton *tview.Button
+	WorkspaceConfigButton *CustomButton
 	Pages                 *tview.Pages
 	Grid                  *tview.Grid
 	KeyManager            *KeyBindingManager

@@ -18,21 +18,22 @@ type UnifiedTheme struct {
 
 // ThemeColors contains all UI color definitions
 type ThemeColors struct {
-	Background      string
-	Foreground      string
-	Border          string
-	BorderFocus     string
-	Title           string
-	Selection       string
-	ActiveTab       string
-	ButtonSelected  string
-	DropdownFocused string
-	Placeholder     string
-	Success         string
-	Error           string
-	Warning         string
-	MethodColors    MethodColors
-	StatusColors    StatusColors
+	Background       string
+	Foreground       string
+	Border           string
+	BorderFocus      string
+	Title            string
+	Selection        string
+	ActiveTab        string
+	ButtonBackground string
+	ButtonSelected   string
+	DropdownFocused  string
+	Placeholder      string
+	Success          string
+	Error            string
+	Warning          string
+	MethodColors     MethodColors
+	StatusColors     StatusColors
 }
 
 // MethodColors contains HTTP method-specific colors
@@ -158,19 +159,20 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 
 	// Create UI color scheme based on extracted colors
 	return ThemeColors{
-		Background:      background,
-		Foreground:      foreground,
-		Border:          tm.adjustBrightness(keywordColor, 0.7), // Slightly darker than keyword
-		BorderFocus:     keywordColor,
-		Title:           foreground,
-		Selection:       tm.adjustBrightness(background, 1.2), // Lighter than background
-		ActiveTab:       keywordColor,
-		ButtonSelected:  stringColor,
-		DropdownFocused: tm.adjustBrightness(background, 1.3),
-		Placeholder:     commentColor,
-		Success:         stringColor, // Use string color for success
-		Error:           "#fb4f49",   // Standard error red
-		Warning:         numberColor, // Use number color for warning
+		Background:       background,
+		Foreground:       foreground,
+		Border:           tm.adjustBrightness(keywordColor, 0.7), // Slightly darker than keyword
+		BorderFocus:      keywordColor,
+		Title:            foreground,
+		Selection:        tm.adjustBrightness(background, 1.2), // Lighter than background
+		ActiveTab:        keywordColor,
+		ButtonBackground: tm.adjustBrightness(keywordColor, 0.7), // Similar to border color
+		ButtonSelected:   stringColor,
+		DropdownFocused:  tm.adjustBrightness(background, 1.3),
+		Placeholder:      commentColor,
+		Success:          stringColor, // Use string color for success
+		Error:            "#fb4f49",   // Standard error red
+		Warning:          numberColor, // Use number color for warning
 		MethodColors: MethodColors{
 			GET:     stringColor,  // Green for GET
 			POST:    keywordColor, // Blue for POST
@@ -202,19 +204,20 @@ func (tm *ThemeManager) createDefaultTheme(themeName, background string) *Unifie
 		Name:        themeName,
 		SyntaxTheme: themeName,
 		UIColors: ThemeColors{
-			Background:      background,
-			Foreground:      "#e4e4e4",
-			Border:          "#95ceda",
-			BorderFocus:     "#ff9f77",
-			Title:           "#ebebeb",
-			Selection:       "#1b4248",
-			ActiveTab:       "#ff9f77",
-			ButtonSelected:  "#ffd700",
-			DropdownFocused: "#636da6",
-			Placeholder:     "#4a5053",
-			Success:         "#28a745",
-			Error:           "#dc3545",
-			Warning:         "#fd7e14",
+			Background:       background,
+			Foreground:       "#e4e4e4",
+			Border:           "#95ceda",
+			BorderFocus:      "#ff9f77",
+			Title:            "#ebebeb",
+			Selection:        "#1b4248",
+			ActiveTab:        "#ff9f77",
+			ButtonBackground: "#95ceda",
+			ButtonSelected:   "#ffd700",
+			DropdownFocused:  "#636da6",
+			Placeholder:      "#4a5053",
+			Success:          "#28a745",
+			Error:            "#dc3545",
+			Warning:          "#fd7e14",
 			MethodColors: MethodColors{
 				GET:     "#6ea5a0",
 				POST:    "#ff00ff",
@@ -334,6 +337,7 @@ func (tm *ThemeManager) ApplyTheme(themeName string) error {
 	config.C.Theme.TitleColor = theme.UIColors.Title
 	config.C.Theme.SelectionBackground = theme.UIColors.Selection
 	config.C.Theme.ActiveTabColor = theme.UIColors.ActiveTab
+	config.C.Theme.ButtonBackgroundColor = theme.UIColors.ButtonBackground
 	config.C.Theme.ButtonSelectedColor = theme.UIColors.ButtonSelected
 	config.C.Theme.DropdownFocusedBackground = theme.UIColors.DropdownFocused
 

@@ -8,7 +8,7 @@ import (
 type UIComponents struct {
 	WorkspacePanel        *tview.Flex
 	WorkspaceSelector     *tview.DropDown
-	WorkspaceConfigButton *tview.Button
+	WorkspaceConfigButton *CustomButton
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
@@ -31,14 +31,14 @@ type UIComponents struct {
 	ResponseTimelinePanel *tview.TextView
 	EnvironmentPanel      *tview.Flex
 	EnvDropdown           *tview.DropDown
-	EnvConfigButton       *tview.Button
+	EnvConfigButton       *CustomButton
 	EnvIndicatorButton    *CustomButton
 }
 
 // setupUIComponents creates and configures all UI components
 func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponents {
 	// Create workspace panel with dropdown and config button
-	workspacePanel, workspaceSelector, workspaceConfigButton := createWorkspacePanel(colors)
+	workspacePanel, workspaceSelector, _, workspaceConfigButton := createWorkspacePanel(colors)
 
 	// Create root node for tree
 	rootNode := tview.NewTreeNode("").SetSelectable(false)
@@ -84,9 +84,12 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		AddItem(footerFlex, 0, 1, false)
 
 	// Create environment panel with dropdown and config button
-	environmentPanel, envDropdown, envConfigButton, envIndicatorButton := createEnvironmentPanel(
+	environmentPanel, envDropdown, _, configButtonRaw := createEnvironmentPanel(
 		colors,
 	)
+	// Direct assignment since we know the type
+	envConfigButton := configButtonRaw
+	envIndicatorButton := configButtonRaw // Using same button for both
 
 	// Create collections tree view
 	collectionsTreeView := tview.NewTreeView().

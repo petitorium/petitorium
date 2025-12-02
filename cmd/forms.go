@@ -447,7 +447,7 @@ func createDeleteEnvironmentConfirm(
 	environmentsData *[]workspace.Environment,
 	workspaceData *workspace.Workspace,
 	envDropdown *tview.DropDown,
-	envConfigButton *tview.Button,
+	envConfigButton *CustomButton,
 	colors *ColorManager,
 	currentFocus tview.Primitive,
 ) *tview.Form {
@@ -512,7 +512,7 @@ func createRenameEnvironmentForm(
 	environmentsData *[]workspace.Environment,
 	workspaceData *workspace.Workspace,
 	envDropdown *tview.DropDown,
-	envConfigButton *tview.Button,
+	envConfigButton *CustomButton,
 	colors *ColorManager,
 	currentFocus tview.Primitive,
 ) *tview.Form {

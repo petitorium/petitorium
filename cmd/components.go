@@ -274,8 +274,8 @@ func createEnvironmentPanel(
 		// For now, let's leave it and see
 	})
 
-	// Create config button
-	configButton := createButton(config.C.UI.ConfigButtonIcon, colors)
+	// Create config button with themed background color
+	var configButton *CustomButton = createThemedButton(config.C.UI.ConfigButtonIcon, colors)
 
 	separator := tview.NewBox().
 		SetBackgroundColor(colors.Background)
@@ -299,12 +299,14 @@ func createEnvironmentPanel(
 	container.SetBorderColor(colors.Border)
 	container.SetTitleColor(colors.Title)
 
-	return container, envDropdown, configButton, indicator
+	// Explicit return with correct types
+	var nilButton *tview.Button = nil
+	return container, envDropdown, nilButton, configButton
 }
 
 func createWorkspacePanel(
 	colors *ColorManager,
-) (*tview.Flex, *tview.DropDown, *tview.Button) {
+) (*tview.Flex, *tview.DropDown, *tview.Button, *CustomButton) {
 	// Create workspace dropdown
 	workspaceNames := []string{"Default"}
 	// Try to load actual workspace names
@@ -336,8 +338,8 @@ func createWorkspacePanel(
 	}
 	workspaceDropdown.SetCurrentOption(currentIndex)
 
-	// Create config button
-	configButton := createButton(config.C.UI.ConfigButtonIcon, colors)
+	// Create config button with themed background color
+	configButton := createThemedButton(config.C.UI.ConfigButtonIcon, colors)
 
 	separator := tview.NewBox().
 		SetBackgroundColor(colors.Background)
@@ -358,7 +360,7 @@ func createWorkspacePanel(
 	container.SetBorderColor(colors.Border)
 	container.SetTitleColor(colors.Title)
 
-	return container, workspaceDropdown, configButton
+	return container, workspaceDropdown, nil, configButton // configButton is *CustomButton, nil is for unused *tview.Button
 }
 
 // syncBodyContent syncs body content between view and edit panels

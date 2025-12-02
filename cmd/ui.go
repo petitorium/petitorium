@@ -353,6 +353,26 @@ func createCustomButton(text string, backgroundColor, activatedColor, labelColor
 	return button
 }
 
+// createThemedButton creates a button with theme-based background colors
+func createThemedButton(text string, colors *ColorManager) *CustomButton {
+	// Write to a debug file to avoid tview suppression
+	// if f, err := os.OpenFile("/tmp/debug_buttons.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644); err == nil {
+	// 	fmt.Fprintf(f, "DEBUG: createThemedButton called with text='%s', ButtonBackground=%v\n", text, colors.ButtonBackground)
+	// 	f.Close()
+	// }
+	return NewCustomButtonWithColors(text, colors)
+}
+
+// NewCustomButtonWithColors creates a new custom button with theme colors
+func NewCustomButtonWithColors(text string, colors *ColorManager) *CustomButton {
+	cb := NewCustomButton(text)
+	cb.SetBackgroundColor(colors.ButtonBackground)
+	cb.SetBackgroundColorActivated(colors.ButtonSelect)
+	cb.SetLabelColor(colors.Foreground)
+	cb.SetLabelColorActivated(colors.Background)
+	return cb
+}
+
 // setFocusStyle sets the border color based on focus state
 func setFocusStyle(p tview.Primitive, focused bool, borderColor, borderFocusColor tcell.Color) {
 	type borderStyler interface {
