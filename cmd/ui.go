@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os/exec"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +23,25 @@ type PanelOptions struct {
 	BorderColor *tcell.Color
 	Scrollable  *bool
 	Wrap        *bool
+}
+
+// copyToClipboard copies text to the system clipboard
+func copyToClipboard(text string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xclip", "-selection", "clipboard")
+	case "darwin":
+		cmd = exec.Command("pbcopy")
+	case "windows":
+		cmd = exec.Command("clip")
+	default:
+		return fmt.Errorf("unsupported platform")
+	}
+
+	cmd.Stdin = strings.NewReader(text)
+	return cmd.Run()
 }
 
 // createPanel creates a new text view panel with consistent styling and 16m color support
@@ -1285,7 +1306,7 @@ func setEnvVarsInUI(colors *ColorManager, variables map[string]string, saveCallb
 }
 
 // createResponseInfoBar creates the response information bar
-func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time) (*tview.Flex, *tview.TextView, int) {
+func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, copyCallback func()) (*tview.Flex, *tview.TextView, int) {
 	infoBar := tview.NewFlex().SetDirection(tview.FlexColumn)
 	infoBar.SetBackgroundColor(colors.Background)
 
@@ -1311,6 +1332,15 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 		statusBgColor = colors.Error
 	} else {
 		statusBgColor = colors.Background // For 1xx or unknown
+	}
+
+	// Copy button
+	if copyCallback != nil {
+		copyButton := tview.NewButton("📋")
+		copyButton.SetBackgroundColor(colors.Background)
+		copyButton.SetLabelColor(colors.Foreground)
+		copyButton.SetSelectedFunc(copyCallback)
+		infoBar.AddItem(copyButton, 3, 0, false)
 	}
 
 	// Status code and status
@@ -1422,7 +1452,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 }
 
 // createResponseTabs creates the response tabs interface
-func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, tabCallback func(int)) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, tview.Primitive, *tview.TextView, *tview.TextView, *tview.TextView) {
+func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, tabCallback func(int), copyCallback func()) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, tview.Primitive, *tview.TextView, *tview.TextView, *tview.TextView) {
 	// Create main response container
 	response := tview.NewFlex().SetDirection(tview.FlexRow)
 	response.SetBackgroundColor(colors.Background)
@@ -1448,7 +1478,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	})
 
 	// Create info bar
-	responseInfoBar, responseTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime)
+	responseInfoBar, responseTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime, copyCallback)
 
 	// Create top row with tab header and info bar
 	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -1497,7 +1527,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	response.AddItem(responsePages, 0, 1, true)
 
 	// Initialize response tabs with initial data
-	updateResponseTabs(resp, lastTime, response, responseTabHeader, &responseInfoBar, &responseTimeText, &lastTime, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, colors)
+	updateResponseTabs(resp, lastTime, response, responseTabHeader, &responseInfoBar, &responseTimeText, &lastTime, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, colors, nil)
 
 	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, responseTimeText
 }

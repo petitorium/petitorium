@@ -48,6 +48,7 @@ type UIOrchestrator struct {
 	Pages                 *tview.Pages
 	Grid                  *tview.Grid
 	KeyManager            *KeyBindingManager
+	LastResponse          *HTTPResponse
 	LastResponseTime      *time.Time
 
 	// State variables
@@ -85,6 +86,7 @@ type UIOrchestrator struct {
 	SyncBodyContent                func(content string)
 	SwitchBodyMode                 func()
 	UpdateFooter                   func()
+	CopyResponse                   func()
 	WorkspaceSelectorIndex         int
 	WorkspaceConfigButtonIndex     int
 	EnvironmentSelectorIndex       int
@@ -413,6 +415,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		SwitchBodyMode:                 switchBodyMode,
 		UpdateFooter:                   func() {}, // Will be set below
 		KeyManager:                     NewKeyBindingManager(),
+		LastResponse:                   nil,
 		LastResponseTime:               nil,
 		WorkspaceSelectorIndex:         workspaceSelectorIndex,
 		WorkspaceConfigButtonIndex:     workspaceConfigButtonIndex,
@@ -454,6 +457,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			uiOrchestrator.FooterLeft.SetText(" (Tab) Cycle Focus | (q) Quit")
 		}
 	}
+
+	// CopyResponse copies the current response body to clipboard
+	uiOrchestrator.CopyResponse = func() {
+		if uiOrchestrator.LastResponse != nil {
+			copyToClipboard(uiOrchestrator.LastResponse.Body)
+		}
+	}
+
 	uiOrchestrator.UpdateFooter = updateFooterFunc
 
 	// Set initial footer content

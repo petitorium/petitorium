@@ -59,6 +59,7 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		colors,
 		nil, nil, // No initial response or last request time
 		nil, // tabCallback will be set later
+		nil, // copyCallback will be set later
 	)
 
 	activeBoder := false
