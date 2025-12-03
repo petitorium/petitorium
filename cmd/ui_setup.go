@@ -13,7 +13,7 @@ type UIComponents struct {
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
 	URLInput              *URLVariableInput
-	SendButton            *tview.Button
+	SendButton            *CustomButton
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
 	Response              *tview.Flex

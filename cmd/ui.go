@@ -411,7 +411,7 @@ func createMethodURLBar(
 	title string,
 	colors *ColorManager,
 	app *tview.Application,
-) (*tview.Flex, *tview.DropDown, *URLVariableInput, *tview.Button) {
+) (*tview.Flex, *tview.DropDown, *URLVariableInput, *CustomButton) {
 	// Create the components without borders
 	methodDropdown := createDropDown(
 		"",
@@ -422,9 +422,7 @@ func createMethodURLBar(
 
 	urlInput := NewURLVariableInput(colors, app)
 
-	sendButton := createButton(" Send ", colors)
-	sendButton.SetBackgroundColor(colors.Border)
-	sendButton.SetLabelColor(colors.Background)
+	sendButton := createThemedButton(" Send ", colors)
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 
