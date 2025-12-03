@@ -90,6 +90,9 @@ func createEnvironmentListPanel(
 	list.SetBackgroundColor(backgroundColor)
 	list.SetBorderColor(borderColor)
 	list.SetTitleColor(titleColor)
+	list.SetMainTextColor(foregroundColor)
+	list.SetSelectedBackgroundColor(buttonSelectedColor)
+	list.SetSelectedTextColor(foregroundColor)
 	list.SetBorder(true).SetTitle(" Environments ")
 
 	// Add "Create New Environment" option at the top
@@ -179,6 +182,9 @@ func createWorkspaceListPanel(
 	list.SetBackgroundColor(backgroundColor)
 	list.SetBorderColor(borderColor)
 	list.SetTitleColor(titleColor)
+	list.SetMainTextColor(foregroundColor)
+	list.SetSelectedBackgroundColor(buttonSelectedColor)
+	list.SetSelectedTextColor(foregroundColor)
 	list.SetBorder(true).SetTitle(" Workspaces ")
 
 	// Add "Create New Workspace" option at the top

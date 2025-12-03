@@ -99,6 +99,9 @@ func (tm *ThemeManager) initializeThemes() {
 	tm.themes["vim"] = tm.extractThemeFromChroma("vim", "#1c1c1c")
 	tm.themes["gruvbox"] = tm.extractThemeFromChroma("gruvbox", "#282828")
 	tm.themes["catppuccin-mocha"] = tm.extractThemeFromChroma("catppuccin-mocha", "#1e1e2e")
+	tm.themes["evergarden"] = tm.extractThemeFromChroma("evergarden", "#1a1b26")
+	tm.themes["doom-one"] = tm.extractThemeFromChroma("doom-one", "#282c34")
+	tm.themes["rose-pine-moon"] = tm.extractThemeFromChroma("rose-pine-moon", "#1f1d2e")
 }
 
 // extractThemeFromChroma extracts colors from a Chroma syntax theme and creates a unified theme
