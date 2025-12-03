@@ -183,7 +183,7 @@ func showEnvironmentModal(
 	)
 
 	// Function to save environment variables
-	saveEnvironmentVariables := func() {
+	saveEnvironmentVariables := func() error {
 		// Determine which environment to save
 		var envToSave *workspace.Environment
 		if selectedEnvironment != nil {
@@ -206,35 +206,36 @@ func showEnvironmentModal(
 			}
 		}
 
-		if envToSave != nil {
-			jsonText := jsonEditor.GetText()
-			var newVars map[string]string
-			if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
-				// If JSON is invalid, keep the original variables
-			} else {
-				envToSave.Variables = newVars
-				ui.WorkspaceData.Environments = *ui.EnvironmentsData
-				if saveErr := workspace.SaveWorkspace(ui.WorkspaceData); saveErr != nil {
-					// Handle save error - could show a message but for now ignore
-				}
-			}
+		if envToSave == nil {
+			return fmt.Errorf("no environment selected to save")
 		}
+
+		jsonText := jsonEditor.GetText()
+		var newVars map[string]string
+		if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
+			return fmt.Errorf("invalid JSON: %v", err)
+		}
+
+		envToSave.Variables = newVars
+		ui.WorkspaceData.Environments = *ui.EnvironmentsData
+		if saveErr := workspace.SaveWorkspace(ui.WorkspaceData); saveErr != nil {
+			return fmt.Errorf("failed to save workspace: %v", saveErr)
+		}
+
+		return nil
 	}
 
-	// Create save button
-	saveButton := createButton("Save", ui.Colors)
-	saveButton.SetSelectedFunc(func() {
-		// Save environment variables
-		saveEnvironmentVariables()
-		// Keep modal open so user can continue editing
-	})
+	// Create error display
+	errorText := tview.NewTextView()
+	errorText.SetTextColor(ui.Colors.BorderFocus) // Red color for errors
+	errorText.SetBackgroundColor(ui.Colors.Background)
+	errorText.SetDynamicColors(true)
+	errorText.SetText("")
 
-	// Create button container
-	buttonContainer := tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false).
-		AddItem(saveButton, 10, 0, true).
-		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false)
+	// Create status bar with error display
+	statusBar := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(errorText, 1, 0, false)
 
 	// Create split layout: left 40%, right 60%, with button bar at bottom
 	content := tview.NewFlex().
@@ -242,8 +243,8 @@ func showEnvironmentModal(
 		AddItem(tview.NewFlex().
 			AddItem(leftPanel, 0, 4, false).  // 40% for left panel
 			AddItem(jsonEditor, 0, 6, false), // 60% for JSON editor
-							0, 9, false).
-		AddItem(buttonContainer, 1, 0, false) // Button bar at bottom
+						0, 9, false).
+		AddItem(statusBar, 1, 0, false) // Status bar at bottom
 
 	content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
@@ -282,10 +283,17 @@ func showEnvironmentModal(
 		}
 		// Handle modal closing with Escape
 		if event.Key() == tcell.KeyEscape {
-			// Save environment variables before closing
-			saveEnvironmentVariables()
+			// Clear any previous error message
+			errorText.SetText("")
 
-			// Close modal and return focus to config button
+			// Try to save environment variables
+			if err := saveEnvironmentVariables(); err != nil {
+				// Show error message and don't close modal
+				errorText.SetText(fmt.Sprintf("Error: %s", err.Error()))
+				return nil
+			}
+
+			// Save successful - close modal and return focus to config button
 			ui.Pages.RemovePage("envVariables")
 			ui.UpdateFooter()
 			ui.App.SetFocus(ui.EnvConfigButton)
@@ -312,12 +320,10 @@ func showWorkspaceModal(
 	workspaceInfo.SetBorder(true)
 
 	// Create left panel (workspace list)
-	var selectedWorkspace *workspace.WorkspaceMetadata
 	var leftPanel *tview.List
 
 	// Define callbacks
 	onWorkspaceSelected := func(ws *workspace.WorkspaceMetadata) {
-		selectedWorkspace = ws
 		if ws != nil {
 			// Load full workspace data to show information
 			fullWorkspace, err := workspace.LoadWorkspaceByName(ws.Name)
@@ -425,58 +431,13 @@ func showWorkspaceModal(
 		onDuplicate,
 	)
 
-	// Create switch workspace button
-	switchButton := createButton("Switch to Selected", ui.Colors)
-	switchButton.SetSelectedFunc(func() {
-		if selectedWorkspace != nil && selectedWorkspace.Name != manager.CurrentWorkspace {
-			// Switch to the selected workspace
-			if err := workspace.SwitchWorkspace(selectedWorkspace.Name); err != nil {
-				// Handle error - could show message
-				return
-			}
-
-			// Update UI
-			ui.WorkspaceSelector.SetCurrentOption(findWorkspaceIndex(manager.Workspaces, selectedWorkspace.Name))
-
-			// Reload workspace data
-			if newWorkspace, err := workspace.LoadWorkspace(); err == nil {
-				ui.WorkspaceData = newWorkspace
-				ui.EnvironmentsData = &newWorkspace.Environments
-				updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
-				refreshCollectionsTree(ui)
-			}
-
-			// Close modal
-			ui.Pages.RemovePage("workspaceModal")
-			ui.App.SetFocus(ui.WorkspaceConfigButton)
-			ui.UpdateFooter()
-		}
-	})
-
-	// Create close button
-	closeButton := createButton("Close", ui.Colors)
-	closeButton.SetSelectedFunc(func() {
-		ui.Pages.RemovePage("workspaceModal")
-		ui.App.SetFocus(ui.WorkspaceConfigButton)
-	})
-
-	// Create button container
-	buttonContainer := tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false).
-		AddItem(switchButton, 18, 0, true).
-		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false).
-		AddItem(closeButton, 8, 0, true).
-		AddItem(tview.NewBox().SetBackgroundColor(ui.Colors.Background), 0, 1, false)
-
-	// Create split layout: left 40%, right 60%, with button bar at bottom
+	// Create split layout: left 40%, right 60%
 	content := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(tview.NewFlex().
 			AddItem(leftPanel, 0, 4, false).     // 40% for left panel
 			AddItem(workspaceInfo, 0, 6, false), // 60% for workspace info
-							0, 9, false).
-		AddItem(buttonContainer, 1, 0, false) // Button bar at bottom
+			0, 1, false)
 
 	content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
