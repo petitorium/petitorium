@@ -1330,6 +1330,9 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 
 	var timeText *tview.TextView
 
+	// Copy button - always visible
+	copyButtonSize := 3
+
 	if resp == nil {
 		// No response yet
 		noResponseText := tview.NewTextView()
@@ -1337,7 +1340,13 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 		noResponseText.SetTextColor(colors.Foreground)
 		noResponseText.SetText("No response")
 		infoBar.AddItem(noResponseText, 0, 1, false)
-		return infoBar, nil, 12 // "No response" is 11 chars, plus some padding
+		return infoBar, nil, 14 // "No response" is 11 chars, plus copy button width 3, plus some padding
+	} else {
+		if copyCallback != nil {
+			copyButton := NewCustomButtonWithColors("📋", colors)
+			copyButton.SetSelectedFunc(copyCallback)
+			infoBar.AddItem(copyButton, copyButtonSize, 0, false)
+		}
 	}
 
 	// Determine status background color
@@ -1352,22 +1361,14 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 		statusBgColor = colors.Background // For 1xx or unknown
 	}
 
-	// Copy button
-	if copyCallback != nil {
-		copyButton := tview.NewButton("📋")
-		copyButton.SetBackgroundColor(colors.Background)
-		copyButton.SetLabelColor(colors.Foreground)
-		copyButton.SetSelectedFunc(copyCallback)
-		infoBar.AddItem(copyButton, 3, 0, false)
-	}
-
 	// Status code and status
+	statusTextSize := 5
 	statusText := tview.NewTextView()
 	statusText.SetBackgroundColor(statusBgColor)
 	statusText.SetTextColor(colors.Title)
 	statusText.SetText(fmt.Sprintf("%d", resp.StatusCode))
 	statusText.SetTextAlign(tview.AlignCenter)
-	infoBar.AddItem(statusText, 5, 0, false)
+	infoBar.AddItem(statusText, statusTextSize, 0, false)
 
 	// Size
 	minSizeWidth := 9
@@ -1417,7 +1418,11 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	}
 	infoBar.AddItem(timeText, timeWidth, 0, false)
 
-	totalWidth := 5 + sizeWidth + durationWidth + timeWidth // status 5, size dynamic, duration dynamic, time dynamic
+	totalWidth := statusTextSize + sizeWidth + durationWidth + timeWidth
+	if resp != nil && copyCallback != nil {
+		totalWidth = copyButtonSize + statusTextSize + sizeWidth + durationWidth + timeWidth
+	}
+
 	return infoBar, timeText, totalWidth
 }
 
