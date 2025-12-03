@@ -19,23 +19,24 @@ type UnifiedTheme struct {
 
 // ThemeColors contains all UI color definitions
 type ThemeColors struct {
-	Background       string
-	Foreground       string
-	Border           string
-	BorderFocus      string
-	Title            string
-	Selection        string
-	TreeSelection    string
-	ActiveTab        string
-	ButtonBackground string
-	ButtonSelected   string
-	DropdownFocused  string
-	Placeholder      string
-	Success          string
-	Error            string
-	Warning          string
-	MethodColors     MethodColors
-	StatusColors     StatusColors
+	Background          string
+	Foreground          string
+	Border              string
+	BorderFocus         string
+	Title               string
+	Selection           string
+	TreeSelection       string
+	ActiveTab           string
+	ButtonBackground    string
+	ButtonSelected      string
+	DropdownFocused     string
+	Placeholder         string
+	Success             string
+	Error               string
+	Warning             string
+	SelectedRequestIcon string
+	MethodColors        MethodColors
+	StatusColors        StatusColors
 }
 
 // MethodColors contains HTTP method-specific colors
@@ -165,21 +166,22 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 
 	// Create UI color scheme based on extracted colors
 	return ThemeColors{
-		Background:       background,
-		Foreground:       foreground,
-		Border:           tm.adjustBrightness(keywordColor, 0.7), // Slightly darker than keyword
-		BorderFocus:      keywordColor,
-		Title:            foreground,
-		Selection:        tm.adjustBrightness(background, 1.2), // Lighter than background
-		TreeSelection:    treeSelection,                        // Appropriate selection background
-		ActiveTab:        keywordColor,
-		ButtonBackground: tm.adjustBrightness(keywordColor, 0.7), // Similar to border color
-		ButtonSelected:   stringColor,
-		DropdownFocused:  tm.adjustBrightness(background, 1.3),
-		Placeholder:      commentColor,
-		Success:          stringColor, // Use string color for success
-		Error:            "#fb4f49",   // Standard error red
-		Warning:          numberColor, // Use number color for warning
+		Background:          background,
+		Foreground:          foreground,
+		Border:              tm.adjustBrightness(keywordColor, 0.7), // Slightly darker than keyword
+		BorderFocus:         keywordColor,
+		Title:               foreground,
+		Selection:           tm.adjustBrightness(background, 1.2), // Lighter than background
+		TreeSelection:       treeSelection,                        // Appropriate selection background
+		ActiveTab:           keywordColor,
+		ButtonBackground:    tm.adjustBrightness(keywordColor, 0.7), // Similar to border color
+		ButtonSelected:      stringColor,
+		DropdownFocused:     tm.adjustBrightness(background, 1.3),
+		Placeholder:         commentColor,
+		Success:             stringColor, // Use string color for success
+		Error:               "#fb4f49",   // Standard error red
+		Warning:             numberColor, // Use number color for warning
+		SelectedRequestIcon: stringColor, // tm.getSelectedRequestIconColor(style.Name, stringColor),
 		MethodColors: MethodColors{
 			GET:     stringColor,  // Green for GET
 			POST:    keywordColor, // Blue for POST
@@ -211,21 +213,22 @@ func (tm *ThemeManager) createDefaultTheme(themeName, background string) *Unifie
 		Name:        themeName,
 		SyntaxTheme: themeName,
 		UIColors: ThemeColors{
-			Background:       background,
-			Foreground:       "#e4e4e4",
-			Border:           "#95ceda",
-			BorderFocus:      "#ff9f77",
-			Title:            "#ebebeb",
-			Selection:        "#1b4248",
-			TreeSelection:    "#7aa2f7",
-			ActiveTab:        "#ff9f77",
-			ButtonBackground: "#95ceda",
-			ButtonSelected:   "#ffd700",
-			DropdownFocused:  "#636da6",
-			Placeholder:      "#4a5053",
-			Success:          "#28a745",
-			Error:            "#dc3545",
-			Warning:          "#fd7e14",
+			Background:          background,
+			Foreground:          "#e4e4e4",
+			Border:              "#95ceda",
+			BorderFocus:         "#ff9f77",
+			Title:               "#ebebeb",
+			Selection:           "#1b4248",
+			TreeSelection:       "#7aa2f7",
+			ActiveTab:           "#ff9f77",
+			ButtonBackground:    "#95ceda",
+			ButtonSelected:      "#ffd700",
+			DropdownFocused:     "#636da6",
+			Placeholder:         "#4a5053",
+			Success:             "#28a745",
+			Error:               "#dc3545",
+			Warning:             "#fd7e14",
+			SelectedRequestIcon: "#28a745", // tm.getSelectedRequestIconColor(themeName, "#28a745"),
 			MethodColors: MethodColors{
 				GET:     "#6ea5a0",
 				POST:    "#ff00ff",
@@ -331,6 +334,16 @@ func (tm *ThemeManager) adjustBrightness(hexColor string, factor float64) string
 	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
 
+// getSelectedRequestIconColor returns the appropriate color for the selected request icon based on theme
+// func (tm *ThemeManager) getSelectedRequestIconColor(themeName, defaultColor string) string {
+// 	switch themeName {
+// 	case "tokyonight-night":
+// 		return "#8DE328"
+// 	default:
+// 	return defaultColor // Use the string color as default
+// 	}
+// }
+
 // GetTheme returns a unified theme by name
 func (tm *ThemeManager) GetTheme(themeName string) (*UnifiedTheme, error) {
 	if theme, exists := tm.themes[themeName]; exists {
@@ -379,6 +392,7 @@ func (tm *ThemeManager) ApplyTheme(themeName string) error {
 	config.C.Theme.ButtonBackgroundColor = theme.UIColors.ButtonBackground
 	config.C.Theme.ButtonSelectedColor = theme.UIColors.ButtonSelected
 	config.C.Theme.DropdownFocusedBackground = theme.UIColors.DropdownFocused
+	config.C.UI.SelectedRequestIconColor = theme.UIColors.SelectedRequestIcon
 
 	// Update method colors
 	config.C.MethodColors.GET = theme.UIColors.MethodColors.GET
