@@ -26,6 +26,41 @@ func refreshCollectionsTree(ui *UIOrchestrator) {
 	}
 }
 
+// savePluginEnvironmentChanges saves plugin-modified environment variables back to the current environment
+func savePluginEnvironmentChanges(pluginEnv map[string]string, currentEnvIndex int, environmentsData *[]workspace.Environment) {
+	if pluginEnv == nil || len(pluginEnv) == 0 || environmentsData == nil {
+		return
+	}
+
+	// Find the current environment
+	var currentEnv *workspace.Environment
+	if currentEnvIndex == 0 {
+		// Base Environment
+		for i, env := range *environmentsData {
+			if env.Name == "Base" {
+				currentEnv = &(*environmentsData)[i]
+				break
+			}
+		}
+	} else if currentEnvIndex > 0 && currentEnvIndex <= len(*environmentsData) {
+		currentEnv = &(*environmentsData)[currentEnvIndex-1]
+	}
+
+	if currentEnv == nil {
+		return
+	}
+
+	// Initialize Variables map if nil
+	if currentEnv.Variables == nil {
+		currentEnv.Variables = make(map[string]string)
+	}
+
+	// Add or update variables in the current environment
+	for key, value := range pluginEnv {
+		currentEnv.Variables[key] = value
+	}
+}
+
 // SetupEventHandlers configures all event handlers for the UI
 func SetupEventHandlers(ui *UIOrchestrator) {
 	// Populate the collections tree initially
@@ -528,6 +563,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.PluginManager.ExecuteHooks(plugins.ResponseValidation, context)
 			ui.PluginManager.ExecuteHooks(plugins.ResponseTransform, context)
 			ui.PluginManager.ExecuteHooks(plugins.PreUIUpdate, context)
+		}
+
+		// Save any plugin-modified environment variables back to the current environment
+		if context.Environment != nil && len(context.Environment) > 0 {
+			savePluginEnvironmentChanges(context.Environment, currentEnvIndex, ui.EnvironmentsData)
 		}
 
 		// Store the response in the current request's history
