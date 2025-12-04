@@ -166,8 +166,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		} else {
 			ui.BodyViewPanel.Clear()
 			if content != "" {
-				// Format content with syntax highlighting
-				formattedContent := formatBodyContent(content)
+				// Format content with syntax highlighting and variable highlighting
+				formattedContent := FormatBodyContentWithVariables(content)
 
 				// Set content with proper handling
 				ui.BodyViewPanel.SetText(formattedContent)

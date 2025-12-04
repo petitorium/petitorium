@@ -376,8 +376,8 @@ func syncBodyContent(content string, bodyEditMode bool, bodyEditPanel *tview.Tex
 	} else {
 		bodyViewPanel.Clear()
 		if content != "" {
-			// Format content with syntax highlighting
-			formattedContent := formatBodyContent(content)
+			// Format content with syntax highlighting and variable highlighting
+			formattedContent := FormatBodyContentWithVariables(content)
 
 			// Set content with proper handling
 			bodyViewPanel.SetText(formattedContent)

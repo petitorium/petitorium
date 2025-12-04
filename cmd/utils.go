@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -138,6 +139,62 @@ func getIconDisplayWidth(icon string) int {
 
 	// Count all runes including spaces - spaces are part of the display
 	return len([]rune(icon))
+}
+
+// FormatBodyContentWithVariables formats body content with environment variable highlighting
+func FormatBodyContentWithVariables(content string) string {
+	if content == "" {
+		return ""
+	}
+
+	// First, highlight environment variables
+	content = highlightEnvironmentVariables(content)
+
+	// Then apply syntax highlighting
+	return formatBodyContent(content)
+}
+
+// highlightEnvironmentVariables highlights {{variable}} patterns with special background colors
+func highlightEnvironmentVariables(content string) string {
+	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
+
+	// Find all variable positions
+	matches := variableRegex.FindAllStringIndex(content, -1)
+	if len(matches) == 0 {
+		return content
+	}
+
+	// Build result with proper spacing
+	var result strings.Builder
+	lastEnd := 0
+
+	for i, match := range matches {
+		start, end := match[0], match[1]
+
+		// Add text before this variable
+		result.WriteString(content[lastEnd:start])
+
+		// Extract variable name (remove {{ and }})
+		varName := content[start+2 : end-2]
+
+		// Render variable with background color (same as URL component)
+		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
+			config.C.Theme.DropdownFocusedBackground,
+			config.C.Theme.BorderFocusColor,
+			varName))
+
+		// Add space only if next character is another variable (no text between)
+		if i < len(matches)-1 && end == matches[i+1][0] {
+			result.WriteString(" ")
+		}
+
+		lastEnd = end
+	}
+
+	// Add remaining text after last variable
+	result.WriteString(content[lastEnd:])
+
+	return result.String()
 }
 
 // formatBodyContent formats body content with syntax highlighting using Chroma
