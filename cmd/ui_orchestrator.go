@@ -483,16 +483,16 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		for {
 			select {
 			case <-ticker.C:
-				if uiOrchestrator.ResponseTimeText != nil {
-					app.QueueUpdateDraw(func() {
+				app.QueueUpdateDraw(func() {
+					if uiOrchestrator.ResponseTimeText != nil {
 						if uiOrchestrator.LastResponseTime != nil {
 							text := humanize.Time(*uiOrchestrator.LastResponseTime)
 							uiOrchestrator.ResponseTimeText.SetText(fmt.Sprintf(" %s", text))
 						} else {
 							uiOrchestrator.ResponseTimeText.SetText(" -")
 						}
-					})
-				}
+					}
+				})
 			}
 		}
 	}()
