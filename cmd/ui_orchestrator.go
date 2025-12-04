@@ -452,7 +452,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.EnviromentIndex:
 			uiOrchestrator.FooterLeft.SetText(" Environment: (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.CollectionsIndex:
-			uiOrchestrator.FooterLeft.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.URLBarIndex:
 			uiOrchestrator.FooterLeft.SetText(" Request: (Enter) Edit URL | (Tab) Next Panel | (q) Quit")
 		case uiOrchestrator.RequestIndex:
