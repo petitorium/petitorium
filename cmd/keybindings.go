@@ -212,18 +212,6 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Enter insert mode (edit body)",
 			Context:     "global",
 		},
-		{
-			Key:         tcell.KeyLeft,
-			Action:      navigateTabLeft,
-			Description: "Navigate to previous tab",
-			Context:     "global",
-		},
-		{
-			Key:         tcell.KeyRight,
-			Action:      navigateTabRight,
-			Description: "Navigate to next tab",
-			Context:     "global",
-		},
 	}
 
 	// Body view panel keybindings (vim-style navigation)
@@ -740,7 +728,7 @@ func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		}
 		// Check if focused on any header input fields
 		for _, row := range currentHeaderRows {
-			if row.KeyInput == currentFocusedElement || row.ValueInput == currentFocusedElement {
+			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
 				isOnInputField = true
 				break
 			}
@@ -767,7 +755,7 @@ func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 			isOnInputField = true
 		}
 		for _, row := range currentHeaderRows {
-			if row.KeyInput == currentFocusedElement || row.ValueInput == currentFocusedElement {
+			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
 				isOnInputField = true
 				break
 			}
@@ -793,7 +781,7 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 			isOnInputField = true
 		}
 		for _, row := range currentHeaderRows {
-			if row.KeyInput == currentFocusedElement || row.ValueInput == currentFocusedElement {
+			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
 				isOnInputField = true
 				break
 			}
@@ -819,7 +807,7 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 			isOnInputField = true
 		}
 		for _, row := range currentHeaderRows {
-			if row.KeyInput == currentFocusedElement || row.ValueInput == currentFocusedElement {
+			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
 				isOnInputField = true
 				break
 			}

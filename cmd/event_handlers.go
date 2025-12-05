@@ -26,6 +26,129 @@ func refreshCollectionsTree(ui *UIOrchestrator) {
 	}
 }
 
+// isFocusOnHeaderInputField checks if focus is on any header input field
+// including HeaderValueInput components in edit mode
+func isFocusOnHeaderInputField(currentFocusedElement tview.Primitive, headerRows []*HeaderRow) bool {
+	for _, row := range headerRows {
+		if currentFocusedElement == row.KeyInput {
+			return true
+		}
+		// Check if focused on HeaderValueInput or its children when in edit mode
+		if row.ValueInput != nil && row.ValueInput.HasFocus() && row.ValueInput.IsEditMode() {
+			return true
+		}
+		// Also check if focused directly on HeaderValueInput component
+		if hvi, ok := currentFocusedElement.(*HeaderValueInput); ok && currentFocusedElement == row.ValueInput {
+			if hvi.IsEditMode() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// handleTabSwitch handles tab switching for both number keys (1-4) and arrow keys
+// Returns true if the event was handled (tab was switched), false otherwise
+func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*HeaderRow) bool {
+	// Check if we should handle tab switching
+	// For number keys: check CurrentFocus (which tracks keyboard focus)
+	// For arrow keys: check MainCycle.current and also check !BodyEditMode for request tabs
+	isNumberKey := event.Rune() == '1' || event.Rune() == '2' || event.Rune() == '3' || event.Rune() == '4'
+	isArrowKey := event.Key() == tcell.KeyLeft || event.Key() == tcell.KeyRight
+
+	// Check if we're in request panel
+	isRequestPanel := ui.MainCycle.current == ui.RequestIndex
+	// Check if we're in response panel
+	isResponsePanel := ui.MainCycle.current == ui.ResponseIndex
+
+	if isNumberKey {
+		// Number keys work when request or response panel has focus
+		if ui.CurrentFocus != ui.RequestIndex && ui.CurrentFocus != ui.ResponseIndex {
+			return false
+		}
+	} else if isArrowKey {
+		// Arrow keys work when request panel is active AND we're not editing body
+		// OR when response panel is active
+		if !((isRequestPanel && !ui.BodyEditMode) || isResponsePanel) {
+			return false
+		}
+	} else {
+		// Not a tab switching key
+		return false
+	}
+
+	// Check if focus is on an input field (don't switch tabs if typing)
+	// Both number keys and arrow keys should respect this for header input fields
+	currentFocusedElement := ui.App.GetFocus()
+	if isFocusOnHeaderInputField(currentFocusedElement, headerRows) {
+		return false
+	}
+
+	// Determine which tab to switch to based on key
+	var targetTabIndex int = -1
+
+	switch {
+	case event.Rune() == '1':
+		targetTabIndex = 0
+	case event.Rune() == '2':
+		targetTabIndex = 1
+	case event.Rune() == '3':
+		targetTabIndex = 2
+	case event.Rune() == '4':
+		targetTabIndex = 3
+	case event.Key() == tcell.KeyLeft:
+		// Wrap around from left
+		if isRequestPanel {
+			targetTabIndex = (ui.CurrentTabIndex - 1 + 4) % 4
+		} else if isResponsePanel {
+			targetTabIndex = (ui.CurrentResponseTabIndex - 1 + 4) % 4
+		}
+	case event.Key() == tcell.KeyRight:
+		// Wrap around from right
+		if isRequestPanel {
+			targetTabIndex = (ui.CurrentTabIndex + 1) % 4
+		} else if isResponsePanel {
+			targetTabIndex = (ui.CurrentResponseTabIndex + 1) % 4
+		}
+	default:
+		return false
+	}
+
+	// Perform the tab switch
+	if isRequestPanel {
+		tabNames := []string{"body", "auth", "query", "headers"}
+		ui.TabPages.SwitchToPage(tabNames[targetTabIndex])
+		requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+		updateTabHeader(requestTabs, ui.TabHeader, targetTabIndex, ui.Colors)
+		ui.CurrentTabIndex = targetTabIndex
+
+		// Focus the appropriate tab content
+		switch targetTabIndex {
+		case 0: // Body tab
+			if ui.BodyEditMode {
+				ui.App.SetFocus(ui.BodyEditPanel)
+			} else {
+				ui.App.SetFocus(ui.BodyViewPanel)
+			}
+		case 3: // Headers tab
+			if len(headerRows) > 0 && headerRows[0].KeyInput != nil {
+				ui.App.SetFocus(headerRows[0].KeyInput)
+			} else {
+				ui.App.SetFocus(ui.RequestDataTabs)
+			}
+		default:
+			ui.App.SetFocus(ui.RequestDataTabs)
+		}
+	} else if isResponsePanel {
+		responseTabNames := []string{"preview", "headers", "cookies", "timeline"}
+		ui.ResponsePages.SwitchToPage(responseTabNames[targetTabIndex])
+		updateResponseTabHeader(ui.ResponseTabHeader, targetTabIndex, ui.Colors)
+		ui.CurrentResponseTabIndex = targetTabIndex
+	}
+
+	return true
+}
+
 // savePluginEnvironmentChanges saves plugin-modified environment variables back to the current environment
 func savePluginEnvironmentChanges(pluginEnv map[string]string, currentEnvIndex int, environmentsData *[]workspace.Environment) {
 	if pluginEnv == nil || len(pluginEnv) == 0 || environmentsData == nil {
@@ -655,6 +778,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return event
 		}
 
+		// Allow URLVariableInput to handle its own 'i' key events
+		if event.Rune() == 'i' && ui.App.GetFocus() == ui.URLInput {
+			return event
+		}
+
 		// Allow dropdown lists to handle their own input when dropdown is open
 		if isDropdownOpen(ui.EnvDropdown) || isDropdownOpen(ui.WorkspaceSelector) || isDropdownOpen(ui.MethodDropdown) {
 			return event
@@ -882,74 +1010,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Tab switching with number keys (1-4) when request data tabs are focused
-		if ui.CurrentFocus == ui.RequestIndex {
-			// Check if focus is on an input field (don't switch tabs if typing)
-			currentFocusedElement := ui.App.GetFocus()
-			isOnInputField := false
-
-			// Check if focused on any header input fields
-			for _, row := range currentHeaderRows {
-				if currentFocusedElement == row.KeyInput || currentFocusedElement == row.ValueInput {
-					isOnInputField = true
-					break
-				}
-			}
-
-			// Only switch tabs if not focused on an input field
-			if !isOnInputField {
-				switch event.Rune() {
-				case '1':
-					ui.TabPages.SwitchToPage("body")
-					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 0, ui.Colors)
-					ui.CurrentTabIndex = 0
-					return nil
-				case '2':
-					ui.TabPages.SwitchToPage("auth")
-					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 1, ui.Colors)
-					ui.CurrentTabIndex = 1
-					return nil
-				case '3':
-					ui.TabPages.SwitchToPage("query")
-					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 2, ui.Colors)
-					ui.CurrentTabIndex = 2
-					return nil
-				case '4':
-					ui.TabPages.SwitchToPage("headers")
-					requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-					updateTabHeader(requestTabs, ui.TabHeader, 3, ui.Colors)
-					ui.CurrentTabIndex = 3
-					return nil
-				}
-			}
-		}
-
-		// Tab switching with number keys (1-4) when response data tabs are focused
-		if ui.CurrentFocus == ui.ResponseIndex {
-			switch event.Rune() {
-			case '1':
-				ui.ResponsePages.SwitchToPage("preview")
-				updateResponseTabHeader(ui.ResponseTabHeader, 0, ui.Colors)
-				ui.CurrentResponseTabIndex = 0
-				return nil
-			case '2':
-				ui.ResponsePages.SwitchToPage("headers")
-				updateResponseTabHeader(ui.ResponseTabHeader, 1, ui.Colors)
-				ui.CurrentResponseTabIndex = 1
-				return nil
-			case '3':
-				ui.ResponsePages.SwitchToPage("cookies")
-				updateResponseTabHeader(ui.ResponseTabHeader, 2, ui.Colors)
-				ui.CurrentResponseTabIndex = 2
-				return nil
-			case '4':
-				ui.ResponsePages.SwitchToPage("timeline")
-				updateResponseTabHeader(ui.ResponseTabHeader, 3, ui.Colors)
-				ui.CurrentResponseTabIndex = 3
-				return nil
-			}
+		if handleTabSwitch(ui, event, currentHeaderRows) {
+			return nil
 		}
 
 		// Vim-style modal editing: 'i' to enter insert mode
@@ -976,56 +1038,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Arrow key navigation for tabs when request panel tabs are focused and not in body edit mode
-		if ui.MainCycle.current == ui.RequestIndex && !ui.BodyEditMode {
-			if event.Key() == tcell.KeyLeft {
-				ui.CurrentTabIndex = (ui.CurrentTabIndex - 1 + 4) % 4
-				tabNames := []string{"body", "auth", "query", "headers"}
-				ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
-				requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-				updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
-				// Focus the appropriate tab content
-				switch ui.CurrentTabIndex {
-				case 0: // Body tab
-					if ui.BodyEditMode {
-						ui.App.SetFocus(ui.BodyEditPanel)
-					} else {
-						ui.App.SetFocus(ui.BodyViewPanel)
-					}
-				case 3: // Headers tab
-					if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
-						ui.App.SetFocus(currentHeaderRows[0].KeyInput)
-					} else {
-						ui.App.SetFocus(ui.RequestDataTabs)
-					}
-				default:
-					ui.App.SetFocus(ui.RequestDataTabs)
-				}
-				return nil
-			} else if event.Key() == tcell.KeyRight {
-				ui.CurrentTabIndex = (ui.CurrentTabIndex + 1) % 4
-				tabNames := []string{"body", "auth", "query", "headers"}
-				ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
-				requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-				updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
-				// Focus the appropriate tab content
-				switch ui.CurrentTabIndex {
-				case 0: // Body tab
-					if ui.BodyEditMode {
-						ui.App.SetFocus(ui.BodyEditPanel)
-					} else {
-						ui.App.SetFocus(ui.BodyViewPanel)
-					}
-				case 3: // Headers tab
-					if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
-						ui.App.SetFocus(currentHeaderRows[0].KeyInput)
-					} else {
-						ui.App.SetFocus(ui.RequestDataTabs)
-					}
-				default:
-					ui.App.SetFocus(ui.RequestDataTabs)
-				}
-				return nil
-			}
+		if handleTabSwitch(ui, event, currentHeaderRows) {
+			return nil
 		}
 
 		return event
@@ -1177,8 +1191,8 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 				ui.App.SetFocus(row.ValueInput)
 				found = true
 				break
-			} else if row.ValueInput == currentFocusedElement {
-				// Currently on value input, move to delete button of same row
+			} else if row.ValueInput.HasFocus() {
+				// Currently on value input (HeaderValueInput), move to delete button of same row
 				ui.App.SetFocus(row.DeleteButton)
 				found = true
 				break
@@ -1389,8 +1403,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 				}
 				found = true
 				break
-			} else if row.ValueInput == currentFocusedElement {
-				// Currently on value input, move to key input of same row
+			} else if row.ValueInput.HasFocus() {
+				// Currently on value input (HeaderValueInput), move to key input of same row
 				ui.App.SetFocus(row.KeyInput)
 				found = true
 				break

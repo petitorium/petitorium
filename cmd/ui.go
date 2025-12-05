@@ -592,7 +592,7 @@ var rowHeight int = 1
 // HeaderRow represents a single header key-value pair in the UI
 type HeaderRow struct {
 	KeyInput     *tview.InputField
-	ValueInput   *tview.InputField
+	ValueInput   *HeaderValueInput
 	DeleteButton *tview.Button
 	Row          *tview.Flex
 }
@@ -720,21 +720,8 @@ func addHeaderRow(headersList *tview.Flex,
 		}
 	})
 
-	valueInput := tview.NewInputField()
-	valueInput.SetBackgroundColor(colors.Background)
-	valueInput.SetFieldBackgroundColor(colors.Background)
-	valueInput.SetFieldTextColor(colors.Foreground)
-	valueInput.SetLabelColor(colors.Foreground)
-	valueInput.SetPlaceholder("Header value")
-	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
-	valueInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
-	valueInput.SetFieldBackgroundColor(colors.Background)
+	valueInput := NewHeaderValueInput(colors) // app will be set later if needed
 	valueInput.SetChangedFunc(func(text string) {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-	valueInput.SetBlurFunc(func() {
 		if saveCallback != nil {
 			saveCallback()
 		}
@@ -852,22 +839,9 @@ func addHeaderRowWithData(headersList *tview.Flex,
 		}
 	})
 
-	valueInput := tview.NewInputField()
-	valueInput.SetBackgroundColor(colors.Background)
-	valueInput.SetFieldBackgroundColor(colors.Background)
-	valueInput.SetFieldTextColor(colors.Foreground)
-	valueInput.SetLabelColor(colors.Foreground)
-	valueInput.SetPlaceholder("Header value")
+	valueInput := NewHeaderValueInput(colors) // app will be set later if needed
 	valueInput.SetText(value)
-	valueInput.SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Background).Foreground(hexToColor("#4A5053")))
-	valueInput.SetFieldStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
-	valueInput.SetFieldBackgroundColor(colors.Background)
 	valueInput.SetChangedFunc(func(text string) {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-	valueInput.SetBlurFunc(func() {
 		if saveCallback != nil {
 			saveCallback()
 		}
@@ -1591,6 +1565,18 @@ type URLVariableInput struct {
 	app            *tview.Application
 }
 
+// HeaderValueInput is a dual-mode input component for header values with environment variables
+type HeaderValueInput struct {
+	*tview.Pages
+	viewMode      *tview.TextView
+	editMode      *tview.InputField
+	currentMode   string // "view" or "edit"
+	rawText       string // The actual {{variable}} text
+	onChanged     func(string)
+	colors        *ColorManager
+	variableRegex *regexp.Regexp
+}
+
 // NewURLVariableInput creates a new dual-mode URL input component
 func NewURLVariableInput(colors *ColorManager, app *tview.Application) *URLVariableInput {
 	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
@@ -1655,9 +1641,9 @@ func NewURLVariableInput(colors *ColorManager, app *tview.Application) *URLVaria
 		}
 	})
 
-	// Set up view mode click to enter edit mode
+	// Set up view mode 'i' key to enter edit mode (vim-style)
 	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter {
+		if event.Rune() == 'i' {
 			input.switchToEditMode()
 			return nil
 		}
@@ -1792,4 +1778,234 @@ func (u *URLVariableInput) SetChangedFunc(callback func(string)) {
 // SetDoneFunc sets the callback for when Enter is pressed
 func (u *URLVariableInput) SetDoneFunc(callback func()) {
 	u.onEnterPressed = callback
+}
+
+// NewHeaderValueInput creates a new dual-mode header value input component
+func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
+	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
+
+	// Create view mode component (TextView)
+	viewMode := tview.NewTextView().
+		SetDynamicColors(true).
+		SetWordWrap(false).
+		SetScrollable(false)
+
+	viewMode.SetBackgroundColor(colors.Background)
+	viewMode.SetTextColor(colors.Foreground)
+	viewMode.SetBorderPadding(0, 0, 0, 0)
+
+	// Create edit mode component (InputField)
+	editMode := tview.NewInputField()
+	editMode.SetBackgroundColor(colors.Background)
+	editMode.SetFieldBackgroundColor(colors.Background)
+	editMode.SetFieldTextColor(colors.Foreground)
+	editMode.SetBorder(false)
+
+	// Ensure edit mode is properly focusable
+	editMode.SetFocusFunc(func() {
+		editMode.SetFieldBackgroundColor(colors.Selection)
+	})
+
+	editMode.SetBlurFunc(func() {
+		editMode.SetFieldBackgroundColor(colors.Background)
+	})
+
+	// Create Pages container
+	pages := tview.NewPages()
+	pages.SetBackgroundColor(colors.Background)
+	pages.AddPage("view", viewMode, true, true)
+	pages.AddPage("edit", editMode, true, false)
+
+	input := &HeaderValueInput{
+		Pages:         pages,
+		viewMode:      viewMode,
+		editMode:      editMode,
+		currentMode:   "view",
+		rawText:       "",
+		colors:        colors,
+		variableRegex: variableRegex,
+	}
+
+	// Set up event handlers
+	editMode.SetChangedFunc(func(text string) {
+		input.rawText = text
+		if input.onChanged != nil {
+			input.onChanged(text)
+		}
+	})
+
+	editMode.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEsc {
+			input.switchToViewMode()
+		}
+		// Enter key does nothing special in header edit mode (unlike URL bar)
+	})
+
+	// Set up view mode 'i' key to enter edit mode (vim-style)
+	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 'i' {
+			input.switchToEditMode()
+			return nil
+		}
+		return event
+	})
+
+	// Make view mode focusable and handle focus properly
+	viewMode.SetFocusFunc(func() {
+		// When view mode gets focus, ensure it's properly highlighted
+		viewMode.SetBackgroundColor(colors.Selection)
+	})
+
+	viewMode.SetBlurFunc(func() {
+		// When view mode loses focus, reset background
+		viewMode.SetBackgroundColor(colors.Background)
+	})
+
+	return input
+}
+
+// switchToViewMode switches to view mode, showing rendered variables
+func (h *HeaderValueInput) switchToViewMode() {
+	h.currentMode = "view"
+	h.viewMode.SetBackgroundColor(h.colors.Background)
+	h.Pages.SwitchToPage("view")
+	h.updateViewMode()
+}
+
+// switchToEditMode switches to edit mode, showing raw text
+func (h *HeaderValueInput) switchToEditMode() {
+	h.currentMode = "edit"
+	h.editMode.SetBackgroundColor(h.colors.Background)
+	h.editMode.SetFieldBackgroundColor(h.colors.Background)
+	h.editMode.SetText(h.rawText)
+	h.Pages.SwitchToPage("edit")
+}
+
+// Focus delegates focus to the appropriate child component
+func (h *HeaderValueInput) Focus(delegate func(p tview.Primitive)) {
+	// Let the Pages container handle focus for the visible page
+	h.Pages.Focus(delegate)
+}
+
+// HasFocus returns whether the component or its children have focus
+func (h *HeaderValueInput) HasFocus() bool {
+	if h.currentMode == "edit" {
+		return h.editMode.HasFocus()
+	}
+	return h.viewMode.HasFocus()
+}
+
+// InputHandler handles input for the component
+func (h *HeaderValueInput) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+		// Handle 'i' key to switch to edit mode when in view mode
+		if event.Rune() == 'i' && h.currentMode == "view" {
+			h.switchToEditMode()
+			// Focus the edit field
+			setFocus(h.editMode)
+			return
+		}
+
+		// For Tab/Backtab events, let them bubble up to parent navigation
+		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
+			// Return to let parent handle it
+			return
+		}
+		// For other events, delegate to the Pages component
+		if h.Pages.InputHandler() != nil {
+			h.Pages.InputHandler()(event, setFocus)
+		}
+	}
+}
+
+// MouseHandler delegates to the Pages container
+func (h *HeaderValueInput) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+	return h.Pages.MouseHandler()
+}
+
+// updateViewMode renders the text with variables highlighted in view mode
+func (h *HeaderValueInput) updateViewMode() {
+	if h.rawText == "" {
+		h.viewMode.SetText("")
+		return
+	}
+
+	// Find all variable positions
+	matches := h.variableRegex.FindAllStringIndex(h.rawText, -1)
+	if len(matches) == 0 {
+		h.viewMode.SetText(h.rawText)
+		return
+	}
+
+	// Build result with proper spacing
+	var result strings.Builder
+	lastEnd := 0
+
+	for i, match := range matches {
+		start, end := match[0], match[1]
+
+		// Add text before this variable
+		result.WriteString(h.rawText[lastEnd:start])
+
+		// Extract variable name (remove {{ and }})
+		varName := h.rawText[start+2 : end-2]
+
+		// Render variable with background color (same as URL component)
+		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
+			config.C.Theme.DropdownFocusedBackground,
+			config.C.Theme.BorderFocusColor,
+			varName))
+
+		// Add space only if next character is another variable (no text between)
+		if i < len(matches)-1 && end == matches[i+1][0] {
+			result.WriteString(" ")
+		}
+
+		lastEnd = end
+	}
+
+	// Add remaining text after last variable
+	result.WriteString(h.rawText[lastEnd:])
+
+	h.viewMode.SetText(result.String())
+}
+
+// SetText sets the raw text and updates both modes
+func (h *HeaderValueInput) SetText(text string) {
+	h.rawText = text
+	if h.currentMode == "view" {
+		h.updateViewMode()
+	} else {
+		h.editMode.SetText(text)
+	}
+	if h.onChanged != nil {
+		h.onChanged(text)
+	}
+}
+
+// GetText returns the current raw text
+func (h *HeaderValueInput) GetText() string {
+	return h.rawText
+}
+
+// SetChangedFunc sets the callback for when text changes
+func (h *HeaderValueInput) SetChangedFunc(callback func(string)) {
+	h.onChanged = callback
+}
+
+// SetInputCapture sets input capture for the component
+func (h *HeaderValueInput) SetInputCapture(capture func(*tcell.EventKey) *tcell.EventKey) {
+	// Set input capture on both view and edit modes
+	h.viewMode.SetInputCapture(capture)
+	h.editMode.SetInputCapture(capture)
+}
+
+// IsEditMode returns true if the component is in edit mode
+func (h *HeaderValueInput) IsEditMode() bool {
+	return h.currentMode == "edit"
+}
+
+// HasFocusOrChildHasFocus returns true if this component or any of its children has focus
+func (h *HeaderValueInput) HasFocusOrChildHasFocus() bool {
+	return h.HasFocus()
 }

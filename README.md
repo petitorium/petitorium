@@ -23,8 +23,13 @@ A powerful TUI (Terminal User Interface) for API interaction and testing.
 ### Request Panel
 
 - `Tab` - Cycle through request elements (Method dropdown → URL input → Send button → Request tabs)
-- `i` - Enter insert mode for body editing (when in body tab and view mode)
+- `i` - Enter insert mode for body editing (when in body tab and view mode) or header value editing (when in headers tab)
 - `Enter` (on Send button) - Send HTTP request
+
+### Header Editing (Vim-style)
+
+- `i` - Enter edit mode for header values (when focused on a header value in view mode)
+- `Esc` - Exit edit mode and return to view mode (when editing header values)
 
 ### Body View Panel (Vim-style navigation)
 
