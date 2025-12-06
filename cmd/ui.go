@@ -719,9 +719,7 @@ func createHeadersTabWithData(colors *ColorManager,
 	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
 	buttonRow.SetBackgroundColor(colors.Background)
 
-	addButton := createButton(" Add Header ", colors)
-	addButton.SetBackgroundColorActivated(colors.Foreground)
-	addButton.SetLabelColor(colors.Background)
+	addButton := createThemedButton(" Add Header ", colors)
 	addButton.SetSelectedFunc(func() {
 		addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter)
 	})
