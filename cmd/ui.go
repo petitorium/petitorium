@@ -163,14 +163,18 @@ func createButton(text string, colors *ColorManager) *tview.Button {
 // CustomButton is a custom button primitive with full control over styling
 type CustomButton struct {
 	*tview.Box
-	text                string
-	textAlignment       string // "left", "center", "right"
-	onSelected          func()
-	backgroundColor     tcell.Color
-	activatedColor      tcell.Color
-	labelColor          tcell.Color
-	labelActivatedColor tcell.Color
-	isActivated         bool
+	text                    string
+	textAlignment           string // "left", "center", "right"
+	onSelected              func()
+	backgroundColor         tcell.Color
+	activatedColor          tcell.Color
+	disabledBackgroundColor tcell.Color
+	labelColor              tcell.Color
+	labelActivatedColor     tcell.Color
+	sendingLabelColor       tcell.Color
+	isActivated             bool
+	disabled                bool
+	sending                 bool
 }
 
 // NewCustomButton creates a new custom button
@@ -179,14 +183,18 @@ func NewCustomButton(text string) *CustomButton {
 	box.SetBorder(false)
 
 	cb := &CustomButton{
-		Box:                 box,
-		text:                text,
-		textAlignment:       "center",
-		backgroundColor:     tcell.ColorDefault,
-		activatedColor:      tcell.ColorDefault,
-		labelColor:          tcell.ColorDefault,
-		labelActivatedColor: tcell.ColorDefault,
-		isActivated:         false,
+		Box:                     box,
+		text:                    text,
+		textAlignment:           "center",
+		backgroundColor:         tcell.ColorDefault,
+		activatedColor:          tcell.ColorDefault,
+		disabledBackgroundColor: tcell.ColorGray, // Default to gray
+		labelColor:              tcell.ColorDefault,
+		labelActivatedColor:     tcell.ColorDefault,
+		sendingLabelColor:       tcell.ColorYellow, // Default to yellow
+		isActivated:             false,
+		disabled:                false,
+		sending:                 false,
 	}
 
 	// Set mouse capture for click handling
@@ -235,6 +243,18 @@ func (cb *CustomButton) SetLabelColorActivated(color tcell.Color) *CustomButton 
 	return cb
 }
 
+// SetSendingLabelColor sets the label color for sending state
+func (cb *CustomButton) SetSendingLabelColor(color tcell.Color) *CustomButton {
+	cb.sendingLabelColor = color
+	return cb
+}
+
+// SetDisabledBackgroundColor sets the background color for disabled/sending state
+func (cb *CustomButton) SetDisabledBackgroundColor(color tcell.Color) *CustomButton {
+	cb.disabledBackgroundColor = color
+	return cb
+}
+
 // SetSelectedFunc sets the function to call when the button is selected
 func (cb *CustomButton) SetSelectedFunc(handler func()) *CustomButton {
 	cb.onSelected = handler
@@ -253,9 +273,47 @@ func (cb *CustomButton) SetTextAlignment(alignment string) *CustomButton {
 	return cb
 }
 
+// SetDisabled sets the disabled state of the button
+func (cb *CustomButton) SetDisabled(disabled bool) *CustomButton {
+	cb.disabled = disabled
+	if !disabled {
+		cb.isActivated = false
+	}
+	cb.updateBackground()
+	return cb
+}
+
+// IsDisabled returns whether the button is disabled
+func (cb *CustomButton) IsDisabled() bool {
+	return cb.disabled
+}
+
+// SetSending sets the sending state of the button
+func (cb *CustomButton) SetSending(sending bool) *CustomButton {
+	cb.sending = sending
+	if sending {
+		cb.disabled = true
+		cb.isActivated = false
+	} else {
+		cb.disabled = false
+	}
+	cb.updateBackground()
+	return cb
+}
+
+// IsSending returns whether the button is in sending state
+func (cb *CustomButton) IsSending() bool {
+	return cb.sending
+}
+
 // updateBackground updates the background color based on activation state
 func (cb *CustomButton) updateBackground() {
-	if cb.isActivated && cb.activatedColor != tcell.ColorDefault {
+	if cb.sending {
+		// Use a different color for sending state - maybe a muted version of button select
+		cb.Box.SetBackgroundColor(cb.disabledBackgroundColor)
+	} else if cb.disabled {
+		cb.Box.SetBackgroundColor(cb.disabledBackgroundColor)
+	} else if cb.isActivated && cb.activatedColor != tcell.ColorDefault {
 		cb.Box.SetBackgroundColor(cb.activatedColor)
 	} else if cb.backgroundColor != tcell.ColorDefault {
 		cb.Box.SetBackgroundColor(cb.backgroundColor)
@@ -285,7 +343,11 @@ func (cb *CustomButton) Draw(screen tcell.Screen) {
 	textY := y + height/2
 
 	labelColor := cb.labelColor
-	if cb.isActivated && cb.labelActivatedColor != tcell.ColorDefault {
+	if cb.sending {
+		labelColor = cb.sendingLabelColor
+	} else if cb.disabled {
+		labelColor = tcell.ColorGray
+	} else if cb.isActivated && cb.labelActivatedColor != tcell.ColorDefault {
 		labelColor = cb.labelActivatedColor
 	}
 
@@ -300,7 +362,7 @@ func (cb *CustomButton) Draw(screen tcell.Screen) {
 // InputHandler implements the Primitive interface
 func (cb *CustomButton) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-		if event.Key() == tcell.KeyEnter && cb.onSelected != nil {
+		if event.Key() == tcell.KeyEnter && cb.onSelected != nil && !cb.disabled {
 			cb.isActivated = true
 			cb.updateBackground()
 			cb.onSelected()
@@ -324,7 +386,7 @@ func (cb *CustomButton) MouseHandler() func(action tview.MouseAction, event *tce
 
 			// Check if click is within button bounds
 			if x >= bx && x < bx+width && y >= by && y < by+height {
-				if cb.onSelected != nil {
+				if cb.onSelected != nil && !cb.disabled {
 					cb.isActivated = true
 					cb.updateBackground()
 					cb.onSelected()
@@ -368,8 +430,10 @@ func NewCustomButtonWithColors(text string, colors *ColorManager) *CustomButton 
 	cb := NewCustomButton(text)
 	cb.SetBackgroundColor(colors.ButtonBackground)
 	cb.SetBackgroundColorActivated(colors.ButtonSelect)
+	cb.SetDisabledBackgroundColor(colors.Selection)
 	cb.SetLabelColor(colors.Foreground)
 	cb.SetLabelColorActivated(colors.Background)
+	cb.SetSendingLabelColor(colors.BorderFocus)
 	return cb
 }
 
@@ -432,7 +496,7 @@ func createMethodURLBar(
 		AddItem(spacer, 1, 0, false).
 		AddItem(methodDropdown, 8, 0, false).
 		AddItem(urlInput, 0, 1, false).
-		AddItem(sendButton, 8, 0, false).
+		AddItem(sendButton, 10, 0, false).
 		AddItem(spacer, 1, 0, false)
 
 	container.SetBorder(true)

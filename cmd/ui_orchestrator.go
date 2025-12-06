@@ -59,6 +59,7 @@ type UIOrchestrator struct {
 	Navigating                     bool
 	ProgrammaticallyUpdatingMethod bool
 	ProgrammaticallyUpdatingURL    bool
+	RequestInProgress              bool
 	TabPages                       *tview.Pages
 	TabHeader                      *tview.Flex
 	CurrentTabIndex                int

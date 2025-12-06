@@ -592,6 +592,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 	// Add send button functionality
 	ui.SendButton.SetSelectedFunc(func() {
+		// Prevent multiple requests
+		if ui.RequestInProgress {
+			return
+		}
+
 		// Get current request data from UI
 		_, method := ui.MethodDropdown.GetCurrentOption()
 		url := ui.URLInput.GetText()
@@ -663,69 +668,82 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Also update the request data in context to reflect the final headers for logging
 		context.Request.Headers = headers
 
-		// Send the request
-		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil) // Show loading state
-		resp, err := SendRequest(method, url, body, headers)
-		if err != nil {
-			if ui.PluginManager != nil {
-				ui.PluginManager.ExecuteHooks(plugins.OnError, context)
-			}
-			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil) // Show error state
-			return
-		}
+		// Mark request as in progress and update UI
+		ui.RequestInProgress = true
+		ui.SendButton.SetText("Sending").SetSending(true)
 
-		context.Response = resp
+		// Send the request in a goroutine
+		go func() {
+			resp, err := SendRequest(method, url, body, headers)
 
-		// Ensure config is available for PostReceive hook
-		if context.Config == nil {
-			context.Config = config.C.Plugins.Config
-		}
+			// Use QueueUpdateDraw to handle the response on the main thread
+			ui.App.QueueUpdateDraw(func() {
+				defer func() {
+					// Reset UI state when done
+					ui.RequestInProgress = false
+					ui.SendButton.SetText(" Send ").SetSending(false)
+				}()
 
-		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PostReceive, context)
-			ui.PluginManager.ExecuteHooks(plugins.ResponseValidation, context)
-			ui.PluginManager.ExecuteHooks(plugins.ResponseTransform, context)
-			ui.PluginManager.ExecuteHooks(plugins.PreUIUpdate, context)
-		}
+				if err != nil {
+					if ui.PluginManager != nil {
+						ui.PluginManager.ExecuteHooks(plugins.OnError, context)
+					}
+					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+					return
+				}
 
-		// Save any plugin-modified environment variables back to the current environment
-		if context.Environment != nil && len(context.Environment) > 0 {
-			savePluginEnvironmentChanges(context.Environment, currentEnvIndex, ui.EnvironmentsData)
-		}
+				context.Response = resp
 
-		// Store the response in the current request's history
-		if ui.CurrentRequest != nil {
-			workspaceResp := workspace.HTTPResponse{
-				StatusCode: resp.StatusCode,
-				Status:     resp.Status,
-				Headers:    resp.Headers,
-				Body:       resp.Body,
-				Duration:   resp.Duration,
-				Timestamp:  resp.Timestamp,
-			}
-			(*ui.CurrentRequest).ResponseHistory = append((*ui.CurrentRequest).ResponseHistory, workspaceResp)
+				// Ensure config is available for PostReceive hook
+				if context.Config == nil {
+					context.Config = config.C.Plugins.Config
+				}
 
-			// Update the node's reference with the new response history
-			if ui.CurrentSelectedNode != nil {
-				ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-				saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
-			}
-		}
+				// Run plugin hooks that might modify data but not UI
+				if ui.PluginManager != nil {
+					ui.PluginManager.ExecuteHooks(plugins.PostReceive, context)
+					ui.PluginManager.ExecuteHooks(plugins.ResponseValidation, context)
+					ui.PluginManager.ExecuteHooks(plugins.ResponseTransform, context)
+				}
 
-		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PostSave, context)
-			ui.PluginManager.ExecuteHooks(plugins.PostRequest, context)
-		}
+				// Save any plugin-modified environment variables back to the current environment
+				if context.Environment != nil && len(context.Environment) > 0 {
+					savePluginEnvironmentChanges(context.Environment, currentEnvIndex, ui.EnvironmentsData)
+				}
 
-		// Update the response tabs with the new response
-		now := time.Now()
-		ui.LastResponse = resp
-		updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse)
+				// Store the response in the current request's history
+				if ui.CurrentRequest != nil {
+					workspaceResp := workspace.HTTPResponse{
+						StatusCode: resp.StatusCode,
+						Status:     resp.Status,
+						Headers:    resp.Headers,
+						Body:       resp.Body,
+						Duration:   resp.Duration,
+						Timestamp:  resp.Timestamp,
+					}
+					(*ui.CurrentRequest).ResponseHistory = append((*ui.CurrentRequest).ResponseHistory, workspaceResp)
 
-		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PostUIUpdate, context)
-			ui.PluginManager.ExecuteHooks(plugins.PreSave, context)
-		}
+					// Update the node's reference with the new response history
+					if ui.CurrentSelectedNode != nil {
+						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
+						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+					}
+				}
+
+				if ui.PluginManager != nil {
+					ui.PluginManager.ExecuteHooks(plugins.PostSave, context)
+					ui.PluginManager.ExecuteHooks(plugins.PostRequest, context)
+					ui.PluginManager.ExecuteHooks(plugins.PreUIUpdate, context)
+					ui.PluginManager.ExecuteHooks(plugins.PostUIUpdate, context)
+					ui.PluginManager.ExecuteHooks(plugins.PreSave, context)
+				}
+
+				// Update the response tabs with the new response
+				now := time.Now()
+				ui.LastResponse = resp
+				updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse)
+			})
+		}()
 	})
 
 	// Track popup/form state
