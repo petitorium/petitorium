@@ -725,9 +725,9 @@ func createHeadersTabWithData(colors *ColorManager,
 	})
 
 	// Delete all button
-	deleteAllButton := createButton(" Delete All ", colors)
-	deleteAllButton.SetBorder(false)
-	deleteAllButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	deleteAllButton := createThemedButton(" Delete All ", colors)
+	// deleteAllButton.SetBackgroundColor(colors.Error)
+	// deleteAllButton.SetBackgroundColorActivated(colors.Error)
 	deleteAllButton.SetSelectedFunc(func() {
 		// Clear all header rows
 		currentHeaderRows = []*HeaderRow{}
