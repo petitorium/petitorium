@@ -1382,3 +1382,43 @@ func createDuplicateRequestForm(
 	form.SetBorder(true).SetTitle(" Duplicate Request ")
 	return form
 }
+
+func createDeleteAllHeadersConfirm(
+	app *tview.Application,
+	pages *tview.Pages,
+	colors *ColorManager,
+	deleteCallback func(),
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("", "Are you sure you want to delete all headers?", 0, 1, false, false)
+
+	form.AddButton("Delete", func() {
+		deleteCallback()
+		pages.RemovePage("deleteAllHeaders")
+	})
+
+	cancelFunc := func() {
+		pages.RemovePage("deleteAllHeaders")
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	// Handle Esc key to cancel
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancelFunc()
+			return nil
+		}
+		return event
+	})
+
+	form.SetBorder(true).SetTitle(" Delete All Headers ")
+	return form
+}

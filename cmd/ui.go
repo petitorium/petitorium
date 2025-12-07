@@ -674,6 +674,8 @@ func createHeadersTabWithData(colors *ColorManager,
 	initialHeaders map[string]string,
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
+	app *tview.Application,
+	pages *tview.Pages,
 ) *tview.Flex {
 	headersContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	headersContainer.SetBackgroundColor(colors.Background)
@@ -729,12 +731,18 @@ func createHeadersTabWithData(colors *ColorManager,
 	// deleteAllButton.SetBackgroundColor(colors.Error)
 	// deleteAllButton.SetBackgroundColorActivated(colors.Error)
 	deleteAllButton.SetSelectedFunc(func() {
-		// Clear all header rows
-		currentHeaderRows = []*HeaderRow{}
-		refreshHeadersUI()
-		if saveCallback != nil {
-			saveCallback()
+		deleteCallback := func() {
+			// Clear all header rows
+			currentHeaderRows = []*HeaderRow{}
+			refreshHeadersUI()
+			if saveCallback != nil {
+				saveCallback()
+			}
 		}
+		form := createDeleteAllHeadersConfirm(app, pages, colors, deleteCallback)
+		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		pages.AddPage("deleteAllHeaders", modal, true, true)
+		app.SetFocus(form)
 	})
 
 	buttonRow.AddItem(addButton, 15, 0, false)
@@ -1463,7 +1471,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive)) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), app *tview.Application, pages *tview.Pages) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -1495,7 +1503,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	queryTab := createQueryTab(colors)
 
 	// Create headers tab
-	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter)
+	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages)
 
 	// Add pages
 	tabPages.AddPage("body", bodyContainer, true, true)

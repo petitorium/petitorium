@@ -816,16 +816,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return result
 		}
 
-		if event.Key() == tcell.KeyTab {
-			// Handle tab navigation logic here
-			return handleTabNavigation(ui, event)
-		}
-
-		if event.Key() == tcell.KeyBacktab {
-			// Handle backtab navigation logic here
-			return handleBacktabNavigation(ui, event)
-		}
-
 		// Check if we're focused on a form input field
 		focus := ui.App.GetFocus()
 
@@ -839,12 +829,27 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Also check if we're in a form by looking at the current page
 		currentPage, _ := ui.Pages.GetFrontPage()
-		if currentPage == "newCollection" || currentPage == "newRequest" || currentPage == "workspaceMenu" || currentPage == "envVariables" {
+		if currentPage == "newCollection" || currentPage == "newRequest" || currentPage == "workspaceMenu" || currentPage == "envVariables" || currentPage == "deleteAllHeaders" {
 			// We're in a popup form, check if focus is on the form itself
 			if event.Rune() == 'n' || event.Rune() == 'r' {
 				// Let the form handle these keys
 				return event
 			}
+		}
+
+		// If we're in any modal, don't handle tab navigation
+		if currentPage != "main" {
+			return event
+		}
+
+		if event.Key() == tcell.KeyTab {
+			// Handle tab navigation logic here
+			return handleTabNavigation(ui, event)
+		}
+
+		if event.Key() == tcell.KeyBacktab {
+			// Handle backtab navigation logic here
+			return handleBacktabNavigation(ui, event)
 		}
 
 		// Collection shortcuts (only when not in input fields and no form popup is active)

@@ -613,6 +613,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"renameRequest",
 		"deleteCollection",
 		"deleteRequest",
+		"deleteAllHeaders",
 	}
 
 	for _, popup := range formPopups {

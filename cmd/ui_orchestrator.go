@@ -235,27 +235,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	var requestDataTabs *tview.Flex
 	var bodyContainer *tview.Flex
 
-	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _ =
-		createRequestDataTabs(bodyViewPanel,
-			bodyEditPanel,
-			colors,
-			func() { saveCurrentRequest(currentRequest, workspaceData) },
-			func(p tview.Primitive) { app.SetFocus(p) },
-			func(tabIndex int) {
-				currentTabIndex = tabIndex
-				updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
-			},
-			nil, // panelFocusSetter will be set later
-		)
-
-	// Initialize tab header visual state
-	updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
-
-	// Create unified Request panel containing method+URL+send and tabs
-	requestPanel := setupRequestPanel(methodURLBar, requestDataTabs, colors)
-	rightSide := setupRightSide(requestPanel, responsePanel)
-
 	requestCycle = &RequestCycle{
 		elements: []tview.Primitive{methodDropdown, urlInput, sendButton},
 		current:  0,
@@ -267,14 +246,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	leftSide.AddItem(workspacePanel, 3, 1, false)
 	leftSide.AddItem(environmentPanel, 3, 1, false)
 	leftSide.AddItem(collectionsTreeView, 0, 1, false)
-
-	// Create main panels
-	mainPanels := []tview.Primitive{workspacePanel, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
-
-	mainCycle = &MainCycle{
-		panels:  mainPanels,
-		current: 2,
-	}
 
 	headersCycle = &HeadersCycle{
 		inputs:   []tview.Primitive{},
@@ -312,24 +283,10 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	grid.SetRows(0, 3)
 	grid.AddItem(leftSide, 0, 0, 1, 1, 0, 0, false)
-	grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
 	grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	// Initial focus is on requestPanel (panels[1])
 	currentFocus := collectionsIndex
-
-	// Custom focus handler that knows about special containers
-	setPanelFocus := func(panelIndex int, focused bool) {
-		setFocusStyle(mainPanels[panelIndex], focused, colors.Border, colors.BorderFocus)
-	}
-
-	setActiveBorder := func(element tview.Primitive) {
-		setFocusStyle(element, true, colors.Border, colors.BorderFocus)
-	}
-
-	setInactiveBorder := func(element tview.Primitive) {
-		setFocusStyle(element, false, colors.Border, colors.BorderFocus)
-	}
 
 	// Helper function to sync body content between view and edit panels
 	syncBodyContent := func(content string) {
@@ -345,11 +302,48 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	pages := tview.NewPages()
 	pages.AddPage("main", grid, true, true)
 
-	// Set up tree view expansion handling
-	SetupTreeViewExpansionHandling(workspaceData, rootNode)
+	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _ =
+		createRequestDataTabs(bodyViewPanel,
+			bodyEditPanel,
+			colors,
+			func() { saveCurrentRequest(currentRequest, workspaceData) },
+			func(p tview.Primitive) { app.SetFocus(p) },
+			func(tabIndex int) {
+				currentTabIndex = tabIndex
+				updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
+			},
+			nil, // panelFocusSetter will be set later
+			app,
+			pages,
+		)
 
-	// Set initial focus
-	setPanelFocus(currentFocus, true)
+	// Create main panels
+	mainPanels := []tview.Primitive{workspacePanel, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
+
+	mainCycle = &MainCycle{
+		panels:  mainPanels,
+		current: 2,
+	}
+
+	// Custom focus handler that knows about special containers
+	setPanelFocus := func(panelIndex int, focused bool) {
+		setFocusStyle(mainPanels[panelIndex], focused, colors.Border, colors.BorderFocus)
+	}
+
+	setActiveBorder := func(element tview.Primitive) {
+		setFocusStyle(element, true, colors.Border, colors.BorderFocus)
+	}
+
+	setInactiveBorder := func(element tview.Primitive) {
+		setFocusStyle(element, false, colors.Border, colors.BorderFocus)
+	}
+
+	// Create unified Request panel containing method+URL+send and tabs
+	requestPanel := setupRequestPanel(methodURLBar, requestDataTabs, colors)
+	rightSide := setupRightSide(requestPanel, responsePanel)
+
+	grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
 
 	uiOrchestrator := &UIOrchestrator{
 		App:                            app,
@@ -436,6 +430,12 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RPQueryTabIndex:                RPQueryTabIndex,
 		RPHeadersTabIndex:              RPHeadersTabIndex,
 	}
+
+	// Set up tree view expansion handling
+	SetupTreeViewExpansionHandling(workspaceData, rootNode)
+
+	// Set initial focus
+	setPanelFocus(currentFocus, true)
 
 	// Set initial footer right text
 	uiOrchestrator.FooterRight.
