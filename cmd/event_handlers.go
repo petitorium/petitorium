@@ -146,6 +146,9 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 		ui.CurrentResponseTabIndex = targetTabIndex
 	}
 
+	// Update footer after tab switch
+	ui.UpdateFooter()
+
 	return true
 }
 
@@ -254,7 +257,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.ProgrammaticallyUpdatingURL = false
 
 		ui.SyncBodyContent("")
-		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
+		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
 		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
 	}
@@ -333,6 +336,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 			ui.SyncBodyContent(ui.CurrentBodyContent)
 		}
+		ui.UpdateFooter()
 	}
 
 	// Update the original switchBodyMode with proper focus handling
@@ -359,6 +363,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 			ui.SyncBodyContent(ui.CurrentBodyContent)
 		}
+		ui.UpdateFooter()
 	}
 
 	// Set up input capture for bodyEditPanel
@@ -470,7 +475,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.ProgrammaticallyUpdatingURL = false
 
 			ui.SyncBodyContent(req.Body)
-			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) })
+			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
 			// Set current request for persistence
 			ui.CurrentSelectedNode = node

@@ -741,6 +741,7 @@ func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
 			updateTabHeader(requestTabs, ui.TabHeader, 0, ui.Colors)
 			ui.CurrentTabIndex = 0
+			ui.UpdateFooter()
 			return nil
 		}
 	}
@@ -767,6 +768,7 @@ func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
 			updateTabHeader(requestTabs, ui.TabHeader, 1, ui.Colors)
 			ui.CurrentTabIndex = 1
+			ui.UpdateFooter()
 			return nil
 		}
 	}
@@ -793,6 +795,7 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
 			updateTabHeader(requestTabs, ui.TabHeader, 2, ui.Colors)
 			ui.CurrentTabIndex = 2
+			ui.UpdateFooter()
 			return nil
 		}
 	}
@@ -819,6 +822,7 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
 			updateTabHeader(requestTabs, ui.TabHeader, 3, ui.Colors)
 			ui.CurrentTabIndex = 3
+			ui.UpdateFooter()
 			return nil
 		}
 	}
@@ -858,6 +862,7 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		default:
 			ui.App.SetFocus(ui.RequestDataTabs)
 		}
+		ui.UpdateFooter()
 		return nil
 	} else if ui.MainCycle.current == ui.ResponseIndex {
 		// Navigate response tabs
@@ -894,6 +899,7 @@ func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		default:
 			ui.App.SetFocus(ui.RequestDataTabs)
 		}
+		ui.UpdateFooter()
 		return nil
 	} else if ui.MainCycle.current == ui.ResponseIndex {
 		// Navigate response tabs

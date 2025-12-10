@@ -655,10 +655,11 @@ var rowHeight int = 1
 
 // HeaderRow represents a single header key-value pair in the UI
 type HeaderRow struct {
-	KeyInput     *HeaderKeyInput
-	ValueInput   *HeaderValueInput
-	DeleteButton *tview.Button
-	Row          *tview.Flex
+	KeyInput      *HeaderKeyInput
+	ValueInput    *HeaderValueInput
+	DeleteButton  *tview.Button
+	Row           *tview.Flex
+	FooterUpdater func()
 }
 
 // EnvVarRow represents a single environment variable key-value pair in the UI
@@ -676,6 +677,7 @@ func createHeadersTabWithData(colors *ColorManager,
 	focusSetter func(tview.Primitive),
 	app *tview.Application,
 	pages *tview.Pages,
+	footerUpdater func(),
 ) *tview.Flex {
 	headersContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	headersContainer.SetBackgroundColor(colors.Background)
@@ -704,18 +706,18 @@ func createHeadersTabWithData(colors *ColorManager,
 		}
 		// Always keep at least one empty row
 		if len(currentHeaderRows) == 0 {
-			addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter)
+			addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
 		}
 	}
 
 	// Add initial rows based on data
 	if initialHeaders != nil && len(initialHeaders) > 0 {
 		for key, value := range initialHeaders {
-			addHeaderRowWithData(headersList, colors, key, value, refreshHeadersUI, saveCallback, focusSetter)
+			addHeaderRowWithData(headersList, colors, key, value, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
 		}
 	}
 	// Always add at least one empty row
-	addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter)
+	addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
 
 	// Add button row at the top
 	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -723,7 +725,7 @@ func createHeadersTabWithData(colors *ColorManager,
 
 	addButton := createThemedButton(" Add Header ", colors)
 	addButton.SetSelectedFunc(func() {
-		addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter)
+		addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
 	})
 
 	// Delete all button
@@ -766,6 +768,7 @@ func addHeaderRow(headersList *tview.Flex,
 	refreshUI func(),
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
+	footerUpdater func(),
 ) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
@@ -776,6 +779,7 @@ func addHeaderRow(headersList *tview.Flex,
 			saveCallback()
 		}
 	})
+	keyInput.onModeChange = footerUpdater
 
 	valueInput := NewHeaderValueInput(colors) // app will be set later if needed
 	valueInput.SetChangedFunc(func(text string) {
@@ -783,6 +787,7 @@ func addHeaderRow(headersList *tview.Flex,
 			saveCallback()
 		}
 	})
+	valueInput.onModeChange = footerUpdater
 
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
 	removeButton.SetBackgroundColor(colors.Background)
@@ -867,10 +872,12 @@ func addHeaderRow(headersList *tview.Flex,
 // addHeaderRowWithData adds a header row with pre-filled data
 func addHeaderRowWithData(headersList *tview.Flex,
 	colors *ColorManager,
-	key, value string,
+	key string,
+	value string,
 	refreshUI func(),
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
+	footerUpdater func(),
 ) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
@@ -882,6 +889,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 			saveCallback()
 		}
 	})
+	keyInput.onModeChange = footerUpdater
 
 	valueInput := NewHeaderValueInput(colors) // app will be set later if needed
 	valueInput.SetText(value)
@@ -890,6 +898,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 			saveCallback()
 		}
 	})
+	valueInput.onModeChange = footerUpdater
 
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
 	removeButton.SetBackgroundColor(colors.Background)
@@ -1251,7 +1260,7 @@ func addEnvVarRow(variablesList *tview.Flex,
 }
 
 // setHeadersInUI populates the UI with the given headers
-func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
+func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
 	// Clear existing rows
 	currentHeaderRows = []*HeaderRow{}
 
@@ -1269,14 +1278,14 @@ func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallbac
 			value := headers[key]
 			addHeaderRowWithData(currentHeadersList, colors, key, value, func() {
 				// Refresh function - for now just rebuild the list
-				setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter)
-			}, saveCallback, focusSetter)
+				setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter, footerUpdater)
+			}, saveCallback, focusSetter, footerUpdater)
 		}
 
 		// Always add one empty row
 		addHeaderRow(currentHeadersList, colors, func() {
-			setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter)
-		}, saveCallback, focusSetter)
+			setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter, footerUpdater)
+		}, saveCallback, focusSetter, footerUpdater)
 	}
 }
 
@@ -1445,7 +1454,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), app *tview.Application, pages *tview.Pages) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -1458,6 +1467,9 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	tabHeader := createTabHeader([]string{"Body", "Auth", "Query", "Headers"}, colors, func(index int) {
 		if tabIndexSetter != nil {
 			tabIndexSetter(index)
+		}
+		if footerUpdater != nil {
+			footerUpdater()
 		}
 	})
 
@@ -1477,7 +1489,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	queryTab := createQueryTab(colors)
 
 	// Create headers tab
-	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages)
+	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages, footerUpdater)
 
 	// Add pages
 	tabPages.AddPage("body", bodyContainer, true, true)
@@ -1617,6 +1629,7 @@ type HeaderValueInput struct {
 	currentMode   string // "view" or "edit"
 	rawText       string // The actual {{variable}} text
 	onChanged     func(string)
+	onModeChange  func()
 	colors        *ColorManager
 	variableRegex *regexp.Regexp
 }
@@ -1914,6 +1927,9 @@ func (h *HeaderValueInput) switchToViewMode() {
 	h.viewMode.SetBackgroundColor(h.colors.Background)
 	h.Pages.SwitchToPage("view")
 	h.updateViewMode()
+	if h.onModeChange != nil {
+		h.onModeChange()
+	}
 }
 
 // switchToEditMode switches to edit mode, showing raw text
@@ -1923,6 +1939,9 @@ func (h *HeaderValueInput) switchToEditMode() {
 	h.editMode.SetFieldBackgroundColor(h.colors.Background)
 	h.editMode.SetText(h.rawText)
 	h.Pages.SwitchToPage("edit")
+	if h.onModeChange != nil {
+		h.onModeChange()
+	}
 }
 
 // Focus delegates focus to the appropriate child component
@@ -2057,12 +2076,13 @@ func (h *HeaderValueInput) HasFocusOrChildHasFocus() bool {
 // HeaderKeyInput is a dual-mode input component for header keys (similar to HeaderValueInput but without variable highlighting)
 type HeaderKeyInput struct {
 	*tview.Pages
-	viewMode    *tview.TextView
-	editMode    *tview.InputField
-	currentMode string // "view" or "edit"
-	rawText     string // The actual text
-	onChanged   func(string)
-	colors      *ColorManager
+	viewMode     *tview.TextView
+	editMode     *tview.InputField
+	currentMode  string // "view" or "edit"
+	rawText      string // The actual text
+	onChanged    func(string)
+	onModeChange func()
+	colors       *ColorManager
 }
 
 // NewHeaderKeyInput creates a new dual-mode header key input component
@@ -2152,6 +2172,9 @@ func (h *HeaderKeyInput) switchToViewMode() {
 	h.viewMode.SetBackgroundColor(h.colors.Background)
 	h.Pages.SwitchToPage("view")
 	h.updateViewMode()
+	if h.onModeChange != nil {
+		h.onModeChange()
+	}
 }
 
 // switchToEditMode switches to edit mode, showing raw text
@@ -2161,6 +2184,9 @@ func (h *HeaderKeyInput) switchToEditMode() {
 	h.editMode.SetFieldBackgroundColor(h.colors.Background)
 	h.editMode.SetText(h.rawText)
 	h.Pages.SwitchToPage("edit")
+	if h.onModeChange != nil {
+		h.onModeChange()
+	}
 }
 
 // Focus delegates focus to the appropriate child component

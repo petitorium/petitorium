@@ -303,17 +303,20 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	pages.AddPage("main", grid, true, true)
 
 	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
+	tabIndexSetter := func(tabIndex int) {
+		currentTabIndex = tabIndex
+		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
+	}
+
 	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _ =
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
 			func() { saveCurrentRequest(currentRequest, workspaceData) },
 			func(p tview.Primitive) { app.SetFocus(p) },
-			func(tabIndex int) {
-				currentTabIndex = tabIndex
-				updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
-			},
-			nil, // panelFocusSetter will be set later
+			tabIndexSetter,
+			nil,       // panelFocusSetter will be set later
+			func() {}, // footerUpdater - will be replaced later
 			app,
 			pages,
 		)
@@ -431,6 +434,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RPHeadersTabIndex:              RPHeadersTabIndex,
 	}
 
+	// Update tabIndexSetter to also update UIOrchestrator's CurrentTabIndex
+	tabIndexSetter = func(tabIndex int) {
+		currentTabIndex = tabIndex
+		uiOrchestrator.CurrentTabIndex = tabIndex
+		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
+		uiOrchestrator.UpdateFooter()
+	}
+
 	// Set up tree view expansion handling
 	SetupTreeViewExpansionHandling(workspaceData, rootNode)
 
@@ -446,20 +457,49 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	updateFooterFunc := func() {
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
 		if currentPage == "envVariables" {
-			uiOrchestrator.FooterLeft.SetText(" Environment Config: (j/k) Navigate | (Enter) Select | (n) New Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close")
+			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 			return
 		}
 		switch uiOrchestrator.MainCycle.current {
 		case uiOrchestrator.EnviromentIndex:
-			uiOrchestrator.FooterLeft.SetText(" Environment: (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" (Tab) Next Panel | (q) Quit") // Environment
 		case uiOrchestrator.CollectionsIndex:
-			uiOrchestrator.FooterLeft.SetText(" Collections: (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
 		case uiOrchestrator.URLBarIndex:
-			uiOrchestrator.FooterLeft.SetText(" Request: (i) Edit URL | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" (i) Edit URL | (Tab) Next Panel | (q) Quit") // Request
 		case uiOrchestrator.RequestIndex:
-			uiOrchestrator.FooterLeft.SetText(" Request: (1-4/←/→) Switch Tabs | (i) Edit Body | (F4) External Editor | (Tab) Next Panel | (q) Quit")
+			switch uiOrchestrator.CurrentTabIndex {
+			case uiOrchestrator.RPBodyTabIndex:
+				if uiOrchestrator.BodyEditMode {
+					uiOrchestrator.FooterLeft.SetText(" (Esc) Exit Edit | (F4) External Editor | (Tab) Next Panel | (q) Quit") // Request Body (Edit)
+				} else {
+					uiOrchestrator.FooterLeft.SetText(" (i) Edit | (F4) External Editor | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Body
+				}
+			case uiOrchestrator.RPAuthTabIndex:
+				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Auth
+			case uiOrchestrator.RPQueryTabIndex:
+				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Query
+			case uiOrchestrator.RPHeadersTabIndex:
+				// Check if any header is in edit mode
+				headerInEditMode := false
+				for _, row := range currentHeaderRows {
+					if (row.KeyInput != nil && row.KeyInput.IsEditMode()) ||
+						(row.ValueInput != nil && row.ValueInput.IsEditMode()) {
+						headerInEditMode = true
+						break
+					}
+				}
+
+				if headerInEditMode {
+					uiOrchestrator.FooterLeft.SetText(" (Esc) Exit Edit | (Tab) Next Panel | (q) Quit") //  Request Headers (Edit)
+				} else {
+					uiOrchestrator.FooterLeft.SetText(" (i) Edit Key/Value | (n) New Header | (d) Delete Header | (D) Delete All | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") //  Request Headers
+				}
+			default:
+				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request
+			}
 		case uiOrchestrator.ResponseIndex:
-			uiOrchestrator.FooterLeft.SetText(" Response: (1-4/←/→) Switch tabs | (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch tabs | (j/k) Scroll up/down | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit") // Response
 		default:
 			uiOrchestrator.FooterLeft.SetText(" (Tab) Cycle Focus | (q) Quit")
 		}
