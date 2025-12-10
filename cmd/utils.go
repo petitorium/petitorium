@@ -602,17 +602,21 @@ func substituteVariablesInHeaders(headers map[string]string, variables map[strin
 	return result
 }
 
-// IsFocusOnHeaderInputField checks if focus is on a header input field (including HeaderValueInput in edit mode)
+// IsFocusOnHeaderInputField checks if focus is on a header input field (including HeaderValueInput and HeaderKeyInput in edit mode)
 func IsFocusOnHeaderInputField(currentFocusedElement tview.Primitive, headerRows []interface{}) bool {
 	for _, row := range headerRows {
 		if headerRow, ok := row.(struct {
-			KeyInput     *tview.InputField
+			KeyInput     *HeaderKeyInput
 			ValueInput   interface{}
 			DeleteButton *tview.Button
 			Row          *tview.Flex
 		}); ok {
+			// Check if focused on HeaderKeyInput or its inner components
 			if currentFocusedElement == headerRow.KeyInput {
-				return true
+				if headerRow.KeyInput.IsEditMode() {
+					return true
+				}
+				continue
 			}
 			// Check if focused on HeaderValueInput or its inner edit field
 			if hvi, ok := headerRow.ValueInput.(*HeaderValueInput); ok {

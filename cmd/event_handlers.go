@@ -1209,7 +1209,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		// Find current focused header input
 		found := false
 		for i, row := range currentHeaderRows {
-			if row.KeyInput == currentFocusedElement {
+			if row.KeyInput.HasFocus() {
 				// Currently on key input, move to value input of same row
 				ui.App.SetFocus(row.ValueInput)
 				found = true
@@ -1409,7 +1409,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		// Find current focused header input
 		found := false
 		for i, row := range currentHeaderRows {
-			if row.KeyInput == currentFocusedElement {
+			if row.KeyInput.HasFocus() {
 				// Currently on key input, move to previous row's delete button or previous panel
 				if i > 0 {
 					// Move to previous row's delete button
@@ -1427,7 +1427,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 				found = true
 				break
 			} else if row.ValueInput.HasFocus() {
-				// Currently on value input (HeaderValueInput), move to key input of same row
+				// Currently on value input, move to key input of same row
 				ui.App.SetFocus(row.KeyInput)
 				found = true
 				break
