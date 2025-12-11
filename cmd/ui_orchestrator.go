@@ -493,7 +493,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				if headerInEditMode {
 					uiOrchestrator.FooterLeft.SetText(" (Esc) Exit Edit | (Tab) Next Panel | (q) Quit") //  Request Headers (Edit)
 				} else {
-					uiOrchestrator.FooterLeft.SetText(" (i) Edit Key/Value | (n) New Header | (d) Delete Header | (D) Delete All | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") //  Request Headers
+					uiOrchestrator.FooterLeft.SetText(" (i) Edit Key/Value | (n) New Header | (d) Delete Header | (D) Delete All | (F4) Bulk Edit | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Headers
 				}
 			default:
 				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request

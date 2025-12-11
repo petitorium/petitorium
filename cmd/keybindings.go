@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -686,25 +687,78 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.RequestIndex {
-		if ui.CurrentRequest != nil {
-			// Suspend TUI to open external editor
+		if ui.CurrentTabIndex == ui.RPBodyTabIndex {
+			if ui.CurrentRequest != nil {
+				// Suspend TUI to open external editor
+				ui.App.Suspend(func() {
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent)
+					if err != nil {
+						// Could show error but for now just continue
+						return
+					}
+
+					// Update the body with modified content
+					ui.SyncBodyContent(modifiedContent)
+					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
+						ui.CurrentRequest.Body = modifiedContent
+						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
+						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+					}
+				})
+			}
+			return nil
+		} else if ui.CurrentTabIndex == ui.RPHeadersTabIndex {
+			// Bulk edit headers
 			ui.App.Suspend(func() {
-				modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent)
+				// Get current headers
+				headers := getHeadersFromUI()
+
+				// Format headers as "Key: Value" one per line
+				var headerLines []string
+				for key, value := range headers {
+					headerLines = append(headerLines, fmt.Sprintf("%s: %s", key, value))
+				}
+				headerContent := strings.Join(headerLines, "\n")
+
+				// Open external editor
+				modifiedContent, err := openInExternalEditor(headerContent)
 				if err != nil {
 					// Could show error but for now just continue
 					return
 				}
 
-				// Update the body with modified content
-				ui.SyncBodyContent(modifiedContent)
-				if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
-					ui.CurrentRequest.Body = modifiedContent
-					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+				// Parse the modified content back into headers
+				lines := strings.Split(strings.TrimSpace(modifiedContent), "\n")
+				newHeaders := make(map[string]string)
+				for _, line := range lines {
+					line = strings.TrimSpace(line)
+					if line == "" {
+						continue
+					}
+					// Split on first colon
+					parts := strings.SplitN(line, ":", 2)
+					if len(parts) == 2 {
+						key := strings.TrimSpace(parts[0])
+						value := strings.TrimSpace(parts[1])
+						if key != "" {
+							newHeaders[key] = value
+						}
+					}
 				}
+
+				// Update headers in UI
+				setHeadersInUI(ui.Colors, newHeaders, func() {
+					if ui.CurrentRequest != nil {
+						ui.CurrentRequest.Headers = newHeaders
+						if ui.CurrentSelectedNode != nil {
+							ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
+							saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+						}
+					}
+				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 			})
+			return nil
 		}
-		return nil
 	}
 	return event
 }
