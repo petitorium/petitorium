@@ -14,6 +14,7 @@ type UIComponents struct {
 	MethodDropdown        *tview.DropDown
 	URLInput              *URLVariableInput
 	SendButton            *CustomButton
+	CurlButton            *CustomButton
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
 	Response              *tview.Flex
@@ -44,7 +45,7 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 	rootNode := tview.NewTreeNode("").SetSelectable(false)
 
 	// Create unified method+URL+Send bar
-	methodURLBar, methodDropdown, urlInput, sendButton := createMethodURLBar(
+	methodURLBar, methodDropdown, urlInput, sendButton, curlButton := createMethodURLBar(
 		"",
 		colors,
 		app,
@@ -117,6 +118,7 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		MethodDropdown:        methodDropdown,
 		URLInput:              urlInput,
 		SendButton:            sendButton,
+		CurlButton:            curlButton,
 		BodyViewPanel:         bodyViewPanel,
 		BodyEditPanel:         bodyEditPanel,
 		Response:              response,

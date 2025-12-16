@@ -475,7 +475,7 @@ func createMethodURLBar(
 	title string,
 	colors *ColorManager,
 	app *tview.Application,
-) (*tview.Flex, *tview.DropDown, *URLVariableInput, *CustomButton) {
+) (*tview.Flex, *tview.DropDown, *URLVariableInput, *CustomButton, *CustomButton) {
 	// Create the components without borders
 	methodDropdown := createDropDown(
 		"",
@@ -487,6 +487,9 @@ func createMethodURLBar(
 	urlInput := NewURLVariableInput(colors, app)
 
 	sendButton := createThemedButton(" Send ", colors)
+	curlButton := createThemedButton("📤", colors)
+	curlButton.SetBackgroundColor(colors.Background)
+	curlButton.SetBackgroundColorActivated(colors.ButtonSelect)
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 
@@ -497,6 +500,8 @@ func createMethodURLBar(
 		AddItem(methodDropdown, 8, 0, false).
 		AddItem(urlInput, 0, 1, false).
 		AddItem(sendButton, 10, 0, false).
+		AddItem(spacer, 1, 0, false).
+		AddItem(curlButton, 2, 0, false).
 		AddItem(spacer, 1, 0, false)
 
 	container.SetBorder(true)
@@ -506,7 +511,7 @@ func createMethodURLBar(
 	container.SetTitleColor(colors.Title)
 	container.SetBorderPadding(0, 0, 0, 0)
 
-	return container, methodDropdown, urlInput, sendButton
+	return container, methodDropdown, urlInput, sendButton, curlButton
 }
 
 // createTabHeader creates a clickable tab header bar

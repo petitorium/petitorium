@@ -751,6 +751,57 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}()
 	})
 
+	// Add curl export button functionality
+	ui.CurlButton.SetSelectedFunc(func() {
+		// Get current request data from UI
+		_, method := ui.MethodDropdown.GetCurrentOption()
+		url := ui.URLInput.GetText()
+		body := ""
+		if ui.CurrentRequest != nil {
+			body = ui.CurrentRequest.Body
+		}
+		headers := getHeadersFromUI()
+
+		// Get current environment variables
+		var envVars map[string]string
+		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
+		if currentEnvIndex == 0 {
+			// Base Environment selected - find and use the "Base" environment
+			for _, env := range *ui.EnvironmentsData {
+				if env.Name == "Base" {
+					envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+					break
+				}
+			}
+		} else {
+			// Specific environment selected
+			if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
+				env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
+				envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+			}
+		}
+
+		// Substitute environment variables in URL, body, and headers
+		url = substituteVariables(url, envVars)
+		body = substituteVariables(body, envVars)
+		headers = substituteVariablesInHeaders(headers, envVars)
+
+		// Generate curl command
+		curlCommand := generateCurlCommand(method, url, headers, body)
+
+		// Copy to clipboard
+		copyToClipboard(curlCommand)
+
+		// Show a brief notification (could be improved with a proper toast notification)
+		ui.FooterRight.SetText("cURL command copied to clipboard")
+		go func() {
+			time.Sleep(2 * time.Second)
+			ui.App.QueueUpdateDraw(func() {
+				ui.FooterRight.SetText("Petitorium ")
+			})
+		}()
+	})
+
 	// Track popup/form state
 	var isFormPopupActive bool = false
 
@@ -1160,6 +1211,15 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 	// urlbar panel & send button
 	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSendButtonIndex {
+		next := ui.RequestCycle.Next()
+		ui.App.SetFocus(next)
+		ui.CurrentFocus = ui.MainCycle.current
+
+		return nil
+	}
+
+	// urlbar panel & curl button
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarCurlButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -1367,13 +1427,22 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		return nil
 	}
 
+	// urlbar panel & curl button
+	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarCurlButtonIndex {
+		prev := ui.RequestCycle.Prev()
+		ui.App.SetFocus(prev)
+		ui.CurrentFocus = ui.MainCycle.current
+
+		return nil
+	}
+
 	// requests editor/viewer panel
 	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPBodyTabIndex && !ui.BodyEditMode {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
-		ui.App.SetFocus(ui.SendButton)
-		ui.RequestCycle.current = ui.URLBarSendButtonIndex
+		ui.App.SetFocus(ui.CurlButton)
+		ui.RequestCycle.current = ui.URLBarCurlButtonIndex
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -1385,8 +1454,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
-		ui.App.SetFocus(ui.SendButton)
-		ui.RequestCycle.current = ui.URLBarSendButtonIndex
+		ui.App.SetFocus(ui.CurlButton)
+		ui.RequestCycle.current = ui.URLBarCurlButtonIndex
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -1398,8 +1467,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
-		ui.App.SetFocus(ui.SendButton)
-		ui.RequestCycle.current = ui.URLBarSendButtonIndex
+		ui.App.SetFocus(ui.CurlButton)
+		ui.RequestCycle.current = ui.URLBarCurlButtonIndex
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -1424,8 +1493,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 					prevElement := ui.MainCycle.Prev()
 					ui.SetActiveBorder(prevElement)
-					ui.App.SetFocus(ui.SendButton)
-					ui.RequestCycle.current = ui.URLBarSendButtonIndex
+					ui.App.SetFocus(ui.CurlButton)
+					ui.RequestCycle.current = ui.URLBarCurlButtonIndex
 					ui.CurrentFocus = ui.MainCycle.current
 					ui.UpdateFooter()
 				}

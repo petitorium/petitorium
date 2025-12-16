@@ -575,6 +575,43 @@ func openInExternalEditor(content string) (string, error) {
 	return string(modifiedContent), nil
 }
 
+// generateCurlCommand generates a curl command string from HTTP request components
+func generateCurlCommand(method, url string, headers map[string]string, body string) string {
+	var cmd strings.Builder
+	cmd.WriteString("curl")
+
+	// Add method if not GET
+	if method != "GET" {
+		cmd.WriteString(" -X ")
+		cmd.WriteString(method)
+	}
+
+	// Add headers
+	for key, value := range headers {
+		cmd.WriteString(" -H '")
+		cmd.WriteString(key)
+		cmd.WriteString(": ")
+		cmd.WriteString(value)
+		cmd.WriteString("'")
+	}
+
+	// Add body if present
+	if body != "" {
+		// Escape single quotes in body by replacing ' with '\''
+		escapedBody := strings.ReplaceAll(body, "'", "'\\''")
+		cmd.WriteString(" -d '")
+		cmd.WriteString(escapedBody)
+		cmd.WriteString("'")
+	}
+
+	// Add URL (must be last)
+	cmd.WriteString(" '")
+	cmd.WriteString(url)
+	cmd.WriteString("'")
+
+	return cmd.String()
+}
+
 // substituteVariables replaces {{variable}} placeholders with values from the environment variables map
 func substituteVariables(text string, variables map[string]string) string {
 	if variables == nil {

@@ -24,6 +24,7 @@ type UIOrchestrator struct {
 	MethodDropdown        *tview.DropDown
 	URLInput              *URLVariableInput
 	SendButton            *CustomButton
+	CurlButton            *CustomButton
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
 	Response              *tview.Flex
@@ -98,6 +99,7 @@ type UIOrchestrator struct {
 	URLBarSelectorIndex            int
 	URLBarInputIndex               int
 	URLBarSendButtonIndex          int
+	URLBarCurlButtonIndex          int
 	RPBodyTabIndex                 int
 	RPAuthTabIndex                 int
 	RPQueryTabIndex                int
@@ -123,6 +125,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	methodDropdown := ui.MethodDropdown
 	urlInput := ui.URLInput
 	sendButton := ui.SendButton
+	curlButton := ui.CurlButton
 	bodyViewPanel := ui.BodyViewPanel
 	bodyEditPanel := ui.BodyEditPanel
 	responsePanel := ui.Response
@@ -225,6 +228,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	urlBarSelectorIndex := 0
 	urlBarInputIndex := 1
 	urlBarSendButtonIndex := 2
+	urlBarCurlButtonIndex := 3
 
 	RPBodyTabIndex := 0
 	RPAuthTabIndex := 1
@@ -236,7 +240,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	var bodyContainer *tview.Flex
 
 	requestCycle = &RequestCycle{
-		elements: []tview.Primitive{methodDropdown, urlInput, sendButton},
+		elements: []tview.Primitive{methodDropdown, urlInput, sendButton, curlButton},
 		current:  0,
 		parent:   nil, // Will be set later
 	}
@@ -359,6 +363,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		MethodDropdown:                 methodDropdown,
 		URLInput:                       urlInput,
 		SendButton:                     sendButton,
+		CurlButton:                     curlButton,
 		BodyViewPanel:                  bodyViewPanel,
 		BodyEditPanel:                  bodyEditPanel,
 		Response:                       responsePanel,
@@ -428,6 +433,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		URLBarSelectorIndex:            urlBarSelectorIndex,
 		URLBarInputIndex:               urlBarInputIndex,
 		URLBarSendButtonIndex:          urlBarSendButtonIndex,
+		URLBarCurlButtonIndex:          urlBarCurlButtonIndex,
 		RPBodyTabIndex:                 RPBodyTabIndex,
 		RPAuthTabIndex:                 RPAuthTabIndex,
 		RPQueryTabIndex:                RPQueryTabIndex,
@@ -466,7 +472,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.CollectionsIndex:
 			uiOrchestrator.FooterLeft.SetText(" (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
 		case uiOrchestrator.URLBarIndex:
-			uiOrchestrator.FooterLeft.SetText(" (i) Edit URL | (Tab) Next Panel | (q) Quit") // Request
+			uiOrchestrator.FooterLeft.SetText(" (i) Edit URL | (Tab) Next Panel | (c) Export cURL | (q) Quit") // Request
 		case uiOrchestrator.RequestIndex:
 			switch uiOrchestrator.CurrentTabIndex {
 			case uiOrchestrator.RPBodyTabIndex:
