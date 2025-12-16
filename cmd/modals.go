@@ -72,6 +72,7 @@ func showEnvironmentModal(
 	var onCreateNew func()
 	var onDelete func(*workspace.Environment)
 	var onRename func(*workspace.Environment)
+	var onClone func(*workspace.Environment)
 
 	onDelete = func(env *workspace.Environment) {
 		currentFocus := ui.App.GetFocus()
@@ -102,6 +103,22 @@ func showEnvironmentModal(
 		})
 		modal := createModal(form, 25, 10, ui.Colors.Background)
 		ui.Pages.AddPage("renameEnvironment", modal, true, true)
+		ui.App.SetFocus(form)
+	}
+
+	onClone = func(env *workspace.Environment) {
+		currentFocus := ui.App.GetFocus()
+		form := createCloneEnvironmentForm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.WorkspaceData, ui.EnvDropdown, ui.EnvConfigButton, ui.Colors, currentFocus)
+		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("cloneEnvironment")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
+		modal := createModal(form, 24, 10, ui.Colors.Background)
+		ui.Pages.AddPage("cloneEnvironment", modal, true, true)
 		ui.App.SetFocus(form)
 	}
 
@@ -139,6 +156,7 @@ func showEnvironmentModal(
 			onCreateNew,
 			onDelete,
 			onRename,
+			onClone,
 		)
 
 		// Select the newly created environment (index = number of environments, since 0 is "Create New")
@@ -180,6 +198,7 @@ func showEnvironmentModal(
 		onCreateNew,
 		onDelete,
 		onRename,
+		onClone,
 	)
 
 	// Function to save environment variables

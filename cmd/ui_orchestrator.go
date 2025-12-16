@@ -457,7 +457,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	updateFooterFunc := func() {
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
 		if currentPage == "envVariables" {
-			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
+			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (c) Clone Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 			return
 		}
 		switch uiOrchestrator.MainCycle.current {

@@ -567,6 +567,81 @@ func createRenameEnvironmentForm(
 	return form
 }
 
+func createCloneEnvironmentForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	selectedEnvironment *workspace.Environment,
+	environmentsData *[]workspace.Environment,
+	workspaceData *workspace.Workspace,
+	envDropdown *tview.DropDown,
+	envConfigButton *CustomButton,
+	colors *ColorManager,
+	currentFocus tview.Primitive,
+) *tview.Form {
+
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddInputField("Name", selectedEnvironment.Name+" Copy", 15, nil, nil)
+	form.AddButton("Save", func() {
+		newName := form.GetFormItem(0).(*tview.InputField).GetText()
+		if strings.TrimSpace(newName) == "" {
+			return
+		}
+
+		// Check if name already exists
+		for _, env := range *environmentsData {
+			if env.Name == newName {
+				return // Name already exists
+			}
+		}
+
+		// Create new environment by cloning the selected one
+		newEnv := workspace.Environment{
+			Name:      newName,
+			Base:      selectedEnvironment.Base,
+			Variables: make(map[string]string),
+		}
+		// Copy variables
+		for k, v := range selectedEnvironment.Variables {
+			newEnv.Variables[k] = v
+		}
+
+		// Add to environments
+		*environmentsData = append(*environmentsData, newEnv)
+
+		// Update dropdown
+		updateEnvironmentDropdown(envDropdown, *environmentsData)
+
+		// Save workspace data (which includes environments)
+		workspaceData.Environments = *environmentsData
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			// Handle error
+		}
+
+		pages.RemovePage("cloneEnvironment")
+		// Since the modal is still open, refresh it
+		if pages.HasPage("envVariables") {
+			pages.RemovePage("envVariables")
+			app.SetFocus(envConfigButton)
+		}
+	})
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("cloneEnvironment")
+		app.SetFocus(currentFocus)
+	})
+
+	form.SetBorder(true).SetTitle(" Clone Environment ")
+	return form
+}
+
 func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
