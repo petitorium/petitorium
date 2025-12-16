@@ -251,6 +251,32 @@ func showEnvironmentModal(
 	errorText.SetDynamicColors(true)
 	errorText.SetText("")
 
+	// Add F4 support for external editor on JSON editor
+	jsonEditor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyF4 {
+			currentContent := jsonEditor.GetText()
+
+			// Suspend the app to open external editor
+			ui.App.Suspend(func() {
+				modifiedContent, err := openInExternalEditor(currentContent)
+				if err != nil {
+					// Show error in the error text view
+					errorText.SetText(fmt.Sprintf("Error opening external editor: %v", err))
+					return
+				}
+
+				// Clear any previous error
+				errorText.SetText("")
+
+				// Update the JSON editor with the edited content
+				jsonEditor.SetText(modifiedContent, false)
+			})
+
+			return nil // Consume the event
+		}
+		return event
+	})
+
 	// Create status bar with error display
 	statusBar := tview.NewFlex().
 		SetDirection(tview.FlexRow).
@@ -269,8 +295,10 @@ func showEnvironmentModal(
 		if event.Key() == tcell.KeyTab {
 			if ui.App.GetFocus() == leftPanel {
 				ui.App.SetFocus(jsonEditor)
+				ui.FooterLeft.SetText(" (F4) External Editor | (Tab) Switch Panel | (Esc) Save & Close") // Environment Variables Editor
 			} else {
 				ui.App.SetFocus(leftPanel)
+				ui.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (c) Clone Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 			}
 			return nil
 		}
@@ -293,6 +321,9 @@ func showEnvironmentModal(
 	}
 
 	ui.App.SetFocus(leftPanel)
+
+	// Set initial footer for environment list
+	ui.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (c) Clone Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 
 	// Add keybinding to close modal with Escape, q, or Q
 	ui.Pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
