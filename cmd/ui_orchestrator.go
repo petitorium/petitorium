@@ -547,5 +547,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Initialize response tab header with preview tab active
 	updateResponseTabHeader(uiOrchestrator.ResponseTabHeader, uiOrchestrator.CurrentResponseTabIndex, uiOrchestrator.Colors)
 
+	// Initialize request tab header with body tab active
+	updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, uiOrchestrator.TabHeader, uiOrchestrator.CurrentTabIndex, uiOrchestrator.Colors)
+
 	return uiOrchestrator, nil
 }
