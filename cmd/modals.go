@@ -101,7 +101,7 @@ func showEnvironmentModal(
 			}
 			return event
 		})
-		modal := createModal(form, 25, 10, ui.Colors.Background)
+		modal := createModal(form, 24, 10, ui.Colors.Background)
 		ui.Pages.AddPage("renameEnvironment", modal, true, true)
 		ui.App.SetFocus(form)
 	}
