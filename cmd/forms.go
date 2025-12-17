@@ -201,23 +201,52 @@ func createRequestForm(app *tview.Application,
 	form.AddInputField("Request Name", "", 43, nil, nil)
 	form.AddDropDown("Method", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"}, 0, nil)
 	form.AddInputField("URL", "", 43, nil, nil)
-	form.AddInputField("Body", "", 43, nil, nil)
+	bodyInput := tview.NewInputField().
+		SetLabel("Body: ").
+		SetFieldWidth(43).
+		SetPlaceholder("Enter JSON data...")
+
+	contentTypeDropdown := tview.NewDropDown().
+		SetLabel("Content Type: ").
+		SetOptions([]string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}, nil).
+		SetCurrentOption(0)
+	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
+		switch text {
+		case "JSON":
+			bodyInput.SetPlaceholder("Enter JSON data...")
+		case "Multipart":
+			bodyInput.SetPlaceholder("Multipart UI coming soon. For now: name1=value1&name2=file:/path/to/file")
+		case "XML":
+			bodyInput.SetPlaceholder("Enter XML data...")
+		case "YAML":
+			bodyInput.SetPlaceholder("Enter YAML data...")
+		case "Plain Text":
+			bodyInput.SetPlaceholder("Enter plain text...")
+		case "No Body":
+			bodyInput.SetPlaceholder("(No body for this request)")
+		}
+	})
+
+	form.AddFormItem(contentTypeDropdown)
+	form.AddFormItem(bodyInput)
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
 		_, method := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
 		url := form.GetFormItem(2).(*tview.InputField).GetText()
-		body := form.GetFormItem(3).(*tview.InputField).GetText()
+		_, contentType := form.GetFormItem(3).(*tview.DropDown).GetCurrentOption()
+		body := form.GetFormItem(4).(*tview.InputField).GetText()
 
 		if strings.TrimSpace(name) == "" || strings.TrimSpace(url) == "" {
 			return
 		}
 
 		newRequest := workspace.Request{
-			Name:   name,
-			Method: method,
-			URL:    url,
-			Body:   body,
+			Name:        name,
+			Method:      method,
+			URL:         url,
+			ContentType: contentType,
+			Body:        body,
 		}
 
 		if selectedCollection == nil {
@@ -1352,13 +1381,43 @@ func createDuplicateRequestForm(
 	form.AddInputField("Request Name", duplicatedName, 43, nil, nil)
 	form.AddDropDown("Method", methods, methodIndex, nil)
 	form.AddInputField("URL", originalRequest.URL, 43, nil, nil)
-	form.AddInputField("Body", originalRequest.Body, 43, nil, nil)
+
+	bodyInput := tview.NewInputField().
+		SetLabel("Body: ").
+		SetFieldWidth(43).
+		SetText(originalRequest.Body).
+		SetPlaceholder("Enter JSON data...")
+
+	contentTypeDropdown := tview.NewDropDown().
+		SetLabel("Content Type: ").
+		SetOptions([]string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}, nil).
+		SetCurrentOption(0)
+	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
+		switch text {
+		case "JSON":
+			bodyInput.SetPlaceholder("Enter JSON data...")
+		case "Multipart":
+			bodyInput.SetPlaceholder("Multipart UI coming soon. For now: name1=value1&name2=file:/path/to/file")
+		case "XML":
+			bodyInput.SetPlaceholder("Enter XML data...")
+		case "YAML":
+			bodyInput.SetPlaceholder("Enter YAML data...")
+		case "Plain Text":
+			bodyInput.SetPlaceholder("Enter plain text...")
+		case "No Body":
+			bodyInput.SetPlaceholder("(No body for this request)")
+		}
+	})
+
+	form.AddFormItem(contentTypeDropdown)
+	form.AddFormItem(bodyInput)
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
 		_, method := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
 		url := form.GetFormItem(2).(*tview.InputField).GetText()
-		body := form.GetFormItem(3).(*tview.InputField).GetText()
+		_, contentType := form.GetFormItem(3).(*tview.DropDown).GetCurrentOption()
+		body := form.GetFormItem(4).(*tview.InputField).GetText()
 
 		if strings.TrimSpace(name) == "" || strings.TrimSpace(url) == "" {
 			return
@@ -1366,11 +1425,12 @@ func createDuplicateRequestForm(
 
 		// Create new request with duplicated data (excluding response history)
 		newRequest := workspace.Request{
-			Name:    name,
-			Method:  method,
-			URL:     url,
-			Body:    body,
-			Headers: make(map[string]string), // Copy headers from original
+			Name:        name,
+			Method:      method,
+			URL:         url,
+			ContentType: contentType,
+			Body:        body,
+			Headers:     make(map[string]string), // Copy headers from original
 		}
 
 		// Copy headers from original request

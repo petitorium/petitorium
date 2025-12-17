@@ -22,6 +22,7 @@ type UIOrchestrator struct {
 	RootNode              *tview.TreeNode
 	MethodURLBar          *tview.Flex
 	MethodDropdown        *tview.DropDown
+	ContentTypeDropdown   *tview.DropDown
 	URLInput              *URLVariableInput
 	SendButton            *CustomButton
 	CurlButton            *CustomButton
@@ -55,55 +56,56 @@ type UIOrchestrator struct {
 	LastResponseTime      *time.Time
 
 	// State variables
-	CurrentSelectedNode            *tview.TreeNode
-	CurrentRequest                 *workspace.Request
-	Navigating                     bool
-	ProgrammaticallyUpdatingMethod bool
-	ProgrammaticallyUpdatingURL    bool
-	RequestInProgress              bool
-	TabPages                       *tview.Pages
-	TabHeader                      *tview.Flex
-	CurrentTabIndex                int
-	CurrentResponseTabIndex        int
-	WorkspaceIndex                 int
-	EnviromentIndex                int
-	CollectionsIndex               int
-	URLBarIndex                    int
-	RequestIndex                   int
-	ResponseIndex                  int
-	RequestDataTabs                *tview.Flex
-	BodyContainer                  *tview.Flex
-	MainCycle                      *MainCycle
-	HeadersCycle                   *HeadersCycle
-	RequestCycle                   *RequestCycle
-	EnvironmentsCycle              *EnvironmentsCycle
-	WorkspaceCycle                 *WorkspaceCycle
-	LastSelectedRequestNode        *tview.TreeNode
-	BodyEditMode                   bool
-	CurrentBodyContent             string
-	RequestPanel                   *tview.Flex
-	RightSide                      *tview.Flex
-	LeftSide                       *tview.Flex
-	CurrentFocus                   int
-	SetPanelFocus                  func(int, bool)
-	SetActiveBorder                func(element tview.Primitive)
-	SetInactiveBorder              func(element tview.Primitive)
-	SyncBodyContent                func(content string)
-	SwitchBodyMode                 func()
-	UpdateFooter                   func()
-	CopyResponse                   func()
-	WorkspaceSelectorIndex         int
-	WorkspaceConfigButtonIndex     int
-	EnvironmentSelectorIndex       int
-	EnvironmentConfigButtonIndex   int
-	URLBarSelectorIndex            int
-	URLBarInputIndex               int
-	URLBarSendButtonIndex          int
-	URLBarCurlButtonIndex          int
-	RPBodyTabIndex                 int
-	RPAuthTabIndex                 int
-	RPQueryTabIndex                int
-	RPHeadersTabIndex              int
+	CurrentSelectedNode                 *tview.TreeNode
+	CurrentRequest                      *workspace.Request
+	Navigating                          bool
+	ProgrammaticallyUpdatingMethod      bool
+	ProgrammaticallyUpdatingURL         bool
+	ProgrammaticallyUpdatingContentType bool
+	RequestInProgress                   bool
+	TabPages                            *tview.Pages
+	TabHeader                           *tview.Flex
+	CurrentTabIndex                     int
+	CurrentResponseTabIndex             int
+	WorkspaceIndex                      int
+	EnviromentIndex                     int
+	CollectionsIndex                    int
+	URLBarIndex                         int
+	RequestIndex                        int
+	ResponseIndex                       int
+	RequestDataTabs                     *tview.Flex
+	BodyContainer                       *tview.Flex
+	MainCycle                           *MainCycle
+	HeadersCycle                        *HeadersCycle
+	RequestCycle                        *RequestCycle
+	EnvironmentsCycle                   *EnvironmentsCycle
+	WorkspaceCycle                      *WorkspaceCycle
+	LastSelectedRequestNode             *tview.TreeNode
+	BodyEditMode                        bool
+	CurrentBodyContent                  string
+	RequestPanel                        *tview.Flex
+	RightSide                           *tview.Flex
+	LeftSide                            *tview.Flex
+	CurrentFocus                        int
+	SetPanelFocus                       func(int, bool)
+	SetActiveBorder                     func(element tview.Primitive)
+	SetInactiveBorder                   func(element tview.Primitive)
+	SyncBodyContent                     func(content string)
+	SwitchBodyMode                      func()
+	UpdateFooter                        func()
+	CopyResponse                        func()
+	WorkspaceSelectorIndex              int
+	WorkspaceConfigButtonIndex          int
+	EnvironmentSelectorIndex            int
+	EnvironmentConfigButtonIndex        int
+	URLBarSelectorIndex                 int
+	URLBarInputIndex                    int
+	URLBarSendButtonIndex               int
+	URLBarCurlButtonIndex               int
+	RPBodyTabIndex                      int
+	RPAuthTabIndex                      int
+	RPQueryTabIndex                     int
+	RPHeadersTabIndex                   int
 }
 
 // SetupUI initializes all UI components and layout
@@ -312,7 +314,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
 	}
 
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _ =
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
@@ -361,6 +363,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RootNode:                       rootNode,
 		MethodURLBar:                   methodURLBar,
 		MethodDropdown:                 methodDropdown,
+		ContentTypeDropdown:            contentTypeDropdown,
 		URLInput:                       urlInput,
 		SendButton:                     sendButton,
 		CurlButton:                     curlButton,

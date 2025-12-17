@@ -21,10 +21,12 @@ import (
 // Tab names for UI consistency
 // Display names for UI tab headers
 var requestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers"}
+
 var responseTabDisplayNames = []string{"Preview", "Headers", "Cookies", "Timeline"}
 
 // Internal names for page identifiers and logic
 var requestTabInternalNames = []string{"body", "auth", "query", "headers"}
+
 var responseTabInternalNames = []string{"preview", "headers", "cookies", "timeline"}
 
 type PanelOptions struct {
@@ -1468,7 +1470,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex, *tview.DropDown) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -1476,6 +1478,14 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	requestDataTabs.SetBorderColor(colors.Border)
 	requestDataTabs.SetTitle(" Request ")
 	requestDataTabs.SetTitleColor(colors.Title)
+
+	// Create content type dropdown
+	contentTypeDropdown := createDropDown(
+		"Content Type:",
+		[]string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"},
+		colors,
+	)
+	contentTypeDropdown.SetBorder(false)
 
 	// Create tab header
 	tabHeader := createTabHeader(requestTabDisplayNames, colors, func(index int) {
@@ -1512,10 +1522,11 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	tabPages.AddPage(requestTabInternalNames[3], headersTab, true, false)
 
 	// Add to main container
+	requestDataTabs.AddItem(contentTypeDropdown, 1, 0, false)
 	requestDataTabs.AddItem(tabHeader, 1, 0, false)
 	requestDataTabs.AddItem(tabPages, 0, 1, false)
 
-	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab
+	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, contentTypeDropdown
 }
 
 // createResponseTabs creates the response tabs interface

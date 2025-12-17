@@ -48,6 +48,22 @@ func syncMethodDropdown(currentRequest *workspace.Request, methodDropdown *tview
 	}
 }
 
+// syncContentTypeDropdown syncs the content type dropdown with the current request's content type
+func syncContentTypeDropdown(currentRequest *workspace.Request, contentTypeDropdown *tview.DropDown, programmaticallyUpdatingContentType *bool) {
+	if currentRequest != nil {
+		contentTypes := []string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}
+		for i, contentType := range contentTypes {
+			if contentType == currentRequest.ContentType {
+				// Set flag to prevent the SetSelectedFunc from firing
+				*programmaticallyUpdatingContentType = true
+				contentTypeDropdown.SetCurrentOption(i)
+				*programmaticallyUpdatingContentType = false
+				break
+			}
+		}
+	}
+}
+
 // updateResponseTabs updates the response tabs with new response data
 func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager, copyCallback func()) {
 	// Update the info bar - replace it in the top row

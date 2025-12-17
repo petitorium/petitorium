@@ -401,6 +401,27 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 	})
 
+	ui.ContentTypeDropdown.SetDoneFunc(func(key tcell.Key) {
+		if key != tcell.KeyEnter {
+			return
+		}
+		if ui.ProgrammaticallyUpdatingContentType {
+			return
+		}
+
+		if ui.CurrentRequest != nil {
+			index, _ := ui.ContentTypeDropdown.GetCurrentOption()
+			contentTypes := []string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}
+			if index >= 0 && index < len(contentTypes) {
+				newContentType := contentTypes[index]
+				if newContentType != ui.CurrentRequest.ContentType {
+					ui.CurrentRequest.ContentType = newContentType
+					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+				}
+			}
+		}
+	})
+
 	// Add change handler for URL input
 	ui.URLInput.SetChangedFunc(func(text string) {
 		// Skip if we're programmatically updating from tree selection
@@ -489,9 +510,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				node.SetReference(*ui.CurrentRequest)
 			}
 
-			// Set method in dropdown AFTER currentRequest is set
+			// Set method and content type in dropdowns AFTER currentRequest is set
 			if ui.CurrentRequest != nil {
 				syncMethodDropdown(ui.CurrentRequest, ui.MethodDropdown, &ui.ProgrammaticallyUpdatingMethod)
+				syncContentTypeDropdown(ui.CurrentRequest, ui.ContentTypeDropdown, &ui.ProgrammaticallyUpdatingContentType)
 
 				// Show last response if available
 				if len((*ui.CurrentRequest).ResponseHistory) > 0 {
@@ -679,7 +701,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Send the request in a goroutine
 		go func() {
-			resp, err := SendRequest(method, url, body, headers)
+			contentType := ""
+			if ui.CurrentRequest != nil {
+				contentType = ui.CurrentRequest.ContentType
+			}
+			resp, err := SendRequest(method, url, body, contentType, headers)
 
 			// Use QueueUpdateDraw to handle the response on the main thread
 			ui.App.QueueUpdateDraw(func() {
