@@ -575,6 +575,37 @@ func openInExternalEditor(content string) (string, error) {
 	return string(modifiedContent), nil
 }
 
+// openInFx opens JSON content in fx for interactive viewing
+func openInFx(content string) error {
+	// Check if fx is available
+	if _, err := exec.LookPath("fx"); err != nil {
+		return fmt.Errorf("fx not found. Please install fx: https://github.com/antonmedv/fx")
+	}
+
+	// Create a temporary file
+	tmpDir := os.TempDir()
+	tmpFile, err := os.CreateTemp(tmpDir, "petitorium-response-*.json")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	// Write content to temporary file
+	if _, err := tmpFile.WriteString(content); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("failed to write to temporary file: %v", err)
+	}
+	tmpFile.Close()
+
+	// Open in fx
+	cmd := exec.Command("fx", tmpFile.Name())
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
+}
+
 // generateCurlCommand generates a curl command string from HTTP request components
 func generateCurlCommand(method, url string, headers map[string]string, body string) string {
 	var cmd strings.Builder

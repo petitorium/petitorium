@@ -505,7 +505,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request
 			}
 		case uiOrchestrator.ResponseIndex:
-			uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch tabs | (j/k) Scroll up/down | (d/u) Half page scroll | (g/G) Scroll to top/bottom | (Tab) Next Panel | (q) Quit") // Response
+			uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch tabs | (j/k) Scroll up/down | (d/u) Half page scroll | (g/G) Scroll to top/bottom | (f) Open in fx | (Tab) Next Panel | (q) Quit") // Response
 		default:
 			uiOrchestrator.FooterLeft.SetText(" (Tab) Cycle Focus | (q) Quit")
 		}

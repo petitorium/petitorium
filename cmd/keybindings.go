@@ -305,6 +305,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Scroll response up by half page",
 			Context:     "response_view",
 		},
+		{
+			Rune:        'f',
+			Action:      openResponseInFx,
+			Description: "Open response in fx",
+			Context:     "response_view",
+		},
 	}
 
 	// Define tree navigation functions
@@ -1276,6 +1282,15 @@ func switchToResponseTimelineTab(ui *UIOrchestrator, event *tcell.EventKey) *tce
 	ui.ResponsePages.SwitchToPage("timeline")
 	updateResponseTabHeader(ui.ResponseTabHeader, 3, ui.Colors)
 	ui.CurrentResponseTabIndex = 3
+	return nil
+}
+
+func openResponseInFx(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if ui.LastResponse != nil && ui.LastResponse.Body != "" {
+		ui.App.Suspend(func() {
+			openInFx(ui.LastResponse.Body)
+		})
+	}
 	return nil
 }
 
