@@ -25,6 +25,12 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 	if currentRequest != nil {
 		// Sync headers from UI before saving
 		currentRequest.Headers = getHeadersFromUI()
+
+		// Sync body content based on content type
+		if currentRequest.ContentType == "Multipart" {
+			currentRequest.Body = collectMultipartFieldsFromUI()
+		}
+
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
 			// Handle error (could show in status or log)
 			return

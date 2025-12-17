@@ -206,6 +206,20 @@ func createRequestForm(app *tview.Application,
 		SetFieldWidth(43).
 		SetPlaceholder("Enter JSON data...")
 
+	// Multipart fields management interface
+	multipartContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	multipartContainer.SetBorder(true).SetTitle("Multipart Fields")
+	multipartFieldsList := tview.NewFlex().SetDirection(tview.FlexRow)
+	multipartContainer.AddItem(multipartFieldsList, 0, 1, true)
+
+	// Add field button
+	addFieldButton := tview.NewButton("Add Field").SetSelectedFunc(func() {
+		addMultipartField(multipartFieldsList, colors)
+	})
+	multipartContainer.AddItem(addFieldButton, 1, 0, false)
+
+	// Initially hide multipart container (will be handled by form management)
+
 	contentTypeDropdown := tview.NewDropDown().
 		SetLabel("Content Type: ").
 		SetOptions([]string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}, nil).
@@ -228,7 +242,6 @@ func createRequestForm(app *tview.Application,
 	})
 
 	form.AddFormItem(contentTypeDropdown)
-	form.AddFormItem(bodyInput)
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
@@ -240,6 +253,8 @@ func createRequestForm(app *tview.Application,
 		if strings.TrimSpace(name) == "" || strings.TrimSpace(url) == "" {
 			return
 		}
+
+		// For multipart, the body field contains the formatted field data
 
 		newRequest := workspace.Request{
 			Name:        name,
@@ -1556,4 +1571,103 @@ func createDeleteAllHeadersConfirm(
 
 	form.SetBorder(true).SetTitle(" Delete All Headers ")
 	return form
+}
+
+// collectMultipartFields collects all multipart fields from the UI and formats them as a string
+func collectMultipartFields(fieldsList *tview.Flex) string {
+	var fields []string
+	for i := 0; i < fieldsList.GetItemCount(); i++ {
+		fieldContainer := fieldsList.GetItem(i).(*tview.Flex)
+		if fieldContainer.GetItemCount() >= 4 {
+			// Extract field values from the controls
+			fieldControls := fieldContainer.GetItem(0).(*tview.Flex)
+			nameInput := fieldControls.GetItem(0).(*tview.InputField)
+			typeDropdown := fieldControls.GetItem(1).(*tview.DropDown)
+			valueInput := fieldControls.GetItem(2).(*tview.InputField)
+
+			name := nameInput.GetText()
+			_, fieldType := typeDropdown.GetCurrentOption()
+			value := valueInput.GetText()
+
+			if name != "" && value != "" {
+				if fieldType == "file" {
+					fields = append(fields, name+"=file:"+value)
+				} else {
+					fields = append(fields, name+"="+value)
+				}
+			}
+		}
+	}
+	return strings.Join(fields, "&")
+}
+
+// openMultipartFieldsModal opens a modal for managing multipart fields
+func openMultipartFieldsModal(app *tview.Application, pages *tview.Pages, bodyInput *tview.InputField) {
+	modal := tview.NewModal().
+		SetText("Multipart Fields Management\n\nUse the body field with format:\nname1=value1&name2=file:/path/to/file\n\nClick OK to continue editing the body field.").
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			pages.RemovePage("multipartModal")
+			app.SetFocus(bodyInput)
+		})
+
+	pages.AddPage("multipartModal", modal, true, true)
+}
+
+// addMultipartField adds a new multipart field to the fields list
+func addMultipartField(fieldsList *tview.Flex, colors *ColorManager) {
+	fieldContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+
+	// Field controls in a horizontal layout
+	fieldControls := tview.NewFlex().SetDirection(tview.FlexColumn)
+
+	// Field name input
+	nameInput := tview.NewInputField().
+		SetLabel("Name: ").
+		SetFieldWidth(8)
+	fieldControls.AddItem(nameInput, 5, 0, false)
+
+	// Field type dropdown
+	typeDropdown := tview.NewDropDown().
+		SetLabel("Type: ").
+		SetOptions([]string{"text", "text_multiline", "file"}, nil).
+		SetCurrentOption(0)
+	fieldControls.AddItem(typeDropdown, 12, 0, false)
+
+	// Value input (changes based on type)
+	valueInput := tview.NewInputField().
+		SetLabel("Value: ").
+		SetFieldWidth(8)
+	fieldControls.AddItem(valueInput, 5, 0, false)
+
+	// Remove button
+	// removeButton := tview.NewButton("Remove").SetSelectedFunc(func() {
+	// 	// Find and remove this field container from the parent
+	// 	for i := 0; i < fieldsList.GetItemCount(); i++ {
+	// 		if fieldsList.GetItem(i) == fieldContainer {
+	// 			fieldsList.RemoveItem(fieldsList.GetItem(i))
+	// 			break
+	// 		}
+	// 	}
+	// })
+
+	// fieldControls.AddItem(removeButton, 10, 0, false)
+
+	fieldContainer.AddItem(fieldControls, 1, 0, false)
+	fieldsList.AddItem(fieldContainer, 1, 0, false)
+
+	// Update value input based on type selection
+	typeDropdown.SetSelectedFunc(func(text string, index int) {
+		switch text {
+		case "text":
+			valueInput.SetLabel("Value: ")
+			valueInput.SetPlaceholder("Enter text value")
+		case "text_multiline":
+			valueInput.SetLabel("Value: ")
+			valueInput.SetPlaceholder("Enter multiline text")
+		case "file":
+			valueInput.SetLabel("File: ")
+			valueInput.SetPlaceholder("Enter absolute file path")
+		}
+	})
 }

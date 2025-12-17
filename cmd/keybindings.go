@@ -902,6 +902,11 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 }
 
 func enterInsertMode(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Don't enter insert mode if content type is Multipart (user is editing fields)
+	if ui.CurrentRequest != nil && ui.CurrentRequest.ContentType == "Multipart" {
+		return event
+	}
+
 	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
 		ui.SwitchBodyMode() // Switch to edit mode
 		ui.App.SetFocus(ui.BodyEditPanel)

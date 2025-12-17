@@ -401,21 +401,26 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 	})
 
-	ui.ContentTypeDropdown.SetDoneFunc(func(key tcell.Key) {
-		if key != tcell.KeyEnter {
-			return
-		}
+	ui.ContentTypeDropdown.SetSelectedFunc(func(text string, index int) {
 		if ui.ProgrammaticallyUpdatingContentType {
 			return
 		}
 
 		if ui.CurrentRequest != nil {
-			index, _ := ui.ContentTypeDropdown.GetCurrentOption()
-			contentTypes := []string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}
+			contentTypes := []string{"JSON", "Multipart", "No Body"}
 			if index >= 0 && index < len(contentTypes) {
 				newContentType := contentTypes[index]
 				if newContentType != ui.CurrentRequest.ContentType {
+					oldContentType := ui.CurrentRequest.ContentType
 					ui.CurrentRequest.ContentType = newContentType
+
+					// If switching TO multipart, parse the current body text into fields
+					if newContentType == "Multipart" && oldContentType != "Multipart" {
+						updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui.Colors, ui.App, ui.Pages)
+					}
+
+					// Switch the body UI based on content type
+					ui.switchBodyContent(newContentType)
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
 			}
@@ -514,6 +519,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if ui.CurrentRequest != nil {
 				syncMethodDropdown(ui.CurrentRequest, ui.MethodDropdown, &ui.ProgrammaticallyUpdatingMethod)
 				syncContentTypeDropdown(ui.CurrentRequest, ui.ContentTypeDropdown, &ui.ProgrammaticallyUpdatingContentType)
+
+				// Update multipart fields if this is a multipart request
+				if ui.CurrentRequest.ContentType == "Multipart" {
+					updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui.Colors, ui.App, ui.Pages)
+				}
+
+				// Switch body UI based on content type
+				ui.switchBodyContent(ui.CurrentRequest.ContentType)
 
 				// Show last response if available
 				if len((*ui.CurrentRequest).ResponseHistory) > 0 {
@@ -628,10 +641,25 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		_, method := ui.MethodDropdown.GetCurrentOption()
 		url := ui.URLInput.GetText()
 		body := ""
+		contentType := ""
 		if ui.CurrentRequest != nil {
 			body = ui.CurrentRequest.Body
+			contentType = ui.CurrentRequest.ContentType
 		}
 		headers := getHeadersFromUI()
+
+		// For multipart requests, collect the current UI state
+		if contentType == "Multipart" {
+			body = collectMultipartFieldsFromUI()
+			// If no fields are filled, don't send as multipart
+			if body == "" {
+				contentType = ""
+			} else {
+				// Remove any manual Content-Type header to allow automatic multipart setting
+				delete(headers, "Content-Type")
+				delete(headers, "content-type")
+			}
+		}
 
 		// Determine collection and request name
 		collection := ""
@@ -701,10 +729,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Send the request in a goroutine
 		go func() {
-			contentType := ""
-			if ui.CurrentRequest != nil {
-				contentType = ui.CurrentRequest.ContentType
-			}
 			resp, err := SendRequest(method, url, body, contentType, headers)
 
 			// Use QueueUpdateDraw to handle the response on the main thread
@@ -783,8 +807,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		_, method := ui.MethodDropdown.GetCurrentOption()
 		url := ui.URLInput.GetText()
 		body := ""
+		contentType := ""
 		if ui.CurrentRequest != nil {
 			body = ui.CurrentRequest.Body
+			contentType = ui.CurrentRequest.ContentType
 		}
 		headers := getHeadersFromUI()
 
@@ -813,7 +839,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		headers = substituteVariablesInHeaders(headers, envVars)
 
 		// Generate curl command
-		curlCommand := generateCurlCommand(method, url, headers, body)
+		curlCommand := generateCurlCommand(method, url, headers, body, contentType)
 
 		// Copy to clipboard
 		copyToClipboard(curlCommand)
@@ -891,6 +917,17 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Allow dropdown lists to handle their own input
 		if _, ok := ui.App.GetFocus().(*tview.List); ok {
 			return event
+		}
+
+		// Skip global 'i' keybinding if focused on input fields
+		if event.Rune() == 'i' {
+			focus := ui.App.GetFocus()
+			if _, ok := focus.(*tview.InputField); ok {
+				return event
+			}
+			if _, ok := focus.(*tview.DropDown); ok {
+				return event
+			}
 		}
 
 		// First check if this is a global keybinding

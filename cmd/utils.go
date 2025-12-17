@@ -607,7 +607,7 @@ func openInFx(content string) error {
 }
 
 // generateCurlCommand generates a curl command string from HTTP request components
-func generateCurlCommand(method, url string, headers map[string]string, body string) string {
+func generateCurlCommand(method, url string, headers map[string]string, body, contentType string) string {
 	var cmd strings.Builder
 	cmd.WriteString("curl")
 
@@ -619,6 +619,10 @@ func generateCurlCommand(method, url string, headers map[string]string, body str
 
 	// Add headers
 	for key, value := range headers {
+		// Skip Content-Type for multipart requests as -F sets it automatically
+		if contentType == "Multipart" && (key == "Content-Type" || key == "content-type") {
+			continue
+		}
 		cmd.WriteString(" -H '")
 		cmd.WriteString(key)
 		cmd.WriteString(": ")
@@ -628,11 +632,41 @@ func generateCurlCommand(method, url string, headers map[string]string, body str
 
 	// Add body if present
 	if body != "" {
-		// Escape single quotes in body by replacing ' with '\''
-		escapedBody := strings.ReplaceAll(body, "'", "'\\''")
-		cmd.WriteString(" -d '")
-		cmd.WriteString(escapedBody)
-		cmd.WriteString("'")
+		if contentType == "Multipart" {
+			// Parse multipart fields and add as -F options
+			fields := strings.Split(body, "&")
+			for _, field := range fields {
+				field = strings.TrimSpace(field)
+				if field == "" {
+					continue
+				}
+				parts := strings.SplitN(field, "=", 2)
+				if len(parts) == 2 {
+					name := strings.TrimSpace(parts[0])
+					value := strings.TrimSpace(parts[1])
+					if strings.HasPrefix(value, "file:") {
+						filePath := strings.TrimPrefix(value, "file:")
+						cmd.WriteString(" -F '")
+						cmd.WriteString(name)
+						cmd.WriteString("=@")
+						cmd.WriteString(filePath)
+						cmd.WriteString("'")
+					} else {
+						cmd.WriteString(" -F '")
+						cmd.WriteString(name)
+						cmd.WriteString("=")
+						cmd.WriteString(value)
+						cmd.WriteString("'")
+					}
+				}
+			}
+		} else {
+			// Escape single quotes in body by replacing ' with '\''
+			escapedBody := strings.ReplaceAll(body, "'", "'\\''")
+			cmd.WriteString(" -d '")
+			cmd.WriteString(escapedBody)
+			cmd.WriteString("'")
+		}
 	}
 
 	// Add URL (must be last)

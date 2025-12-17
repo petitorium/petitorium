@@ -28,6 +28,8 @@ type UIOrchestrator struct {
 	CurlButton            *CustomButton
 	BodyViewPanel         *tview.TextView
 	BodyEditPanel         *tview.TextArea
+	BodyContainer         *tview.Flex
+	MultipartFieldsTab    *tview.Flex
 	Response              *tview.Flex
 	Footer                *tview.Flex
 	FooterLeft            *tview.TextView
@@ -74,7 +76,6 @@ type UIOrchestrator struct {
 	RequestIndex                        int
 	ResponseIndex                       int
 	RequestDataTabs                     *tview.Flex
-	BodyContainer                       *tview.Flex
 	MainCycle                           *MainCycle
 	HeadersCycle                        *HeadersCycle
 	RequestCycle                        *RequestCycle
@@ -106,6 +107,34 @@ type UIOrchestrator struct {
 	RPAuthTabIndex                      int
 	RPQueryTabIndex                     int
 	RPHeadersTabIndex                   int
+}
+
+// switchBodyContent switches the body container content based on content type
+func (ui *UIOrchestrator) switchBodyContent(contentType string) {
+	// Save current body content before switching
+	if ui.CurrentRequest != nil {
+		if ui.CurrentRequest.ContentType == "Multipart" && contentType != "Multipart" {
+			// Switching FROM multipart - collect fields into body text
+			ui.CurrentRequest.Body = collectMultipartFieldsFromUI()
+		}
+	}
+
+	ui.BodyContainer.Clear()
+
+	switch contentType {
+	case "JSON", "XML", "YAML", "Plain Text", "No Body":
+		// Use the standard body view/edit panels
+		ui.BodyContainer.SetTitle("")
+		if ui.BodyEditMode {
+			ui.BodyContainer.AddItem(ui.BodyEditPanel, 0, 1, false)
+		} else {
+			ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
+		}
+	case "Multipart":
+		// Use the multipart fields UI
+		ui.BodyContainer.SetTitle(" Multipart Fields ")
+		ui.BodyContainer.AddItem(ui.MultipartFieldsTab, 0, 1, false)
+	}
 }
 
 // SetupUI initializes all UI components and layout
@@ -314,7 +343,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
 	}
 
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown :=
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown, multipartFieldsTab :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
@@ -325,6 +354,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			func() {}, // footerUpdater - will be replaced later
 			app,
 			pages,
+			currentRequest,
 		)
 
 	// Create main panels
@@ -369,6 +399,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		CurlButton:                     curlButton,
 		BodyViewPanel:                  bodyViewPanel,
 		BodyEditPanel:                  bodyEditPanel,
+		BodyContainer:                  bodyContainer,
+		MultipartFieldsTab:             multipartFieldsTab,
 		Response:                       responsePanel,
 		Footer:                         footer,
 		FooterLeft:                     footerLeft,
@@ -406,7 +438,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RequestIndex:                   requestIndex,
 		ResponseIndex:                  responseIndex,
 		RequestDataTabs:                requestDataTabs,
-		BodyContainer:                  bodyContainer,
 		MainCycle:                      mainCycle,
 		HeadersCycle:                   headersCycle,
 		RequestCycle:                   requestCycle,
