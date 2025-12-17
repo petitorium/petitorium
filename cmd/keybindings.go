@@ -293,6 +293,18 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Scroll response to bottom",
 			Context:     "response_view",
 		},
+		{
+			Rune:        'd',
+			Action:      scrollResponseHalfPageDown,
+			Description: "Scroll response down by half page",
+			Context:     "response_view",
+		},
+		{
+			Rune:        'u',
+			Action:      scrollResponseHalfPageUp,
+			Description: "Scroll response up by half page",
+			Context:     "response_view",
+		},
 	}
 
 	// Define tree navigation functions
@@ -1047,6 +1059,71 @@ func scrollResponseToBottom(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 		ui.ResponseCookiesPanel.ScrollToEnd()
 	case "timeline":
 		ui.ResponseTimelinePanel.ScrollToEnd()
+	}
+	return nil
+}
+
+func scrollResponseHalfPageDown(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Get the current response page and scroll it down by half page
+	currentPage, _ := ui.ResponsePages.GetFrontPage()
+	switch currentPage {
+	case "preview":
+		_, _, _, height := ui.ResponsePreviewPanel.GetRect()
+		currentTop, _ := ui.ResponsePreviewPanel.GetScrollOffset()
+		newTop := currentTop + height/2
+		ui.ResponsePreviewPanel.ScrollTo(newTop, 0)
+	case "headers":
+		// For table, scroll to end as approximation for fast scroll
+		if headersTable, ok := ui.ResponseHeadersPanel.(*tview.Table); ok {
+			headersTable.ScrollToEnd()
+		}
+	case "cookies":
+		_, _, _, height := ui.ResponseCookiesPanel.GetRect()
+		currentTop, _ := ui.ResponseCookiesPanel.GetScrollOffset()
+		newTop := currentTop + height/2
+		ui.ResponseCookiesPanel.ScrollTo(newTop, 0)
+	case "timeline":
+		_, _, _, height := ui.ResponseTimelinePanel.GetRect()
+		currentTop, _ := ui.ResponseTimelinePanel.GetScrollOffset()
+		newTop := currentTop + height/2
+		ui.ResponseTimelinePanel.ScrollTo(newTop, 0)
+	}
+	return nil
+}
+
+func scrollResponseHalfPageUp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Get the current response page and scroll it up by half page
+	currentPage, _ := ui.ResponsePages.GetFrontPage()
+	switch currentPage {
+	case "preview":
+		_, _, _, height := ui.ResponsePreviewPanel.GetRect()
+		currentTop, _ := ui.ResponsePreviewPanel.GetScrollOffset()
+		newTop := currentTop - height/2
+		if newTop < 0 {
+			newTop = 0
+		}
+		ui.ResponsePreviewPanel.ScrollTo(newTop, 0)
+	case "headers":
+		// For table, scroll to beginning as approximation for fast scroll
+		if headersTable, ok := ui.ResponseHeadersPanel.(*tview.Table); ok {
+			headersTable.ScrollToBeginning()
+		}
+	case "cookies":
+		_, _, _, height := ui.ResponseCookiesPanel.GetRect()
+		currentTop, _ := ui.ResponseCookiesPanel.GetScrollOffset()
+		newTop := currentTop - height/2
+		if newTop < 0 {
+			newTop = 0
+		}
+		ui.ResponseCookiesPanel.ScrollTo(newTop, 0)
+	case "timeline":
+		_, _, _, height := ui.ResponseTimelinePanel.GetRect()
+		currentTop, _ := ui.ResponseTimelinePanel.GetScrollOffset()
+		newTop := currentTop - height/2
+		if newTop < 0 {
+			newTop = 0
+		}
+		ui.ResponseTimelinePanel.ScrollTo(newTop, 0)
 	}
 	return nil
 }
