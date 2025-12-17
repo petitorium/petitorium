@@ -18,6 +18,15 @@ import (
 	"github.com/petitorium/petitorium/config"
 )
 
+// Tab names for UI consistency
+// Display names for UI tab headers
+var requestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers"}
+var responseTabDisplayNames = []string{"Preview", "Headers", "Cookies", "Timeline"}
+
+// Internal names for page identifiers and logic
+var requestTabInternalNames = []string{"body", "auth", "query", "headers"}
+var responseTabInternalNames = []string{"preview", "headers", "cookies", "timeline"}
+
 type PanelOptions struct {
 	HasBorder   *bool
 	BorderColor *tcell.Color
@@ -574,7 +583,7 @@ func updateTabHeader(
 	colors *ColorManager,
 ) {
 	// Tab titles
-	tabs = []string{"Body", "Auth", "Query", "Headers"}
+	tabs = requestTabDisplayNames
 
 	// Update each tab's appearance based on whether it's active
 	for i := 0; i < len(tabs); i++ {
@@ -604,7 +613,7 @@ func updateResponseTabHeader(
 	activeTabIndex int,
 	colors *ColorManager,
 ) {
-	tabs := []string{"Preview", "Headers", "Cookies", "Timeline"}
+	tabs := responseTabDisplayNames
 
 	// Update each tab's appearance based on whether it's active
 	for i := 0; i < len(tabs); i++ {
@@ -1469,7 +1478,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	requestDataTabs.SetTitleColor(colors.Title)
 
 	// Create tab header
-	tabHeader := createTabHeader([]string{"Body", "Auth", "Query", "Headers"}, colors, func(index int) {
+	tabHeader := createTabHeader(requestTabDisplayNames, colors, func(index int) {
 		if tabIndexSetter != nil {
 			tabIndexSetter(index)
 		}
@@ -1497,10 +1506,10 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages, footerUpdater)
 
 	// Add pages
-	tabPages.AddPage("body", bodyContainer, true, true)
-	tabPages.AddPage("auth", authTab, true, false)
-	tabPages.AddPage("query", queryTab, true, false)
-	tabPages.AddPage("headers", headersTab, true, false)
+	tabPages.AddPage(requestTabInternalNames[0], bodyContainer, true, true)
+	tabPages.AddPage(requestTabInternalNames[1], authTab, true, false)
+	tabPages.AddPage(requestTabInternalNames[2], queryTab, true, false)
+	tabPages.AddPage(requestTabInternalNames[3], headersTab, true, false)
 
 	// Add to main container
 	requestDataTabs.AddItem(tabHeader, 1, 0, false)
@@ -1575,10 +1584,10 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	responseTimelinePanel.SetBorderColor(colors.Background)
 
 	// Add pages
-	responsePages.AddPage("preview", responsePreviewPanel, true, true)
-	responsePages.AddPage("headers", responseHeadersPanel, true, false)
-	responsePages.AddPage("cookies", responseCookiesPanel, true, false)
-	responsePages.AddPage("timeline", responseTimelinePanel, true, false)
+	responsePages.AddPage(responseTabInternalNames[0], responsePreviewPanel, true, true)
+	responsePages.AddPage(responseTabInternalNames[1], responseHeadersPanel, true, false)
+	responsePages.AddPage(responseTabInternalNames[2], responseCookiesPanel, true, false)
+	responsePages.AddPage(responseTabInternalNames[3], responseTimelinePanel, true, false)
 
 	// Add to main container
 	response.AddItem(topRow, 1, 0, false)

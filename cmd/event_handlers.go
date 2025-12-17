@@ -116,9 +116,9 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 
 	// Perform the tab switch
 	if isRequestPanel {
-		tabNames := []string{"body", "auth", "query", "headers"}
+		tabNames := requestTabInternalNames
 		ui.TabPages.SwitchToPage(tabNames[targetTabIndex])
-		requestTabs := []string{"Body", "Auth", "Query", "Headers"}
+		requestTabs := requestTabDisplayNames
 		updateTabHeader(requestTabs, ui.TabHeader, targetTabIndex, ui.Colors)
 		ui.CurrentTabIndex = targetTabIndex
 
