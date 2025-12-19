@@ -719,6 +719,10 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 					ui.SyncBodyContent(modifiedContent)
 					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 						ui.CurrentRequest.Body = modifiedContent
+						// Also save to JSONBodyContent if we're in JSON mode
+						if ui.CurrentRequest.ContentType == "JSON" {
+							ui.JSONBodyContent = modifiedContent
+						}
 						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
@@ -903,7 +907,8 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 
 func enterInsertMode(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	// Don't enter insert mode if content type is Multipart (user is editing fields)
-	if ui.CurrentRequest != nil && ui.CurrentRequest.ContentType == "Multipart" {
+	// or if content type is No Body (no body to edit)
+	if ui.CurrentRequest != nil && (ui.CurrentRequest.ContentType == "Multipart" || ui.CurrentRequest.ContentType == "No Body") {
 		return event
 	}
 

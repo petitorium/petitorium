@@ -27,7 +27,7 @@ type Request struct {
 }
 
 type BodyContent struct {
-	Raw       string           `yaml:"raw,omitempty"` // For JSON, XML, plain text
+	Raw       string           `yaml:"raw,omitempty"` // For JSON content
 	Multipart []MultipartField `yaml:"multipart,omitempty"`
 }
 

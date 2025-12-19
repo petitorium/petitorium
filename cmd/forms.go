@@ -222,7 +222,7 @@ func createRequestForm(app *tview.Application,
 
 	contentTypeDropdown := tview.NewDropDown().
 		SetLabel("Content Type: ").
-		SetOptions([]string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}, nil).
+		SetOptions([]string{"JSON", "Multipart", "No Body"}, nil).
 		SetCurrentOption(0)
 	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
 		switch text {
@@ -230,18 +230,13 @@ func createRequestForm(app *tview.Application,
 			bodyInput.SetPlaceholder("Enter JSON data...")
 		case "Multipart":
 			bodyInput.SetPlaceholder("Multipart UI coming soon. For now: name1=value1&name2=file:/path/to/file")
-		case "XML":
-			bodyInput.SetPlaceholder("Enter XML data...")
-		case "YAML":
-			bodyInput.SetPlaceholder("Enter YAML data...")
-		case "Plain Text":
-			bodyInput.SetPlaceholder("Enter plain text...")
 		case "No Body":
 			bodyInput.SetPlaceholder("(No body for this request)")
 		}
 	})
 
 	form.AddFormItem(contentTypeDropdown)
+	form.AddFormItem(bodyInput)
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
@@ -1405,7 +1400,7 @@ func createDuplicateRequestForm(
 
 	contentTypeDropdown := tview.NewDropDown().
 		SetLabel("Content Type: ").
-		SetOptions([]string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}, nil).
+		SetOptions([]string{"JSON", "Multipart", "No Body"}, nil).
 		SetCurrentOption(0)
 	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
 		switch text {
@@ -1413,12 +1408,6 @@ func createDuplicateRequestForm(
 			bodyInput.SetPlaceholder("Enter JSON data...")
 		case "Multipart":
 			bodyInput.SetPlaceholder("Multipart UI coming soon. For now: name1=value1&name2=file:/path/to/file")
-		case "XML":
-			bodyInput.SetPlaceholder("Enter XML data...")
-		case "YAML":
-			bodyInput.SetPlaceholder("Enter YAML data...")
-		case "Plain Text":
-			bodyInput.SetPlaceholder("Enter plain text...")
 		case "No Body":
 			bodyInput.SetPlaceholder("(No body for this request)")
 		}

@@ -78,12 +78,6 @@ func SendRequest(method, url, body string, contentType string, headers map[strin
 				switch contentType {
 				case "JSON":
 					req.Header.Set("Content-Type", "application/json")
-				case "XML":
-					req.Header.Set("Content-Type", "application/xml")
-				case "YAML":
-					req.Header.Set("Content-Type", "application/yaml")
-				case "Plain Text":
-					req.Header.Set("Content-Type", "text/plain")
 				case "Multipart":
 					if multipartWriter != nil {
 						req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
@@ -96,10 +90,6 @@ func SendRequest(method, url, body string, contentType string, headers map[strin
 				if strings.TrimSpace(body) != "" {
 					if strings.HasPrefix(strings.TrimSpace(body), "{") && strings.HasSuffix(strings.TrimSpace(body), "}") {
 						req.Header.Set("Content-Type", "application/json")
-					} else if strings.HasPrefix(strings.TrimSpace(body), "<") && strings.Contains(body, ">") {
-						req.Header.Set("Content-Type", "application/xml")
-					} else {
-						req.Header.Set("Content-Type", "text/plain")
 					}
 				}
 			}

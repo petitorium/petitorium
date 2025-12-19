@@ -214,12 +214,6 @@ func formatBodyContent(content string) string {
 		return formatted
 	}
 
-	// For XML, use Chroma themes
-	if strings.HasPrefix(content, "<?xml") || (strings.HasPrefix(content, "<") && !strings.Contains(content, "<html")) {
-		formatted := formatWithChromaTheme(content, "xml", getSyntaxTheme())
-		return formatted
-	}
-
 	// For other content types, detect and use appropriate Chroma lexer
 	if strings.Contains(content, "package ") || strings.Contains(content, "import ") || strings.Contains(content, "func ") {
 		// Go code

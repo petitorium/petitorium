@@ -68,6 +68,7 @@ type UIOrchestrator struct {
 	TabPages                            *tview.Pages
 	TabHeader                           *tview.Flex
 	CurrentTabIndex                     int
+	dropdownAdded                       bool
 	CurrentResponseTabIndex             int
 	WorkspaceIndex                      int
 	EnviromentIndex                     int
@@ -84,6 +85,9 @@ type UIOrchestrator struct {
 	LastSelectedRequestNode             *tview.TreeNode
 	BodyEditMode                        bool
 	CurrentBodyContent                  string
+	LastJSONBodyContent                 string // Store last JSON body when switching to No Body
+	JSONBodyContent                     string // Store JSON body when switching away from JSON
+	MultipartBodyContent                string // Store multipart fields when switching away from Multipart
 	RequestPanel                        *tview.Flex
 	RightSide                           *tview.Flex
 	LeftSide                            *tview.Flex
@@ -110,26 +114,106 @@ type UIOrchestrator struct {
 }
 
 // switchBodyContent switches the body container content based on content type
-func (ui *UIOrchestrator) switchBodyContent(contentType string) {
+func (ui *UIOrchestrator) switchBodyContent(newContentType, oldContentType string) {
 	// Save current body content before switching
 	if ui.CurrentRequest != nil {
-		if ui.CurrentRequest.ContentType == "Multipart" && contentType != "Multipart" {
+		if oldContentType == newContentType {
+			// Initial load or no change - initialize saved content
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			if newContentType == "JSON" {
+				ui.JSONBodyContent = ui.CurrentBodyContent
+			} else if newContentType == "Multipart" {
+				ui.MultipartBodyContent = ui.CurrentBodyContent
+			}
+		} else if oldContentType == "Multipart" && newContentType == "JSON" {
+			// Switching FROM Multipart TO JSON - save current multipart and restore saved JSON body
+			// First save current multipart fields
+			multipartBody := collectMultipartFieldsFromUI()
+			ui.CurrentRequest.Body = multipartBody
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			ui.MultipartBodyContent = ui.CurrentBodyContent
+
+			// Now restore saved JSON body only if we have some
+			// Otherwise keep the current multipart body (might be empty)
+			if ui.JSONBodyContent != "" {
+				ui.CurrentBodyContent = ui.JSONBodyContent
+				ui.CurrentRequest.Body = ui.JSONBodyContent
+			}
+		} else if oldContentType == "JSON" && newContentType == "Multipart" {
+			// Switching FROM JSON TO Multipart - save current JSON and restore saved multipart fields
+			// First save current JSON body content
+			if ui.BodyEditMode {
+				// In edit mode, get from edit panel
+				ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
+			} else {
+				// In view mode, CurrentBodyContent should have the current JSON
+				ui.CurrentRequest.Body = ui.CurrentBodyContent
+			}
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			ui.JSONBodyContent = ui.CurrentBodyContent
+
+			// Now restore saved multipart fields only if we have some
+			// Otherwise keep the current JSON body
+			if ui.MultipartBodyContent != "" {
+				ui.CurrentBodyContent = ui.MultipartBodyContent
+				ui.CurrentRequest.Body = ui.MultipartBodyContent
+			}
+		} else if oldContentType == "No Body" && newContentType == "JSON" {
+			// Switching FROM No Body TO JSON - restore last JSON body content
+			ui.CurrentBodyContent = ui.LastJSONBodyContent
+			ui.CurrentRequest.Body = ui.LastJSONBodyContent
+		} else if oldContentType == "Multipart" && newContentType != "Multipart" {
 			// Switching FROM multipart - collect fields into body text
-			ui.CurrentRequest.Body = collectMultipartFieldsFromUI()
+			multipartBody := collectMultipartFieldsFromUI()
+			ui.CurrentRequest.Body = multipartBody
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			// Save multipart fields for later restoration
+			ui.MultipartBodyContent = ui.CurrentBodyContent
+		} else if oldContentType == "JSON" && newContentType != "JSON" {
+			// Switching FROM JSON - save current body content
+			// Get the latest body content from the appropriate source
+			if ui.BodyEditMode {
+				// In edit mode, get from edit panel
+				ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
+			} else {
+				// In view mode, CurrentBodyContent should have the current JSON
+				// But to be safe, we'll use CurrentBodyContent which should be synced
+				ui.CurrentRequest.Body = ui.CurrentBodyContent
+			}
+			// CurrentBodyContent should match CurrentRequest.Body
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			// Save JSON body content when switching away from JSON
+			ui.JSONBodyContent = ui.CurrentBodyContent
+			if newContentType == "No Body" {
+				ui.LastJSONBodyContent = ui.CurrentBodyContent
+			}
 		}
+	}
+
+	// Exit edit mode if switching to No Body or Multipart
+	if newContentType == "No Body" || newContentType == "Multipart" {
+		ui.BodyEditMode = false
 	}
 
 	ui.BodyContainer.Clear()
 
-	switch contentType {
-	case "JSON", "XML", "YAML", "Plain Text", "No Body":
+	switch newContentType {
+	case "JSON":
 		// Use the standard body view/edit panels
 		ui.BodyContainer.SetTitle("")
 		if ui.BodyEditMode {
 			ui.BodyContainer.AddItem(ui.BodyEditPanel, 0, 1, false)
+			ui.BodyEditPanel.SetText(ui.CurrentBodyContent, false)
 		} else {
 			ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
+			ui.SyncBodyContent(ui.CurrentBodyContent)
 		}
+	case "No Body":
+		// Show empty state for no body
+		ui.BodyContainer.SetTitle("")
+		ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
+		ui.BodyViewPanel.SetText("(No body for this request)")
+		ui.BodyViewPanel.SetTextAlign(tview.AlignCenter)
 	case "Multipart":
 		// Use the multipart fields UI
 		ui.BodyContainer.SetTitle(" Multipart Fields ")
@@ -338,10 +422,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	pages.AddPage("main", grid, true, true)
 
 	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
-	tabIndexSetter := func(tabIndex int) {
-		currentTabIndex = tabIndex
-		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
-	}
+	// We'll define tabIndexSetter after uiOrchestrator is created
+	var tabIndexSetter func(int)
 
 	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown, multipartFieldsTab :=
 		createRequestDataTabs(bodyViewPanel,
@@ -349,13 +431,20 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			colors,
 			func() { saveCurrentRequest(currentRequest, workspaceData) },
 			func(p tview.Primitive) { app.SetFocus(p) },
-			tabIndexSetter,
+			func(tabIndex int) {
+				// Call tabIndexSetter if it's been defined
+				if tabIndexSetter != nil {
+					tabIndexSetter(tabIndex)
+				}
+			},
 			nil,       // panelFocusSetter will be set later
 			func() {}, // footerUpdater - will be replaced later
 			app,
 			pages,
 			currentRequest,
 		)
+
+	// Track if content type dropdown is added (now in uiOrchestrator.dropdownAdded)
 
 	// Create main panels
 	mainPanels := []tview.Primitive{workspacePanel, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
@@ -447,6 +536,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		TreeHighlightHandler:           nil,
 		BodyEditMode:                   false,
 		CurrentBodyContent:             "",
+		LastJSONBodyContent:            "",
+		JSONBodyContent:                "",
+		MultipartBodyContent:           "",
 		RequestPanel:                   requestPanel,
 		RightSide:                      rightSide,
 		LeftSide:                       leftSide,
@@ -474,12 +566,31 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RPHeadersTabIndex:              RPHeadersTabIndex,
 	}
 
-	// Update tabIndexSetter to also update UIOrchestrator's CurrentTabIndex
+	// Define tabIndexSetter now that we have all the variables
 	tabIndexSetter = func(tabIndex int) {
+		// Update content type dropdown visibility
+		if tabIndex == 0 {
+			if !uiOrchestrator.dropdownAdded {
+				requestDataTabs.RemoveItem(tabPages)
+				requestDataTabs.AddItem(contentTypeDropdown, 1, 0, false)
+				requestDataTabs.AddItem(tabPages, 0, 1, false)
+				uiOrchestrator.dropdownAdded = true
+			}
+		} else {
+			if uiOrchestrator.dropdownAdded {
+				requestDataTabs.RemoveItem(contentTypeDropdown)
+				uiOrchestrator.dropdownAdded = false
+			}
+		}
 		currentTabIndex = tabIndex
 		uiOrchestrator.CurrentTabIndex = tabIndex
-		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
+		updateTabHeader(requestTabDisplayNames, tabHeader, currentTabIndex, colors)
 		uiOrchestrator.UpdateFooter()
+
+		// Switch to the selected tab page
+		if tabIndex >= 0 && tabIndex < len(requestTabInternalNames) {
+			tabPages.SwitchToPage(requestTabInternalNames[tabIndex])
+		}
 	}
 
 	// Set up tree view expansion handling
@@ -583,6 +694,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Initialize request tab header with body tab active
 	updateTabHeader(requestTabDisplayNames, uiOrchestrator.TabHeader, uiOrchestrator.CurrentTabIndex, uiOrchestrator.Colors)
+
+	// Set initial tab to Body (0) to show content type dropdown
+	tabIndexSetter(0)
 
 	return uiOrchestrator, nil
 }

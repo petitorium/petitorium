@@ -28,7 +28,19 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 
 		// Sync body content based on content type
 		if currentRequest.ContentType == "Multipart" {
-			currentRequest.Body = collectMultipartFieldsFromUI()
+			multipartBody := collectMultipartFieldsFromUI()
+			// Only update body if we have multipart fields
+			// This preserves JSON when switching to multipart with no fields
+			if multipartBody != "" {
+				currentRequest.Body = multipartBody
+			} else {
+				// If multipart is empty, only overwrite if current body doesn't look like JSON
+				// This handles case where user clears all multipart fields
+				trimmedBody := strings.TrimSpace(currentRequest.Body)
+				if !strings.HasPrefix(trimmedBody, "{") && !strings.HasPrefix(trimmedBody, "[") {
+					currentRequest.Body = multipartBody // empty
+				}
+			}
 		}
 
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
@@ -57,7 +69,7 @@ func syncMethodDropdown(currentRequest *workspace.Request, methodDropdown *tview
 // syncContentTypeDropdown syncs the content type dropdown with the current request's content type
 func syncContentTypeDropdown(currentRequest *workspace.Request, contentTypeDropdown *tview.DropDown, programmaticallyUpdatingContentType *bool) {
 	if currentRequest != nil {
-		contentTypes := []string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"}
+		contentTypes := []string{"JSON", "Multipart", "No Body"}
 		for i, contentType := range contentTypes {
 			if contentType == currentRequest.ContentType {
 				// Set flag to prevent the SetSelectedFunc from firing

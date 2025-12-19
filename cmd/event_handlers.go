@@ -122,6 +122,21 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 		updateTabHeader(requestTabs, ui.TabHeader, targetTabIndex, ui.Colors)
 		ui.CurrentTabIndex = targetTabIndex
 
+		// Update content type dropdown visibility
+		if targetTabIndex == 0 {
+			if !ui.dropdownAdded {
+				ui.RequestDataTabs.RemoveItem(ui.TabPages)
+				ui.RequestDataTabs.AddItem(ui.ContentTypeDropdown, 1, 0, false)
+				ui.RequestDataTabs.AddItem(ui.TabPages, 0, 1, false)
+				ui.dropdownAdded = true
+			}
+		} else {
+			if ui.dropdownAdded {
+				ui.RequestDataTabs.RemoveItem(ui.ContentTypeDropdown)
+				ui.dropdownAdded = false
+			}
+		}
+
 		// Focus the appropriate tab content
 		switch targetTabIndex {
 		case 0: // Body tab
@@ -312,35 +327,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 	}
 
-	// Initialize switchBodyMode function
+	// Initialize switchBodyMode function with proper focus handling
 	ui.SwitchBodyMode = func() {
-		ui.BodyEditMode = !ui.BodyEditMode
-		ui.BodyContainer.Clear()
-
-		if ui.BodyEditMode {
-			// Switch to edit mode
-			ui.BodyContainer.AddItem(ui.BodyEditPanel, 0, 1, false)
-			ui.BodyEditPanel.SetText(ui.CurrentBodyContent, false)
-			ui.BodyEditPanel.SetBorderColor(tcell.ColorDefault)
-		} else {
-			// Switch to view mode
-			ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
-			// Update body content from edit panel if we were editing
-			if ui.CurrentRequest != nil {
-				ui.CurrentBodyContent = ui.BodyEditPanel.GetText()
-				ui.CurrentRequest.Body = ui.CurrentBodyContent
-				if ui.CurrentSelectedNode != nil {
-					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
-				}
-			}
-			ui.SyncBodyContent(ui.CurrentBodyContent)
+		// Don't allow switching to edit mode if content type is No Body or Multipart
+		if ui.CurrentRequest != nil && (ui.CurrentRequest.ContentType == "No Body" || ui.CurrentRequest.ContentType == "Multipart") {
+			return
 		}
-		ui.UpdateFooter()
-	}
 
-	// Update the original switchBodyMode with proper focus handling
-	ui.SwitchBodyMode = func() {
 		ui.BodyEditMode = !ui.BodyEditMode
 		ui.BodyContainer.Clear()
 
@@ -356,6 +349,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if ui.CurrentRequest != nil {
 				ui.CurrentBodyContent = ui.BodyEditPanel.GetText()
 				ui.CurrentRequest.Body = ui.CurrentBodyContent
+				// Also save to JSONBodyContent if we're in JSON mode
+				if ui.CurrentRequest.ContentType == "JSON" {
+					ui.JSONBodyContent = ui.CurrentBodyContent
+				}
 				if ui.CurrentSelectedNode != nil {
 					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
@@ -414,13 +411,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					oldContentType := ui.CurrentRequest.ContentType
 					ui.CurrentRequest.ContentType = newContentType
 
+					// Switch the body UI based on content type
+					ui.switchBodyContent(newContentType, oldContentType)
+
 					// If switching TO multipart, parse the current body text into fields
+					// This must be called AFTER switchBodyContent which restores the saved multipart content
 					if newContentType == "Multipart" && oldContentType != "Multipart" {
 						updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui.Colors, ui.App, ui.Pages)
 					}
-
-					// Switch the body UI based on content type
-					ui.switchBodyContent(newContentType)
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
 			}
@@ -449,6 +447,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.BodyEditMode && ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 			ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
 			ui.CurrentBodyContent = ui.CurrentRequest.Body
+
+			// Also save to JSONBodyContent if we're in JSON mode
+			if ui.CurrentRequest.ContentType == "JSON" {
+				ui.JSONBodyContent = ui.CurrentBodyContent
+			}
 
 			// Update the node's reference with the new request data
 			ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
@@ -501,6 +504,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.ProgrammaticallyUpdatingURL = false
 
 			ui.SyncBodyContent(req.Body)
+			// Initialize saved body content based on content type
+			if req.ContentType == "JSON" {
+				ui.JSONBodyContent = req.Body
+				ui.LastJSONBodyContent = req.Body
+			} else if req.ContentType == "Multipart" {
+				ui.MultipartBodyContent = req.Body
+			}
 			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
 			// Set current request for persistence
@@ -520,13 +530,15 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				syncMethodDropdown(ui.CurrentRequest, ui.MethodDropdown, &ui.ProgrammaticallyUpdatingMethod)
 				syncContentTypeDropdown(ui.CurrentRequest, ui.ContentTypeDropdown, &ui.ProgrammaticallyUpdatingContentType)
 
+				// Switch body UI based on content type
+				// When loading, old content type is the same as new (no transition)
+				ui.switchBodyContent(ui.CurrentRequest.ContentType, ui.CurrentRequest.ContentType)
+
 				// Update multipart fields if this is a multipart request
+				// This must be called AFTER switchBodyContent which sets up the container
 				if ui.CurrentRequest.ContentType == "Multipart" {
 					updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui.Colors, ui.App, ui.Pages)
 				}
-
-				// Switch body UI based on content type
-				ui.switchBodyContent(ui.CurrentRequest.ContentType)
 
 				// Show last response if available
 				if len((*ui.CurrentRequest).ResponseHistory) > 0 {

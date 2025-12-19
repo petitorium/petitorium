@@ -429,11 +429,6 @@ func createCustomButton(text string, backgroundColor, activatedColor, labelColor
 
 // createThemedButton creates a button with theme-based background colors
 func createThemedButton(text string, colors *ColorManager) *CustomButton {
-	// Write to a debug file to avoid tview suppression
-	// if f, err := os.OpenFile("/tmp/debug_buttons.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644); err == nil {
-	// 	fmt.Fprintf(f, "DEBUG: createThemedButton called with text='%s', ButtonBackground=%v\n", text, colors.ButtonBackground)
-	// 	f.Close()
-	// }
 	return NewCustomButtonWithColors(text, colors)
 }
 
@@ -1483,20 +1478,10 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	// Create content type dropdown
 	contentTypeDropdown := createDropDown(
 		"Content Type:",
-		[]string{"JSON", "Multipart", "XML", "YAML", "Plain Text", "No Body"},
+		[]string{"JSON", "Multipart", "No Body"},
 		colors,
 	)
 	contentTypeDropdown.SetBorder(false)
-
-	// Create tab header
-	tabHeader := createTabHeader(requestTabDisplayNames, colors, func(index int) {
-		if tabIndexSetter != nil {
-			tabIndexSetter(index)
-		}
-		if footerUpdater != nil {
-			footerUpdater()
-		}
-	})
 
 	// Create tab pages
 	tabPages := tview.NewPages()
@@ -1529,8 +1514,17 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	tabPages.AddPage(requestTabInternalNames[2], queryTab, true, false)
 	tabPages.AddPage(requestTabInternalNames[3], headersTab, true, false)
 
+	// Create tab header
+	tabHeader := createTabHeader(requestTabDisplayNames, colors, func(index int) {
+		if tabIndexSetter != nil {
+			tabIndexSetter(index)
+		}
+		if footerUpdater != nil {
+			footerUpdater()
+		}
+	})
+
 	// Add to main container
-	requestDataTabs.AddItem(contentTypeDropdown, 1, 0, false)
 	requestDataTabs.AddItem(tabHeader, 1, 0, false)
 	requestDataTabs.AddItem(tabPages, 0, 1, false)
 
@@ -2705,27 +2699,27 @@ func collectMultipartFieldsFromUI() string {
 
 // updateMultipartFieldsFromBody updates the multipart fields UI from body text
 func updateMultipartFieldsFromBody(body string, colors *ColorManager, app *tview.Application, pages *tview.Pages) {
-	// Clear existing fields
-	currentMultipartFieldRows = []*MultipartFieldRow{}
-
-	// Parse body and create fields
+	// Only clear and rebuild if body actually contains multipart data
 	parsedFields := parseMultipartBody(body)
-	for _, field := range parsedFields {
-		addMultipartFieldRowWithData(currentMultipartFieldsList, colors, field.Name, field.Type, field.Value, func() {
-			// Refresh function - do nothing for now
-		}, func() {
-			// Save callback - do nothing for now
-		}, nil, nil, app, pages)
-	}
-
-	// Always add at least one empty row
-	if len(currentMultipartFieldRows) == 0 {
+	if len(parsedFields) > 0 {
+		// Body contains multipart data, clear and rebuild
+		currentMultipartFieldRows = []*MultipartFieldRow{}
+		for _, field := range parsedFields {
+			addMultipartFieldRowWithData(currentMultipartFieldsList, colors, field.Name, field.Type, field.Value, func() {
+				// Refresh function - do nothing for now
+			}, func() {
+				// Save callback - do nothing for now
+			}, nil, nil, app, pages)
+		}
+	} else if len(currentMultipartFieldRows) == 0 {
+		// No multipart data in body AND no existing rows, add one empty row
 		addMultipartFieldRow(currentMultipartFieldsList, colors, func() {
 			// Refresh function - do nothing for now
 		}, func() {
 			// Save callback - do nothing for now
 		}, nil, nil, app, pages)
 	}
+	// If body is empty/not multipart but we have existing rows, keep them
 }
 
 // openFilePickerModal opens a modal for selecting a file
