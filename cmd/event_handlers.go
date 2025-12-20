@@ -1257,7 +1257,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	if ui.MainCycle.current == ui.CollectionsIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
-		ui.RequestCycle.current = ui.URLBarSelectorIndex
+		ui.URLBarCycle.current = ui.URLBarSelectorIndex
 		ui.SetActiveBorder(nextElement)
 		ui.App.SetFocus(ui.MethodDropdown)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1267,8 +1267,8 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & dropdown
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSelectorIndex {
-		next := ui.RequestCycle.Next()
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSelectorIndex {
+		next := ui.URLBarCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
 
@@ -1276,8 +1276,8 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & url input
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarInputIndex {
-		next := ui.RequestCycle.Next()
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarInputIndex {
+		next := ui.URLBarCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
 
@@ -1285,8 +1285,8 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & send button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSendButtonIndex {
-		next := ui.RequestCycle.Next()
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSendButtonIndex {
+		next := ui.URLBarCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
 
@@ -1294,7 +1294,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & curl button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarCurlButtonIndex {
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarCurlButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -1467,8 +1467,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & dropdown
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSelectorIndex {
-		prev := ui.RequestCycle.Prev()
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSelectorIndex {
+		prev := ui.URLBarCycle.Prev()
 		if prev != nil {
 			ui.App.SetFocus(prev)
 		} else {
@@ -1485,8 +1485,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & url input
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarInputIndex {
-		prev := ui.RequestCycle.Prev()
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarInputIndex {
+		prev := ui.URLBarCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
 
@@ -1494,8 +1494,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & send button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarSendButtonIndex {
-		prev := ui.RequestCycle.Prev()
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSendButtonIndex {
+		prev := ui.URLBarCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
 
@@ -1503,8 +1503,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & curl button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.RequestCycle.current == ui.URLBarCurlButtonIndex {
-		prev := ui.RequestCycle.Prev()
+	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarCurlButtonIndex {
+		prev := ui.URLBarCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
 
@@ -1517,7 +1517,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
 		ui.App.SetFocus(ui.CurlButton)
-		ui.RequestCycle.current = ui.URLBarCurlButtonIndex
+		ui.URLBarCycle.current = ui.URLBarCurlButtonIndex
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -1530,7 +1530,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
 		ui.App.SetFocus(ui.CurlButton)
-		ui.RequestCycle.current = ui.URLBarCurlButtonIndex
+		ui.URLBarCycle.current = ui.URLBarCurlButtonIndex
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -1543,7 +1543,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
 		ui.App.SetFocus(ui.CurlButton)
-		ui.RequestCycle.current = ui.URLBarCurlButtonIndex
+		ui.URLBarCycle.current = ui.URLBarCurlButtonIndex
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
 
@@ -1569,7 +1569,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					prevElement := ui.MainCycle.Prev()
 					ui.SetActiveBorder(prevElement)
 					ui.App.SetFocus(ui.CurlButton)
-					ui.RequestCycle.current = ui.URLBarCurlButtonIndex
+					ui.URLBarCycle.current = ui.URLBarCurlButtonIndex
 					ui.CurrentFocus = ui.MainCycle.current
 					ui.UpdateFooter()
 				}

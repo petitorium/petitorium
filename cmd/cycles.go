@@ -49,8 +49,8 @@ func (c *MainCycle) GetParent() Cycle {
 	return nil
 }
 
-// RequestCycle handles cycling within request panel elements
-type RequestCycle struct {
+// URLBarCycle handles cycling within URL bar elements
+type URLBarCycle struct {
 	elements []tview.Primitive
 	current  int
 	parent   Cycle
@@ -58,7 +58,7 @@ type RequestCycle struct {
 	// currentChild int
 }
 
-func (c *RequestCycle) Next() tview.Primitive {
+func (c *URLBarCycle) Next() tview.Primitive {
 	if c.current < len(c.elements)-1 {
 		c.current++
 		return c.elements[c.current]
@@ -68,7 +68,7 @@ func (c *RequestCycle) Next() tview.Primitive {
 	}
 }
 
-func (c *RequestCycle) Prev() tview.Primitive {
+func (c *URLBarCycle) Prev() tview.Primitive {
 	if c.current > 0 {
 		c.current--
 		return c.elements[c.current]
@@ -78,11 +78,11 @@ func (c *RequestCycle) Prev() tview.Primitive {
 	}
 }
 
-func (c *RequestCycle) GetCurrent() tview.Primitive {
+func (c *URLBarCycle) GetCurrent() tview.Primitive {
 	return c.elements[c.current]
 }
 
-func (c *RequestCycle) Contains(p tview.Primitive) bool {
+func (c *URLBarCycle) Contains(p tview.Primitive) bool {
 	for _, elem := range c.elements {
 		if elem == p {
 			return true
@@ -91,15 +91,15 @@ func (c *RequestCycle) Contains(p tview.Primitive) bool {
 	return false
 }
 
-func (c *RequestCycle) GetParent() Cycle {
+func (c *URLBarCycle) GetParent() Cycle {
 	return c.parent
 }
 
-// func (c *RequestCycle) GetChildren() []tview.Primitive {
+// func (c *URLBarCycle) GetChildren() []tview.Primitive {
 // 	return c.children
 // }
 
-// func (c *RequestCycle) GetCurrentChildIndex() int {
+// func (c *URLBarCycle) GetCurrentChildIndex() int {
 // 	return c.currentChild
 // }
 
@@ -160,8 +160,8 @@ func findInnermostCycle(p tview.Primitive) Cycle {
 	if headersCycle != nil && headersCycle.Contains(p) {
 		return headersCycle
 	}
-	if requestCycle != nil && requestCycle.Contains(p) {
-		return requestCycle
+	if urlBarCycle != nil && urlBarCycle.Contains(p) {
+		return urlBarCycle
 	}
 	if environmentsCycle != nil && environmentsCycle.Contains(p) {
 		return environmentsCycle
@@ -312,7 +312,7 @@ func (c *WorkspaceCycle) GetParent() Cycle {
 // Global cycle instances
 var mainCycle *MainCycle
 
-var requestCycle *RequestCycle
+var urlBarCycle *URLBarCycle
 
 var headersCycle *HeadersCycle
 

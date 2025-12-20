@@ -79,7 +79,7 @@ type UIOrchestrator struct {
 	RequestDataTabs                     *tview.Flex
 	MainCycle                           *MainCycle
 	HeadersCycle                        *HeadersCycle
-	RequestCycle                        *RequestCycle
+	URLBarCycle                         *URLBarCycle
 	EnvironmentsCycle                   *EnvironmentsCycle
 	WorkspaceCycle                      *WorkspaceCycle
 	LastSelectedRequestNode             *tview.TreeNode
@@ -354,7 +354,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	var requestDataTabs *tview.Flex
 	var bodyContainer *tview.Flex
 
-	requestCycle = &RequestCycle{
+	urlBarCycle = &URLBarCycle{
 		elements: []tview.Primitive{methodDropdown, urlInput, sendButton, curlButton},
 		current:  0,
 		parent:   nil, // Will be set later
@@ -393,7 +393,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		children: nil,
 	}
 
-	requestCycle.parent = mainCycle
+	urlBarCycle.parent = mainCycle
 
 	// Create main grid layout
 	grid := tview.NewGrid().
@@ -529,7 +529,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RequestDataTabs:                requestDataTabs,
 		MainCycle:                      mainCycle,
 		HeadersCycle:                   headersCycle,
-		RequestCycle:                   requestCycle,
+		URLBarCycle:                    urlBarCycle,
 		EnvironmentsCycle:              environmentsCycle,
 		WorkspaceCycle:                 workspaceCycle,
 		LastSelectedRequestNode:        nil,
