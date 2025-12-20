@@ -2343,11 +2343,12 @@ func (h *HeaderKeyInput) HasFocusOrChildHasFocus() bool {
 
 // MultipartFieldRow represents a single multipart field row in the UI
 type MultipartFieldRow struct {
-	NameInput    *tview.InputField
-	TypeDropdown *tview.DropDown
-	ValueInput   *tview.InputField
-	DeleteButton *tview.Button
-	Row          *tview.Flex
+	NameInput        *tview.InputField
+	TypeDropdown     *tview.DropDown
+	ValueInput       *tview.InputField
+	FilePickerButton *tview.Button
+	DeleteButton     *tview.Button
+	Row              *tview.Flex
 }
 
 // Global variables for multipart fields management
@@ -2382,7 +2383,7 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 	refreshMultipartFieldsUI = func() {
 		fieldsList.Clear()
 		for _, row := range currentMultipartFieldRows {
-			fieldsList.AddItem(row.Row, 3, 0, false) // 3 lines height for each field row
+			fieldsList.AddItem(row.Row, 1, 0, false)
 		}
 		// Always add at least one empty row if no fields were parsed
 		if len(currentMultipartFieldRows) == 0 {
@@ -2461,19 +2462,6 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 		}
 	})
 
-	typeDropdown := tview.NewDropDown().
-		SetLabel("Type: ").
-		SetOptions([]string{"text", "text_multiline", "file"}, nil).
-		SetCurrentOption(0).
-		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground).
-		SetLabelColor(colors.Foreground)
-	typeDropdown.SetSelectedFunc(func(text string, index int) {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
 	valueInput := tview.NewInputField().
 		SetLabel("Value: ").
 		SetFieldWidth(25).
@@ -2496,17 +2484,42 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
 	})
 
+	typeDropdown := tview.NewDropDown().
+		SetLabel("Type: ").
+		SetOptions([]string{"text", "text_multiline", "file"}, nil).
+		SetCurrentOption(0).
+		SetFieldBackgroundColor(colors.Background).
+		SetFieldTextColor(colors.Foreground).
+		SetLabelColor(colors.Foreground)
+	typeDropdown.SetSelectedFunc(func(text string, index int) {
+		// Show/hide file picker button based on type
+		if text == "file" {
+			// Remove file picker button if it exists (to avoid duplicates)
+			row.RemoveItem(filePickerButton)
+			// Add file picker button
+			row.AddItem(filePickerButton, 10, 0, false)
+		} else {
+			// Remove file picker button
+			row.RemoveItem(filePickerButton)
+		}
+
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
 	removeButton := tview.NewButton("X")
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
 
 	fieldRow := &MultipartFieldRow{
-		NameInput:    nameInput,
-		TypeDropdown: typeDropdown,
-		ValueInput:   valueInput,
-		DeleteButton: removeButton,
-		Row:          row,
+		NameInput:        nameInput,
+		TypeDropdown:     typeDropdown,
+		ValueInput:       valueInput,
+		FilePickerButton: filePickerButton,
+		DeleteButton:     removeButton,
+		Row:              row,
 	}
 
 	removeButton.SetSelectedFunc(func() {
@@ -2524,13 +2537,16 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	})
 
 	row.AddItem(nameInput, 20, 0, false)
-	row.AddItem(typeDropdown, 15, 0, false)
-	row.AddItem(valueInput, 30, 0, false)
-	row.AddItem(filePickerButton, 10, 0, false)
+	row.AddItem(tview.NewBox(), 1, 0, false)
+	row.AddItem(valueInput, 20, 0, false)
+	row.AddItem(tview.NewBox(), 1, 0, false)
+	row.AddItem(typeDropdown, 10, 0, false)
+	row.AddItem(tview.NewBox(), 1, 0, false)
+	// Don't add filePickerButton initially - only for "file" type
 	row.AddItem(removeButton, 5, 0, false)
 
 	currentMultipartFieldRows = append(currentMultipartFieldRows, fieldRow)
-	fieldsList.AddItem(row, 1, 0, false)
+	refreshUI()
 }
 
 // addMultipartFieldRowWithData adds a multipart field row with pre-filled data
@@ -2597,11 +2613,12 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	removeButton.SetBorder(false)
 
 	fieldRow := &MultipartFieldRow{
-		NameInput:    nameInput,
-		TypeDropdown: typeDropdown,
-		ValueInput:   valueInput,
-		DeleteButton: removeButton,
-		Row:          row,
+		NameInput:        nameInput,
+		TypeDropdown:     typeDropdown,
+		ValueInput:       valueInput,
+		FilePickerButton: filePickerButton,
+		DeleteButton:     removeButton,
+		Row:              row,
 	}
 
 	// Set up type dropdown behavior
@@ -2610,12 +2627,16 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		case "text":
 			valueInput.SetLabel("Value: ")
 			valueInput.SetPlaceholder("Enter text value")
+			row.RemoveItem(filePickerButton)
 		case "text_multiline":
 			valueInput.SetLabel("Value: ")
 			valueInput.SetPlaceholder("Enter multiline text")
+			row.RemoveItem(filePickerButton)
 		case "file":
 			valueInput.SetLabel("File: ")
 			valueInput.SetPlaceholder("Enter absolute file path")
+			row.RemoveItem(filePickerButton)
+			row.AddItem(filePickerButton, 10, 0, false)
 		}
 		if saveCallback != nil {
 			saveCallback()
@@ -2637,13 +2658,18 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	})
 
 	row.AddItem(nameInput, 20, 0, false)
-	row.AddItem(typeDropdown, 15, 0, false)
-	row.AddItem(valueInput, 30, 0, false)
-	row.AddItem(filePickerButton, 10, 0, false)
+	row.AddItem(tview.NewBox(), 1, 0, false)
+	row.AddItem(valueInput, 20, 0, false)
+	row.AddItem(tview.NewBox(), 1, 0, false)
+	row.AddItem(typeDropdown, 10, 0, false)
+	row.AddItem(tview.NewBox(), 1, 0, false)
+	if fieldType == "file" {
+		row.AddItem(filePickerButton, 10, 0, false)
+	}
 	row.AddItem(removeButton, 5, 0, false)
 
 	currentMultipartFieldRows = append(currentMultipartFieldRows, fieldRow)
-	fieldsList.AddItem(row, 1, 0, false)
+	refreshUI()
 }
 
 // parseMultipartBody parses the multipart body string into structured fields
