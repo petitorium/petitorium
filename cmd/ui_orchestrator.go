@@ -11,6 +11,68 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
+// PanelIndices defines the indices for main UI panels
+type PanelIndices struct {
+	Workspace   int
+	Environment int
+	Collections int
+	URLBar      int
+	Request     int
+	Response    int
+}
+
+type Workspace struct {
+	WorkspaceSelector int
+	WorkspaceMenu     int
+}
+
+type Environment struct {
+	EnvironmentSelector int
+	EnvironmentMenu     int
+}
+
+type Collections struct {
+	TreeView int
+}
+
+type URLBar struct {
+	MethodDropdown int
+	URLInput       int
+	SendButton     int
+	CurlButton     int
+	AnotherItem    int
+}
+
+type BodyTab struct {
+	ContentTypeSelector int
+	JSONEditor          int
+	MultipartFields     int
+	NoBody              int
+}
+
+type Request struct {
+	BodyTab    BodyTab
+	AuthTab    int
+	QueryTab   int
+	HeadersTab int
+}
+
+type Response struct {
+	PreviewTab  int
+	HeadersTab  int
+	CookiesTab  int
+	TimelineTab int
+}
+
+type ExperimentalIndices struct {
+	Workspace   Workspace
+	Environment Environment
+	Collections Collections
+	URLBar      URLBar
+	Request     Request
+	Response    Response
+}
+
 // UIOrchestrator holds all UI components and state
 type UIOrchestrator struct {
 	App                   *tview.Application
@@ -70,12 +132,13 @@ type UIOrchestrator struct {
 	CurrentTabIndex                     int
 	dropdownAdded                       bool
 	CurrentResponseTabIndex             int
-	WorkspaceIndex                      int
-	EnviromentIndex                     int
-	CollectionsIndex                    int
-	URLBarIndex                         int
-	RequestIndex                        int
-	ResponseIndex                       int
+	PanelIndices                        PanelIndices
+	ExperimentalIndices                 ExperimentalIndices
+	ExperimentalCurrentContainer        int
+	ExperimentalCurrentChild            int
+	ExperimentalCurrentSubchild         int
+	ExperimentalPreviousContainer       int
+	ExperimentalNavigationEnabled       bool
 	RequestDataTabs                     *tview.Flex
 	MainCycle                           *MainCycle
 	HeadersCycle                        *HeadersCycle
@@ -326,13 +389,67 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Track current tab index (0=body, 1=auth, 2=query, 3=headers)
 	currentTabIndex := 0
 
-	// Tab indices
-	workspaceIndex := 0
-	enviromentIndex := 1
-	collectionsIndex := 2
-	urlBarIndex := 3
-	requestIndex := 4
-	responseIndex := 5
+	// Panel indices
+	panelIndices := PanelIndices{
+		Workspace:   0,
+		Environment: 1,
+		Collections: 2,
+		URLBar:      3,
+		Request:     4,
+		Response:    5,
+	}
+
+	workspace := Workspace{
+		WorkspaceSelector: 0,
+		WorkspaceMenu:     1,
+	}
+
+	environment := Environment{
+		EnvironmentSelector: 0,
+		EnvironmentMenu:     1,
+	}
+
+	collections := Collections{
+		TreeView: 0,
+	}
+
+	urlBar := URLBar{
+		MethodDropdown: 0,
+		URLInput:       1,
+		SendButton:     2,
+		CurlButton:     3,
+		AnotherItem:    4,
+	}
+
+	bodyTab := BodyTab{
+		ContentTypeSelector: 0,
+		JSONEditor:          1,
+		MultipartFields:     2,
+		NoBody:              3,
+	}
+
+	request := Request{
+		BodyTab:    bodyTab,
+		AuthTab:    1,
+		QueryTab:   2,
+		HeadersTab: 3,
+	}
+
+	response := Response{
+		PreviewTab:  0,
+		HeadersTab:  1,
+		CookiesTab:  2,
+		TimelineTab: 3,
+	}
+
+	experimental := ExperimentalIndices{
+		Workspace:   workspace,
+		Environment: environment,
+		Collections: collections,
+		URLBar:      urlBar,
+		Request:     request,
+		Response:    response,
+	}
 
 	workspaceSelectorIndex := 0
 	workspaceConfigButtonIndex := 1
@@ -405,7 +522,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	// Initial focus is on requestPanel (panels[1])
-	currentFocus := collectionsIndex
+	currentFocus := panelIndices.Collections
 
 	// Helper function to sync body content between view and edit panels
 	syncBodyContent := func(content string) {
@@ -520,12 +637,13 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		TabHeader:                      tabHeader,
 		CurrentTabIndex:                currentTabIndex,
 		CurrentResponseTabIndex:        0, // Start with preview tab
-		WorkspaceIndex:                 workspaceIndex,
-		EnviromentIndex:                enviromentIndex,
-		CollectionsIndex:               collectionsIndex,
-		URLBarIndex:                    urlBarIndex,
-		RequestIndex:                   requestIndex,
-		ResponseIndex:                  responseIndex,
+		PanelIndices:                   panelIndices,
+		ExperimentalIndices:            experimental,
+		ExperimentalCurrentContainer:   0,
+		ExperimentalCurrentChild:       0,
+		ExperimentalCurrentSubchild:    0,
+		ExperimentalPreviousContainer:  0,
+		ExperimentalNavigationEnabled:  true, // Enabled for testing
 		RequestDataTabs:                requestDataTabs,
 		MainCycle:                      mainCycle,
 		HeadersCycle:                   headersCycle,
@@ -599,6 +717,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Set initial focus
 	setPanelFocus(currentFocus, true)
 
+	// Set initial border for experimental navigation
+	if uiOrchestrator.ExperimentalNavigationEnabled && uiOrchestrator.ExperimentalCurrentContainer < len(mainPanels) {
+		uiOrchestrator.SetActiveBorder(mainPanels[uiOrchestrator.ExperimentalCurrentContainer])
+		// Also set initial focus for experimental navigation
+		// Initial position is [0,0,0] - Workspace panel, WorkspaceSelector
+		uiOrchestrator.App.SetFocus(uiOrchestrator.WorkspaceSelector)
+	}
+
 	// Set initial footer right text
 	uiOrchestrator.FooterRight.
 		SetText("Petitorium ").
@@ -612,13 +738,13 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			return
 		}
 		switch uiOrchestrator.MainCycle.current {
-		case uiOrchestrator.EnviromentIndex:
+		case uiOrchestrator.PanelIndices.Environment:
 			uiOrchestrator.FooterLeft.SetText(" (Tab) Next Panel | (q) Quit") // Environment
-		case uiOrchestrator.CollectionsIndex:
+		case uiOrchestrator.PanelIndices.Collections:
 			uiOrchestrator.FooterLeft.SetText(" (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
-		case uiOrchestrator.URLBarIndex:
+		case uiOrchestrator.PanelIndices.URLBar:
 			uiOrchestrator.FooterLeft.SetText(" (i) Edit URL | (Tab) Next Panel | (c) Export cURL | (q) Quit") // Request
-		case uiOrchestrator.RequestIndex:
+		case uiOrchestrator.PanelIndices.Request:
 			switch uiOrchestrator.CurrentTabIndex {
 			case uiOrchestrator.RPBodyTabIndex:
 				if uiOrchestrator.BodyEditMode {
@@ -649,7 +775,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			default:
 				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request
 			}
-		case uiOrchestrator.ResponseIndex:
+		case uiOrchestrator.PanelIndices.Response:
 			uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch tabs | (j/k) Scroll up/down | (d/u) Half page scroll | (g/G) Scroll to top/bottom | (f) Open in fx | (Tab) Next Panel | (q) Quit") // Response
 		default:
 			uiOrchestrator.FooterLeft.SetText(" (Tab) Cycle Focus | (q) Quit")

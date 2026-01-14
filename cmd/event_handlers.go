@@ -57,13 +57,13 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 	isArrowKey := event.Key() == tcell.KeyLeft || event.Key() == tcell.KeyRight
 
 	// Check if we're in request panel
-	isRequestPanel := ui.MainCycle.current == ui.RequestIndex
+	isRequestPanel := ui.MainCycle.current == ui.PanelIndices.Request
 	// Check if we're in response panel
-	isResponsePanel := ui.MainCycle.current == ui.ResponseIndex
+	isResponsePanel := ui.MainCycle.current == ui.PanelIndices.Response
 
 	if isNumberKey {
 		// Number keys work when request or response panel has focus
-		if ui.CurrentFocus != ui.RequestIndex && ui.CurrentFocus != ui.ResponseIndex {
+		if ui.CurrentFocus != ui.PanelIndices.Request && ui.CurrentFocus != ui.PanelIndices.Response {
 			return false
 		}
 	} else if isArrowKey {
@@ -984,7 +984,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Collection shortcuts (only when not in input fields and no form popup is active)
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'n' && !isFormPopupActive {
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'n' && !isFormPopupActive {
 			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 			modal := createModal(form, 50, 12, tcell.ColorDefault)
 			setFormPopupActive(true)
@@ -993,7 +993,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return nil
 		}
 
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'r' && !isFormPopupActive {
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'r' && !isFormPopupActive {
 			// New request - check if a collection or request is selected
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
@@ -1019,7 +1019,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Collection shortcuts - handle both normal operation and popup forms
-		if ui.MainCycle.current == ui.CollectionsIndex {
+		if ui.MainCycle.current == ui.PanelIndices.Collections {
 			// Handle Esc to close popups
 			if event.Key() == tcell.KeyEsc && isFormPopupActive {
 				return event // Let Esc pass through to close the popup
@@ -1068,7 +1068,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Rename functionality (Shift+R)
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'R' {
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'R' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()
@@ -1092,7 +1092,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Move collection/request functionality (m)
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'm' {
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'm' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
 				if col, ok := node.GetReference().(workspace.Collection); ok {
@@ -1114,7 +1114,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Delete functionality (d)
-		if ui.MainCycle.current == ui.CollectionsIndex && event.Rune() == 'd' {
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'd' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()
@@ -1138,7 +1138,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// F4 to open body in external editor
-		if ui.MainCycle.current == ui.RequestIndex && event.Key() == tcell.KeyF4 {
+		if ui.MainCycle.current == ui.PanelIndices.Request && event.Key() == tcell.KeyF4 {
 			if ui.CurrentRequest != nil {
 				// Suspend TUI to open external editor
 				ui.App.Suspend(func() {
@@ -1169,7 +1169,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Vim-style modal editing: 'i' to enter insert mode
-		if event.Rune() == 'i' && ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
+		if event.Rune() == 'i' && ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
 			// Instead of switching to inline editor, open external editor for better paste support
 			if ui.CurrentRequest != nil {
 				ui.App.Suspend(func() {
@@ -1201,14 +1201,272 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 }
 
 // handleTabNavigation handles Tab key navigation
-func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// If a modal is open, let it handle Tab navigation
-	if name, _ := ui.Pages.GetFrontPage(); name != "main" {
-		return event
+// getMaxChildForContainer returns the maximum child index for a given container
+func getMaxChildForContainer(container int) int {
+	switch container {
+	case 0: // Workspace
+		return 1 // WorkspaceSelector (0), WorkspaceMenu (1)
+	case 1: // Environment
+		return 1 // EnvironmentSelector (0), EnvironmentMenu (1)
+	case 2: // Collections
+		return 0 // Only TreeView (0)
+	case 3: // URLBar
+		return 3 // MethodDropdown (0), URLInput (1), SendButton (2), CurlButton (3)
+	case 4: // Request
+		return 3 // BodyTab (0), AuthTab (1), QueryTab (2), HeadersTab (3)
+	case 5: // Response
+		return 3 // PreviewTab (0), HeadersTab (1), CookiesTab (2), TimelineTab (3)
+	default:
+		return 0
+	}
+}
+
+// getContainerName returns the name of a container by index
+func getContainerName(container int) string {
+	switch container {
+	case 0:
+		return "Workspace"
+	case 1:
+		return "Environment"
+	case 2:
+		return "Collections"
+	case 3:
+		return "URLBar"
+	case 4:
+		return "Request"
+	case 5:
+		return "Response"
+	default:
+		return "Unknown"
+	}
+}
+
+// hasSubchildren returns true if a container/child combination has subchildren
+func hasSubchildren(container, child int) bool {
+	// Only Request BodyTab (container 4, child 0) has subchildren for now
+	return container == 4 && child == 0
+}
+
+// getMaxSubchildForChild returns the maximum subchild index for a given container/child
+func getMaxSubchildForChild(container, child int) int {
+	if container == 4 && child == 0 { // Request BodyTab
+		return 3 // ContentTypeSelector (0), JSONEditor (1), MultipartFields (2), NoBody (3)
+	}
+	return 0 // No subchildren by default
+}
+
+// setFocusForCoordinates sets focus to the appropriate UI element based on current coordinates
+func setFocusForCoordinates(ui *UIOrchestrator) {
+	switch ui.ExperimentalCurrentContainer {
+	case 0: // Workspace panel
+		switch ui.ExperimentalCurrentChild {
+		case 0: // WorkspaceSelector
+			ui.App.SetFocus(ui.WorkspaceSelector)
+		case 1: // WorkspaceMenu (Config button)
+			ui.App.SetFocus(ui.WorkspaceConfigButton)
+		}
+
+	case 1: // Environment panel
+		switch ui.ExperimentalCurrentChild {
+		case 0: // EnvironmentSelector
+			ui.App.SetFocus(ui.EnvDropdown)
+		case 1: // EnvironmentMenu (Config button)
+			ui.App.SetFocus(ui.EnvConfigButton)
+		}
+
+	case 2: // Collections panel
+		// Only child 0: CollectionsTreeView
+		ui.App.SetFocus(ui.CollectionsTreeView)
+
+	case 3: // URLBar panel
+		switch ui.ExperimentalCurrentChild {
+		case 0: // MethodDropdown
+			ui.App.SetFocus(ui.MethodDropdown)
+		case 1: // URLInput
+			ui.App.SetFocus(ui.URLInput)
+		case 2: // SendButton
+			ui.App.SetFocus(ui.SendButton)
+		case 3: // CurlButton
+			ui.App.SetFocus(ui.CurlButton)
+		}
+
+	case 4: // Request panel
+		switch ui.ExperimentalCurrentChild {
+		case 0: // BodyTab (has subchildren)
+			// Handle BodyTab subchildren
+			switch ui.ExperimentalCurrentSubchild {
+			case 0: // ContentTypeSelector
+				ui.App.SetFocus(ui.ContentTypeDropdown)
+			case 1: // JSONEditor
+				if ui.BodyEditMode {
+					ui.App.SetFocus(ui.BodyEditPanel)
+				} else {
+					ui.App.SetFocus(ui.BodyViewPanel)
+				}
+			case 2: // MultipartFields
+				ui.App.SetFocus(ui.MultipartFieldsTab)
+			case 3: // NoBody
+				ui.App.SetFocus(ui.BodyViewPanel)
+			default:
+				ui.App.SetFocus(ui.BodyContainer)
+			}
+
+		case 1: // AuthTab
+			// Focus auth tab content (implementation depends on auth UI)
+			// For now, focus the request data tabs container
+			ui.App.SetFocus(ui.RequestDataTabs)
+
+		case 2: // QueryTab
+			// Focus query tab content
+			ui.App.SetFocus(ui.RequestDataTabs)
+
+		case 3: // HeadersTab
+			// Focus headers tab content
+			ui.App.SetFocus(ui.RequestDataTabs)
+		}
+
+	case 5: // Response panel
+		// For response panel, focus the response preview
+		ui.App.SetFocus(ui.ResponsePreviewPanel)
+	}
+}
+
+// handleSpecialCombinations handles special actions for specific container/child combinations
+func handleSpecialCombinations(container, child int, containerName string, isBacktab bool, ui *UIOrchestrator) string {
+	// Check if we have subchildren to decide format
+	var baseMessage string
+	if hasSubchildren(container, child) {
+		baseMessage = fmt.Sprintf("[%d,%d,%d] %s", container, child, ui.ExperimentalCurrentSubchild, containerName)
+	} else {
+		baseMessage = fmt.Sprintf("[%d,%d] %s", container, child, containerName)
 	}
 
+	// Check for special combinations
+	switch {
+	case container == 0 && child == 0: // Workspace panel [0,0]
+		return baseMessage + " - Workspace selector active"
+
+	case container == 2 && child == 0: // Collections panel [2,0]
+		return baseMessage + " - Collections tree active"
+
+	case container == 3 && child == 1: // URLBar URL Input [3,1]
+		return baseMessage + " - URL input focused"
+
+	case container == 4 && child == 0: // Request Body tab [4,0]
+		// Handle subchild-specific messages for BodyTab
+		switch ui.ExperimentalCurrentSubchild {
+		case 0:
+			return baseMessage + " - Content type selector (JSON/Multipart/No Body)"
+		case 1:
+			return baseMessage + " - JSON editor"
+		case 2:
+			return baseMessage + " - Multipart fields"
+		case 3:
+			return baseMessage + " - No body"
+		default:
+			return baseMessage + " - Request body tab"
+		}
+
+	case container == 5 && child == 0: // Response Preview [5,0]
+		return baseMessage + " - Response preview active"
+
+	default:
+		// No special handling, return base message
+		if isBacktab {
+			return baseMessage + " (back)"
+		}
+		return baseMessage
+	}
+}
+
+func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Experimental navigation system (disabled by default)
+	if ui.ExperimentalNavigationEnabled {
+		// Store previous container before updating
+		previousContainer := ui.ExperimentalCurrentContainer
+
+		// Check if current position has subchildren
+		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
+			// We're in a container/child that has subchildren (e.g., Request BodyTab)
+			maxSubchild := getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild)
+
+			if ui.ExperimentalCurrentSubchild < maxSubchild {
+				// Move to next subchild
+				ui.ExperimentalCurrentSubchild++
+			} else {
+				// At last subchild, move to next child and reset subchild
+				ui.ExperimentalCurrentSubchild = 0
+				maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
+
+				if ui.ExperimentalCurrentChild < maxChild {
+					// Move to next child in same container
+					ui.ExperimentalCurrentChild++
+				} else {
+					// At last child, move to next container and reset child
+					ui.ExperimentalCurrentChild = 0
+					ui.ExperimentalCurrentContainer = (ui.ExperimentalCurrentContainer + 1) % 6 // 6 containers total
+				}
+			}
+		} else {
+			// No subchildren at current position
+			maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
+
+			if ui.ExperimentalCurrentChild < maxChild {
+				// Move to next child in same container
+				ui.ExperimentalCurrentChild++
+			} else {
+				// At last child, move to next container and reset child
+				ui.ExperimentalCurrentChild = 0
+				ui.ExperimentalCurrentContainer = (ui.ExperimentalCurrentContainer + 1) % 6 // 6 containers total
+			}
+			// Reset subchild when moving to a position without subchildren
+			ui.ExperimentalCurrentSubchild = 0
+		}
+
+		// Update borders if container changed
+		if previousContainer != ui.ExperimentalCurrentContainer {
+			// Deactivate border of previous container
+			if previousContainer < len(ui.MainCycle.panels) {
+				ui.SetInactiveBorder(ui.MainCycle.panels[previousContainer])
+			}
+			// Activate border of current container
+			if ui.ExperimentalCurrentContainer < len(ui.MainCycle.panels) {
+				ui.SetActiveBorder(ui.MainCycle.panels[ui.ExperimentalCurrentContainer])
+			}
+			// Update previous container tracking
+			ui.ExperimentalPreviousContainer = previousContainer
+		}
+
+		// Print the current position
+		containerName := getContainerName(ui.ExperimentalCurrentContainer)
+
+		// Format message based on whether we have subchildren
+		var message string
+		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
+			message = fmt.Sprintf("[%d,%d,%d] %s", ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui.ExperimentalCurrentSubchild, containerName)
+		} else {
+			message = fmt.Sprintf("[%d,%d] %s", ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, containerName)
+		}
+
+		// Handle special actions based on container/child combinations
+		message = handleSpecialCombinations(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, containerName, false, ui)
+		ui.FooterRight.SetText(message)
+
+		// Set focus to the appropriate UI element based on current coordinates
+		setFocusForCoordinates(ui)
+
+		// Return nil to prevent further navigation processing
+		// This makes the experimental system take over tab navigation
+		return nil
+	}
+
+	// If a modal is open, let it handle Tab navigation
+	// if name, _ := ui.Pages.GetFrontPage(); name != "main" {
+	// 	return event
+	// }
+
 	// workspace panel - cycle through elements
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Workspace && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
 		next := ui.WorkspaceCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1217,7 +1475,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// workspace panel - move to next main panel
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceConfigButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Workspace && ui.WorkspaceCycle.current == ui.WorkspaceConfigButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		ui.EnvironmentsCycle.current = ui.EnvironmentSelectorIndex
 		nextElement := ui.MainCycle.Next()
@@ -1231,7 +1489,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// environment panel new - el 0
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentSelectorIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Environment && ui.EnvironmentsCycle.current == ui.EnvironmentSelectorIndex {
 		next := ui.EnvironmentsCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1241,7 +1499,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// environment panel new - el 1
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentConfigButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Environment && ui.EnvironmentsCycle.current == ui.EnvironmentConfigButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -1254,7 +1512,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// collections panel
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.URLBarCycle.current = ui.URLBarSelectorIndex
@@ -1267,7 +1525,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & dropdown
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSelectorIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarSelectorIndex {
 		next := ui.URLBarCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1276,7 +1534,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & url input
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarInputIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarInputIndex {
 		next := ui.URLBarCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1285,7 +1543,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & send button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSendButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarSendButtonIndex {
 		next := ui.URLBarCycle.Next()
 		ui.App.SetFocus(next)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1294,7 +1552,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// urlbar panel & curl button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarCurlButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarCurlButtonIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -1305,8 +1563,21 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		return nil
 	}
 
+	// requests editor/viewer - multipart
+	// if ui.MainCycle.current == ui.MainCycle.current {
+	// ui.FooterRight.SetText(strconv.Itoa(ui.CurrentFocus) + " Yes! ")
+	// ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
+	// nextElement := ui.MainCycle.Next()
+	// ui.SetActiveBorder(nextElement)
+	// ui.App.SetFocus(nextElement)
+	// ui.CurrentFocus = ui.MainCycle.current
+	// ui.UpdateFooter()
+
+	// return nil
+	// }
+
 	// requests editor/viewer panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPBodyTabIndex && !ui.BodyEditMode {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPBodyTabIndex && !ui.BodyEditMode {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -1318,7 +1589,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// requests auth panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPAuthTabIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPAuthTabIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -1330,7 +1601,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// requests query panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPQueryTabIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPQueryTabIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		nextElement := ui.MainCycle.Next()
 		ui.SetActiveBorder(nextElement)
@@ -1342,7 +1613,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// requests headers panel - cycle through header inputs
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPHeadersTabIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPHeadersTabIndex {
 		// Cycle through header key/value/delete inputs, then jump to next panel
 		currentFocusedElement := ui.App.GetFocus()
 
@@ -1387,7 +1658,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// response panel
-	if ui.MainCycle.current == ui.ResponseIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Response {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		ui.WorkspaceCycle.current = ui.WorkspaceSelectorIndex
 		nextElement := ui.MainCycle.Next()
@@ -1396,22 +1667,115 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		ui.App.SetFocus(ui.WorkspaceCycle.inputs[0])
 		ui.CurrentFocus = ui.MainCycle.current
 		ui.UpdateFooter()
+		// ui.FooterRight.SetText(strconv.Itoa(ui.CurrentFocus) + " " + strconv.Itoa(ui.MainCycle.current))
+		ui.FooterLeft.SetText("Response")
 
 		return nil
 	}
+
+	// if ui.MainCycle.current == ui.PanelIndices.Workspace && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
+	// 	next := ui.WorkspaceCycle.Next()
+	// 	ui.App.SetFocus(next)
+	// 	ui.CurrentFocus = ui.MainCycle.current
+	//
+	// 	return nil
+	// }
 
 	return nil
 }
 
 // handleBacktabNavigation handles Backtab (Shift+Tab) key navigation
 func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	// Experimental navigation system (disabled by default)
+	if ui.ExperimentalNavigationEnabled {
+		// Store previous container before updating
+		previousContainer := ui.ExperimentalCurrentContainer
+
+		// Reverse navigation logic for backtab
+		// Check if current position has subchildren
+		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
+			// We're in a container/child that has subchildren
+			if ui.ExperimentalCurrentSubchild > 0 {
+				// Move to previous subchild
+				ui.ExperimentalCurrentSubchild--
+			} else {
+				// At first subchild, need to move to previous child
+				if ui.ExperimentalCurrentChild > 0 {
+					// Move to previous child in same container
+					ui.ExperimentalCurrentChild--
+					// Set subchild to max if new child has subchildren
+					if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
+						ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild)
+					} else {
+						ui.ExperimentalCurrentSubchild = 0
+					}
+				} else {
+					// At first child, move to previous container
+					prevContainer := (ui.ExperimentalCurrentContainer - 1 + 6) % 6
+					prevMaxChild := getMaxChildForContainer(prevContainer)
+					ui.ExperimentalCurrentContainer = prevContainer
+					ui.ExperimentalCurrentChild = prevMaxChild
+					// Check if new child has subchildren
+					if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
+						ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild)
+					} else {
+						ui.ExperimentalCurrentSubchild = 0
+					}
+				}
+			}
+		} else {
+			// No subchildren at current position
+			if ui.ExperimentalCurrentChild > 0 {
+				// Move to previous child in same container
+				ui.ExperimentalCurrentChild--
+				// Reset subchild
+				ui.ExperimentalCurrentSubchild = 0
+			} else {
+				// At first child, move to previous container
+				prevContainer := (ui.ExperimentalCurrentContainer - 1 + 6) % 6
+				prevMaxChild := getMaxChildForContainer(prevContainer)
+				ui.ExperimentalCurrentContainer = prevContainer
+				ui.ExperimentalCurrentChild = prevMaxChild
+				// Reset subchild
+				ui.ExperimentalCurrentSubchild = 0
+			}
+		}
+
+		// Update borders if container changed
+		if previousContainer != ui.ExperimentalCurrentContainer {
+			// Deactivate border of previous container
+			if previousContainer < len(ui.MainCycle.panels) {
+				ui.SetInactiveBorder(ui.MainCycle.panels[previousContainer])
+			}
+			// Activate border of current container
+			if ui.ExperimentalCurrentContainer < len(ui.MainCycle.panels) {
+				ui.SetActiveBorder(ui.MainCycle.panels[ui.ExperimentalCurrentContainer])
+			}
+			// Update previous container tracking
+			ui.ExperimentalPreviousContainer = previousContainer
+		}
+
+		// Print the current position
+		containerName := getContainerName(ui.ExperimentalCurrentContainer)
+
+		// Handle special actions based on container/child combinations
+		message := handleSpecialCombinations(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, containerName, true, ui)
+		ui.FooterRight.SetText(message)
+
+		// Set focus to the appropriate UI element based on current coordinates
+		setFocusForCoordinates(ui)
+
+		// Return nil to prevent further navigation processing
+		return nil
+	}
+
 	// If a modal is open, let it handle Backtab navigation
 	if name, _ := ui.Pages.GetFrontPage(); name != "main" {
 		return event
 	}
 
 	// workspace panel - move to previous main panel
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Workspace && ui.WorkspaceCycle.current == ui.WorkspaceSelectorIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
@@ -1422,7 +1786,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// workspace panel - cycle backward through elements
-	if ui.MainCycle.current == ui.WorkspaceIndex && ui.WorkspaceCycle.current == ui.WorkspaceConfigButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Workspace && ui.WorkspaceCycle.current == ui.WorkspaceConfigButtonIndex {
 		prev := ui.WorkspaceCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1432,7 +1796,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// environment panel - cycle backward through elements
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentSelectorIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Environment && ui.EnvironmentsCycle.current == ui.EnvironmentSelectorIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
@@ -1445,7 +1809,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// environment panel - move to previous main panel
-	if ui.MainCycle.current == ui.EnviromentIndex && ui.EnvironmentsCycle.current == ui.EnvironmentConfigButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Environment && ui.EnvironmentsCycle.current == ui.EnvironmentConfigButtonIndex {
 		ui.App.SetFocus(ui.EnvironmentsCycle.inputs[0])
 		ui.EnvironmentsCycle.current = ui.EnvironmentSelectorIndex
 		ui.UpdateFooter()
@@ -1454,7 +1818,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// collections panel
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
@@ -1467,7 +1831,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & dropdown
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSelectorIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarSelectorIndex {
 		prev := ui.URLBarCycle.Prev()
 		if prev != nil {
 			ui.App.SetFocus(prev)
@@ -1485,7 +1849,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & url input
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarInputIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarInputIndex {
 		prev := ui.URLBarCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1494,7 +1858,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & send button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarSendButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarSendButtonIndex {
 		prev := ui.URLBarCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1503,7 +1867,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// urlbar panel & curl button
-	if ui.MainCycle.current == ui.URLBarIndex && ui.URLBarCycle.current == ui.URLBarCurlButtonIndex {
+	if ui.MainCycle.current == ui.PanelIndices.URLBar && ui.URLBarCycle.current == ui.URLBarCurlButtonIndex {
 		prev := ui.URLBarCycle.Prev()
 		ui.App.SetFocus(prev)
 		ui.CurrentFocus = ui.MainCycle.current
@@ -1512,7 +1876,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// requests editor/viewer panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPBodyTabIndex && !ui.BodyEditMode {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPBodyTabIndex && !ui.BodyEditMode {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
@@ -1525,7 +1889,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// requests auth panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPAuthTabIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPAuthTabIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
@@ -1538,7 +1902,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// requests query panel
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPQueryTabIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPQueryTabIndex {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
@@ -1551,7 +1915,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// requests headers panel - cycle backward through header inputs
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == ui.RPHeadersTabIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == ui.RPHeadersTabIndex {
 		// Cycle backward through header key/value/delete inputs
 		currentFocusedElement := ui.App.GetFocus()
 
@@ -1597,7 +1961,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// response panel
-	if ui.MainCycle.current == ui.ResponseIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Response {
 		ui.SetInactiveBorder(ui.MainCycle.panels[ui.MainCycle.current])
 		prevElement := ui.MainCycle.Prev()
 		ui.SetActiveBorder(prevElement)
