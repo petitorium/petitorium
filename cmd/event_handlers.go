@@ -1542,7 +1542,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 								// Bounds checking for multipart element
 								if ui.ExperimentalCurrentMultipartElement < 0 || ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
 									ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+									ui.ExperimentalCurrentFieldRowElement = 0
 								}
 
 								switch ui.ExperimentalCurrentMultipartElement {
@@ -1852,17 +1852,63 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 										// At last element in field row, move to next multipart element
 										ui.ExperimentalCurrentFieldRowElement = 0
 										ui.ExperimentalCurrentMultipartElement++
+
+										// Check if we're past the last multipart element
+										maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+										if currentMultipartFieldRows != nil {
+											maxMultipartElement = 1 + len(currentMultipartFieldRows)
+										}
+
+										if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+											// Past the last multipart element, jump to response panel
+											ui.ExperimentalCurrentMultipartElement = 0
+											ui.ExperimentalCurrentContainer = 5 // Response panel
+											ui.ExperimentalCurrentChild = 0     // PreviewTab
+											ui.ExperimentalCurrentSubchild = 0
+											ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+										}
 									}
 								} else {
 									// Field row is nil, move to next multipart element
 									ui.ExperimentalCurrentFieldRowElement = 0
 									ui.ExperimentalCurrentMultipartElement++
+
+									// Check if we're past the last multipart element
+									maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+									if currentMultipartFieldRows != nil {
+										maxMultipartElement = 1 + len(currentMultipartFieldRows)
+									}
+
+									if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+										// Past the last multipart element, jump to response panel
+										ui.ExperimentalCurrentMultipartElement = 0
+										ui.ExperimentalCurrentContainer = 5 // Response panel
+										ui.ExperimentalCurrentChild = 0     // PreviewTab
+										ui.ExperimentalCurrentSubchild = 0
+										ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+									}
 								}
 							} else {
-								// Invalid field row index, reset
-								ui.ExperimentalCurrentFieldRowElement = 0
-								ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+								// Invalid field row index - we're past the last field row
+								// Check if we're past the last multipart element
+								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+								if currentMultipartFieldRows != nil {
+									maxMultipartElement = 1 + len(currentMultipartFieldRows)
+								}
+
+								if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+									// Past the last multipart element, jump to response panel
+									ui.ExperimentalCurrentMultipartElement = 0
+									ui.ExperimentalCurrentFieldRowElement = 0
+									ui.ExperimentalCurrentContainer = 5 // Response panel
+									ui.ExperimentalCurrentChild = 0     // PreviewTab
+									ui.ExperimentalCurrentSubchild = 0
+									ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+								} else {
+									// Not past the last multipart element, reset to first
+									ui.ExperimentalCurrentFieldRowElement = 0
+									ui.ExperimentalCurrentMultipartElement = 0
+								}
 							}
 						} else {
 							// We're at a button (Add Field or Delete All), move to next multipart element
@@ -1877,10 +1923,13 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 								// Reset field row element when moving to a new multipart element
 								ui.ExperimentalCurrentFieldRowElement = 0
 							} else {
-								// At last multipart element, wrap back to first multipart element
+								// At last multipart element, jump to response panel (container 5)
 								ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
 								ui.ExperimentalCurrentFieldRowElement = 0
+								ui.ExperimentalCurrentContainer = 5 // Response panel
+								ui.ExperimentalCurrentChild = 0     // PreviewTab
+								ui.ExperimentalCurrentSubchild = 0
+								ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
 							}
 						}
 					} else {
@@ -1892,13 +1941,13 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 							ui.ExperimentalCurrentSubchild = getNextValidSubchild(ui.ExperimentalCurrentSubchild, ui)
 							// Reset multipart element when leaving MultipartFields
 							ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+							ui.ExperimentalCurrentFieldRowElement = 0
 						} else {
 							// At last BodyTab subchild, wrap back to first subchild in same tab
 							ui.ExperimentalCurrentSubchild = 0
 							// Reset multipart element
 							ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+							ui.ExperimentalCurrentFieldRowElement = 0
 							ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					}
@@ -1909,7 +1958,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					// Stay on current child (current tab header)
 					ui.ExperimentalCurrentSubchild = 0
 					ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+					ui.ExperimentalCurrentFieldRowElement = 0
 				}
 			}
 		} else if ui.ExperimentalCurrentContainer == 5 {
@@ -1957,7 +2006,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					// At last subchild, move to next child and reset subchild
 					ui.ExperimentalCurrentSubchild = 0
 					ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+					ui.ExperimentalCurrentFieldRowElement = 0
 					maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
 
 					if ui.ExperimentalCurrentChild < maxChild {
@@ -2315,7 +2364,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 							ui.ExperimentalCurrentSubchild = getPrevValidSubchild(ui.ExperimentalCurrentSubchild, ui)
 							// Reset multipart element when leaving MultipartFields
 							ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+							ui.ExperimentalCurrentFieldRowElement = 0
 							ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					} else {
@@ -2333,7 +2382,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// Stay on child 0 (Body tab header)
 					// Reset multipart element
 					ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+					ui.ExperimentalCurrentFieldRowElement = 0
 				} else if ui.ExperimentalCurrentChild > 0 {
 					// Other tabs (Auth, Query, Headers)
 					// For these tabs, backtab should exit tab content mode and go back to tab headers
@@ -2341,7 +2390,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// Stay on current child (current tab header)
 					ui.ExperimentalCurrentSubchild = 0
 					ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+					ui.ExperimentalCurrentFieldRowElement = 0
 				}
 			}
 		} else if ui.ExperimentalCurrentContainer == 5 {
@@ -2392,12 +2441,12 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
 							} else {
 								ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+								ui.ExperimentalCurrentFieldRowElement = 0
 							}
 						} else {
 							ui.ExperimentalCurrentSubchild = 0
 							ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+							ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					} else {
 						// At first child, move to previous container
@@ -2417,12 +2466,12 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
 							} else {
 								ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+								ui.ExperimentalCurrentFieldRowElement = 0
 							}
 						} else {
 							ui.ExperimentalCurrentSubchild = 0
 							ui.ExperimentalCurrentMultipartElement = 0
-						ui.ExperimentalCurrentFieldRowElement = 0
+							ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					}
 				}
