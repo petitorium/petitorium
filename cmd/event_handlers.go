@@ -122,6 +122,13 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 		updateTabHeader(requestTabs, ui.TabHeader, targetTabIndex, ui.Colors)
 		ui.CurrentTabIndex = targetTabIndex
 
+		// Update experimental navigation state if enabled
+		if ui.ExperimentalNavigationEnabled && ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalRequestInTabHeaders {
+			ui.ExperimentalCurrentChild = targetTabIndex
+			// Update focus and footer for experimental navigation
+			setFocusForCoordinates(ui)
+		}
+
 		// Update content type dropdown visibility
 		if targetTabIndex == 0 {
 			if !ui.dropdownAdded {
@@ -138,27 +145,37 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 		}
 
 		// Focus the appropriate tab content
-		switch targetTabIndex {
-		case 0: // Body tab
-			if ui.BodyEditMode {
-				ui.App.SetFocus(ui.BodyEditPanel)
-			} else {
-				ui.App.SetFocus(ui.BodyViewPanel)
-			}
-		case 3: // Headers tab
-			if len(headerRows) > 0 && headerRows[0].KeyInput != nil {
-				ui.App.SetFocus(headerRows[0].KeyInput)
-			} else {
+		// But not if experimental navigation is enabled and we're in tab headers mode
+		if !(ui.ExperimentalNavigationEnabled && ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalRequestInTabHeaders) {
+			switch targetTabIndex {
+			case 0: // Body tab
+				if ui.BodyEditMode {
+					ui.App.SetFocus(ui.BodyEditPanel)
+				} else {
+					ui.App.SetFocus(ui.BodyViewPanel)
+				}
+			case 3: // Headers tab
+				if len(headerRows) > 0 && headerRows[0].KeyInput != nil {
+					ui.App.SetFocus(headerRows[0].KeyInput)
+				} else {
+					ui.App.SetFocus(ui.RequestDataTabs)
+				}
+			default:
 				ui.App.SetFocus(ui.RequestDataTabs)
 			}
-		default:
-			ui.App.SetFocus(ui.RequestDataTabs)
 		}
 	} else if isResponsePanel {
 		responseTabNames := []string{"preview", "headers", "cookies", "timeline"}
 		ui.ResponsePages.SwitchToPage(responseTabNames[targetTabIndex])
 		updateResponseTabHeader(ui.ResponseTabHeader, targetTabIndex, ui.Colors)
 		ui.CurrentResponseTabIndex = targetTabIndex
+
+		// Update experimental navigation state if enabled
+		if ui.ExperimentalNavigationEnabled && ui.ExperimentalCurrentContainer == 5 && ui.ExperimentalResponseInTabHeaders {
+			ui.ExperimentalCurrentChild = targetTabIndex
+			// Update focus and footer for experimental navigation
+			setFocusForCoordinates(ui)
+		}
 	}
 
 	// Update footer after tab switch
@@ -1242,21 +1259,182 @@ func getContainerName(container int) string {
 }
 
 // hasSubchildren returns true if a container/child combination has subchildren
-func hasSubchildren(container, child int) bool {
-	// Only Request BodyTab (container 4, child 0) has subchildren for now
-	return container == 4 && child == 0
+func hasSubchildren(container, child int, ui *UIOrchestrator) bool {
+	// Request BodyTab (container 4, child 0) has subchildren when not in tab headers mode
+	return container == 4 && child == 0 && !ui.ExperimentalRequestInTabHeaders
 }
 
 // getMaxSubchildForChild returns the maximum subchild index for a given container/child
-func getMaxSubchildForChild(container, child int) int {
+func getMaxSubchildForChild(container, child int, ui *UIOrchestrator) int {
 	if container == 4 && child == 0 { // Request BodyTab
-		return 3 // ContentTypeSelector (0), JSONEditor (1), MultipartFields (2), NoBody (3)
+		// Check current content type to determine which subchildren are relevant
+		contentType := getCurrentContentType(ui)
+		if contentType != "" {
+			switch contentType {
+			case "JSON":
+				return 1 // ContentTypeSelector (0), JSONEditor (1) - skip MultipartFields and NoBody
+			case "Multipart":
+				return 2 // ContentTypeSelector (0), MultipartFields (2) - skip JSONEditor and NoBody
+			case "No Body":
+				return 3 // ContentTypeSelector (0), NoBody (3) - skip JSONEditor and MultipartFields
+			default:
+				return 3 // Default to all subchildren
+			}
+		}
+		return 3 // Default to all subchildren if no current request
 	}
 	return 0 // No subchildren by default
 }
 
+// getCurrentContentType returns the current content type from the dropdown
+func getCurrentContentType(ui *UIOrchestrator) string {
+	if ui.ContentTypeDropdown != nil {
+		_, contentType := ui.ContentTypeDropdown.GetCurrentOption()
+		return contentType
+	}
+	// Fallback to current request content type
+	if ui.CurrentRequest != nil {
+		return ui.CurrentRequest.ContentType
+	}
+	return "" // Unknown
+}
+
+// getNextValidSubchild returns the next valid subchild index based on current content type
+func getNextValidSubchild(currentSubchild int, ui *UIOrchestrator) int {
+	contentType := getCurrentContentType(ui)
+	if contentType == "" {
+		// Unknown content type, use default behavior
+		if currentSubchild < 3 {
+			return currentSubchild + 1
+		}
+		return 3
+	}
+
+	// For BodyTab (container 4, child 0)
+	// Determine which subchildren are valid for current content type
+	switch contentType {
+	case "JSON":
+		// Valid subchildren: 0 (ContentTypeSelector), 1 (JSONEditor)
+		if currentSubchild < 1 {
+			return currentSubchild + 1
+		}
+		return 1 // Already at max
+	case "Multipart":
+		// Valid subchildren: 0 (ContentTypeSelector), 2 (MultipartFields)
+		if currentSubchild == 0 {
+			return 2 // Skip 1 (JSONEditor)
+		}
+		return 2 // Already at max
+	case "No Body":
+		// Valid subchildren: 0 (ContentTypeSelector), 3 (NoBody)
+		if currentSubchild == 0 {
+			return 3 // Skip 1 (JSONEditor) and 2 (MultipartFields)
+		}
+		return 3 // Already at max
+	default:
+		// Default: all subchildren are valid
+		if currentSubchild < 3 {
+			return currentSubchild + 1
+		}
+		return 3
+	}
+}
+
+// getPrevValidSubchild returns the previous valid subchild index based on current content type
+func getPrevValidSubchild(currentSubchild int, ui *UIOrchestrator) int {
+	contentType := getCurrentContentType(ui)
+	if contentType == "" {
+		// Unknown content type, use default behavior
+		if currentSubchild > 0 {
+			return currentSubchild - 1
+		}
+		return 0
+	}
+
+	// For BodyTab (container 4, child 0)
+	// Determine which subchildren are valid for current content type
+	switch contentType {
+	case "JSON":
+		// Valid subchildren: 0 (ContentTypeSelector), 1 (JSONEditor)
+		if currentSubchild == 1 {
+			return 0
+		}
+		return 0 // Already at min
+	case "Multipart":
+		// Valid subchildren: 0 (ContentTypeSelector), 2 (MultipartFields)
+		if currentSubchild == 2 {
+			return 0
+		}
+		return 0 // Already at min
+	case "No Body":
+		// Valid subchildren: 0 (ContentTypeSelector), 3 (NoBody)
+		if currentSubchild == 3 {
+			return 0
+		}
+		return 0 // Already at min
+	default:
+		// Default: all subchildren are valid
+		if currentSubchild > 0 {
+			return currentSubchild - 1
+		}
+		return 0
+	}
+}
+
+// syncExperimentalChildWithCurrentTab syncs experimental child with current tab index when in tab headers mode
+func syncExperimentalChildWithCurrentTab(ui *UIOrchestrator) {
+	if ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalRequestInTabHeaders {
+		// Request panel tab headers mode
+		ui.ExperimentalCurrentChild = ui.CurrentTabIndex
+	} else if ui.ExperimentalCurrentContainer == 5 && ui.ExperimentalResponseInTabHeaders {
+		// Response panel tab headers mode
+		ui.ExperimentalCurrentChild = ui.CurrentResponseTabIndex
+	}
+}
+
+// syncMainCycleWithExperimental syncs MainCycle.current with ExperimentalCurrentContainer
+func syncMainCycleWithExperimental(ui *UIOrchestrator) {
+	if !ui.ExperimentalNavigationEnabled {
+		return
+	}
+
+	// Map experimental container to MainCycle panel index
+	switch ui.ExperimentalCurrentContainer {
+	case 0:
+		ui.MainCycle.current = ui.PanelIndices.Workspace
+	case 1:
+		ui.MainCycle.current = ui.PanelIndices.Environment
+	case 2:
+		ui.MainCycle.current = ui.PanelIndices.Collections
+	case 3:
+		ui.MainCycle.current = ui.PanelIndices.URLBar
+	case 4:
+		ui.MainCycle.current = ui.PanelIndices.Request
+	case 5:
+		ui.MainCycle.current = ui.PanelIndices.Response
+	}
+
+	// Also update CurrentFocus for compatibility with old code
+	ui.CurrentFocus = ui.MainCycle.current
+}
+
 // setFocusForCoordinates sets focus to the appropriate UI element based on current coordinates
 func setFocusForCoordinates(ui *UIOrchestrator) {
+	// Sync MainCycle.current with experimental container
+	syncMainCycleWithExperimental(ui)
+
+	// Sync experimental child with current tab index when in tab headers mode
+	syncExperimentalChildWithCurrentTab(ui)
+
+	// Bounds checking
+	if ui.ExperimentalCurrentContainer < 0 || ui.ExperimentalCurrentContainer > 5 {
+		ui.ExperimentalCurrentContainer = 0
+	}
+	maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
+	if ui.ExperimentalCurrentChild < 0 || ui.ExperimentalCurrentChild > maxChild {
+		ui.ExperimentalCurrentChild = 0
+	}
+
 	switch ui.ExperimentalCurrentContainer {
 	case 0: // Workspace panel
 		switch ui.ExperimentalCurrentChild {
@@ -1264,6 +1442,10 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 			ui.App.SetFocus(ui.WorkspaceSelector)
 		case 1: // WorkspaceMenu (Config button)
 			ui.App.SetFocus(ui.WorkspaceConfigButton)
+		default:
+			// Fallback to first child
+			ui.ExperimentalCurrentChild = 0
+			ui.App.SetFocus(ui.WorkspaceSelector)
 		}
 
 	case 1: // Environment panel
@@ -1272,6 +1454,10 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 			ui.App.SetFocus(ui.EnvDropdown)
 		case 1: // EnvironmentMenu (Config button)
 			ui.App.SetFocus(ui.EnvConfigButton)
+		default:
+			// Fallback to first child
+			ui.ExperimentalCurrentChild = 0
+			ui.App.SetFocus(ui.EnvDropdown)
 		}
 
 	case 2: // Collections panel
@@ -1288,46 +1474,160 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 			ui.App.SetFocus(ui.SendButton)
 		case 3: // CurlButton
 			ui.App.SetFocus(ui.CurlButton)
+		default:
+			// Fallback to first child
+			ui.ExperimentalCurrentChild = 0
+			ui.App.SetFocus(ui.MethodDropdown)
 		}
 
 	case 4: // Request panel
-		switch ui.ExperimentalCurrentChild {
-		case 0: // BodyTab (has subchildren)
-			// Handle BodyTab subchildren
-			switch ui.ExperimentalCurrentSubchild {
-			case 0: // ContentTypeSelector
-				ui.App.SetFocus(ui.ContentTypeDropdown)
-			case 1: // JSONEditor
-				if ui.BodyEditMode {
-					ui.App.SetFocus(ui.BodyEditPanel)
-				} else {
-					ui.App.SetFocus(ui.BodyViewPanel)
+		if ui.ExperimentalRequestInTabHeaders {
+			// Sync experimental child with current tab index
+			ui.ExperimentalCurrentChild = ui.CurrentTabIndex
+			// Focus the tab header
+			ui.App.SetFocus(ui.TabHeader)
+		} else {
+			// In tab content mode
+			switch ui.ExperimentalCurrentChild {
+			case 0: // BodyTab (has subchildren)
+				// Handle BodyTab subchildren with bounds checking
+				maxSubchild := getMaxSubchildForChild(4, 0, ui)
+				if ui.ExperimentalCurrentSubchild < 0 || ui.ExperimentalCurrentSubchild > maxSubchild {
+					ui.ExperimentalCurrentSubchild = 0
 				}
-			case 2: // MultipartFields
-				ui.App.SetFocus(ui.MultipartFieldsTab)
-			case 3: // NoBody
-				ui.App.SetFocus(ui.BodyViewPanel)
+
+				switch ui.ExperimentalCurrentSubchild {
+				case 0: // ContentTypeSelector
+					ui.App.SetFocus(ui.ContentTypeDropdown)
+				case 1: // JSONEditor
+					if ui.BodyEditMode {
+						ui.App.SetFocus(ui.BodyEditPanel)
+					} else {
+						ui.App.SetFocus(ui.BodyViewPanel)
+					}
+				case 2: // MultipartFields
+					// Handle multipart elements navigation
+					if ui.MultipartFieldsTab != nil {
+						// Get the button row (first child of MultipartFieldsTab)
+						buttonRow := ui.MultipartFieldsTab.GetItem(0)
+						if buttonRow != nil {
+							buttonRowFlex, ok := buttonRow.(*tview.Flex)
+							if ok && buttonRowFlex != nil {
+								// Get max multipart element (buttons + field rows)
+								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+
+								// Add field rows if available
+								if currentMultipartFieldRows != nil {
+									maxMultipartElement = 1 + len(currentMultipartFieldRows) // 0: Add, 1: Delete All, 2+: field rows
+								}
+
+								// Bounds checking for multipart element
+								if ui.ExperimentalCurrentMultipartElement < 0 || ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+									ui.ExperimentalCurrentMultipartElement = 0
+								}
+
+								switch ui.ExperimentalCurrentMultipartElement {
+								case 0: // Add Field button
+									if buttonRowFlex.GetItemCount() > 0 {
+										addButton := buttonRowFlex.GetItem(0)
+										if addButton != nil {
+											ui.App.SetFocus(addButton)
+										} else {
+											ui.App.SetFocus(ui.MultipartFieldsTab)
+										}
+									} else {
+										ui.App.SetFocus(ui.MultipartFieldsTab)
+									}
+								case 1: // Delete All button
+									if buttonRowFlex.GetItemCount() > 1 {
+										deleteAllButton := buttonRowFlex.GetItem(1)
+										if deleteAllButton != nil {
+											ui.App.SetFocus(deleteAllButton)
+										} else {
+											ui.App.SetFocus(ui.MultipartFieldsTab)
+										}
+									} else {
+										ui.App.SetFocus(ui.MultipartFieldsTab)
+									}
+								default: // Field rows (starting from index 2)
+									fieldRowIndex := ui.ExperimentalCurrentMultipartElement - 2
+									if fieldRowIndex >= 0 && fieldRowIndex < len(currentMultipartFieldRows) {
+										// Focus the first input field in the row
+										fieldRow := currentMultipartFieldRows[fieldRowIndex]
+										if fieldRow != nil && fieldRow.NameInput != nil {
+											ui.App.SetFocus(fieldRow.NameInput)
+										} else {
+											ui.App.SetFocus(ui.MultipartFieldsTab)
+										}
+									} else {
+										ui.App.SetFocus(ui.MultipartFieldsTab)
+									}
+								}
+							} else {
+								ui.App.SetFocus(ui.MultipartFieldsTab)
+							}
+						} else {
+							ui.App.SetFocus(ui.MultipartFieldsTab)
+						}
+					} else {
+						ui.App.SetFocus(ui.BodyContainer)
+					}
+				case 3: // NoBody
+					ui.App.SetFocus(ui.BodyViewPanel)
+				default:
+					ui.App.SetFocus(ui.BodyContainer)
+				}
+
+			case 1: // AuthTab
+				// Focus auth tab content (implementation depends on auth UI)
+				// For now, focus the request data tabs container
+				ui.App.SetFocus(ui.RequestDataTabs)
+
+			case 2: // QueryTab
+				// Focus query tab content
+				ui.App.SetFocus(ui.RequestDataTabs)
+
+			case 3: // HeadersTab
+				// Focus headers tab content
+				ui.App.SetFocus(ui.RequestDataTabs)
 			default:
-				ui.App.SetFocus(ui.BodyContainer)
+				// Fallback to first child
+				ui.ExperimentalCurrentChild = 0
+				ui.ExperimentalCurrentSubchild = 0
+				ui.App.SetFocus(ui.ContentTypeDropdown)
 			}
-
-		case 1: // AuthTab
-			// Focus auth tab content (implementation depends on auth UI)
-			// For now, focus the request data tabs container
-			ui.App.SetFocus(ui.RequestDataTabs)
-
-		case 2: // QueryTab
-			// Focus query tab content
-			ui.App.SetFocus(ui.RequestDataTabs)
-
-		case 3: // HeadersTab
-			// Focus headers tab content
-			ui.App.SetFocus(ui.RequestDataTabs)
 		}
 
 	case 5: // Response panel
-		// For response panel, focus the response preview
-		ui.App.SetFocus(ui.ResponsePreviewPanel)
+		if ui.ExperimentalResponseInTabHeaders {
+			// Sync experimental child with current response tab index
+			ui.ExperimentalCurrentChild = ui.CurrentResponseTabIndex
+			// Focus the response tab header
+			ui.App.SetFocus(ui.ResponseTabHeader)
+		} else {
+			// In tab content mode
+			switch ui.ExperimentalCurrentChild {
+			case 0: // PreviewTab
+				ui.App.SetFocus(ui.ResponsePreviewPanel)
+			case 1: // HeadersTab
+				ui.App.SetFocus(ui.ResponseHeadersPanel)
+			case 2: // CookiesTab
+				ui.App.SetFocus(ui.ResponseCookiesPanel)
+			case 3: // TimelineTab
+				ui.App.SetFocus(ui.ResponseTimelinePanel)
+			default:
+				// Fallback to first child
+				ui.ExperimentalCurrentChild = 0
+				ui.App.SetFocus(ui.ResponsePreviewPanel)
+			}
+		}
+
+	default:
+		// Should never happen due to bounds checking above, but just in case
+		ui.ExperimentalCurrentContainer = 0
+		ui.ExperimentalCurrentChild = 0
+		ui.ExperimentalCurrentSubchild = 0
+		ui.App.SetFocus(ui.WorkspaceSelector)
 	}
 }
 
@@ -1335,7 +1635,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 func handleSpecialCombinations(container, child int, containerName string, isBacktab bool, ui *UIOrchestrator) string {
 	// Check if we have subchildren to decide format
 	var baseMessage string
-	if hasSubchildren(container, child) {
+	if hasSubchildren(container, child, ui) {
 		baseMessage = fmt.Sprintf("[%d,%d,%d] %s", container, child, ui.ExperimentalCurrentSubchild, containerName)
 	} else {
 		baseMessage = fmt.Sprintf("[%d,%d] %s", container, child, containerName)
@@ -1347,28 +1647,88 @@ func handleSpecialCombinations(container, child int, containerName string, isBac
 		return baseMessage + " - Workspace selector active"
 
 	case container == 2 && child == 0: // Collections panel [2,0]
-		return baseMessage + " - Collections tree active"
+		return baseMessage + " - Collections tree (h/j/k/l to navigate)"
 
 	case container == 3 && child == 1: // URLBar URL Input [3,1]
 		return baseMessage + " - URL input focused"
 
-	case container == 4 && child == 0: // Request Body tab [4,0]
-		// Handle subchild-specific messages for BodyTab
-		switch ui.ExperimentalCurrentSubchild {
-		case 0:
-			return baseMessage + " - Content type selector (JSON/Multipart/No Body)"
-		case 1:
-			return baseMessage + " - JSON editor"
-		case 2:
-			return baseMessage + " - Multipart fields"
-		case 3:
-			return baseMessage + " - No body"
-		default:
-			return baseMessage + " - Request body tab"
+	case container == 4: // Request panel
+		if ui.ExperimentalRequestInTabHeaders {
+			// In tab headers mode
+			switch child {
+			case 0:
+				return baseMessage + " - Body tab header"
+			case 1:
+				return baseMessage + " - Auth tab header"
+			case 2:
+				return baseMessage + " - Query tab header"
+			case 3:
+				return baseMessage + " - Headers tab header"
+			default:
+				return baseMessage + " - Request tab header"
+			}
+		} else {
+			// In tab content mode
+			if child == 0 {
+				// Request Body tab [4,0] in content mode
+				// Handle subchild-specific messages for BodyTab
+				switch ui.ExperimentalCurrentSubchild {
+				case 0:
+					return baseMessage + " - Content type selector (JSON/Multipart/No Body)"
+				case 1:
+					return baseMessage + " - JSON editor"
+				case 2:
+					return baseMessage + " - Multipart fields"
+				case 3:
+					return baseMessage + " - No body"
+				default:
+					return baseMessage + " - Request body tab"
+				}
+			} else {
+				// Other tabs in content mode
+				switch child {
+				case 1:
+					return baseMessage + " - Auth tab content"
+				case 2:
+					return baseMessage + " - Query tab content"
+				case 3:
+					return baseMessage + " - Headers tab content"
+				default:
+					return baseMessage + " - Request tab content"
+				}
+			}
 		}
 
-	case container == 5 && child == 0: // Response Preview [5,0]
-		return baseMessage + " - Response preview active"
+	case container == 5: // Response panel
+		if ui.ExperimentalResponseInTabHeaders {
+			// In tab headers mode
+			switch child {
+			case 0:
+				return baseMessage + " - Preview tab header"
+			case 1:
+				return baseMessage + " - Headers tab header"
+			case 2:
+				return baseMessage + " - Cookies tab header"
+			case 3:
+				return baseMessage + " - Timeline tab header"
+			default:
+				return baseMessage + " - Response tab header"
+			}
+		} else {
+			// In tab content mode
+			switch child {
+			case 0:
+				return baseMessage + " - Response preview"
+			case 1:
+				return baseMessage + " - Response headers"
+			case 2:
+				return baseMessage + " - Response cookies"
+			case 3:
+				return baseMessage + " - Response timeline"
+			default:
+				return baseMessage + " - Response tab content"
+			}
+		}
 
 	default:
 		// No special handling, return base message
@@ -1382,20 +1742,124 @@ func handleSpecialCombinations(container, child int, containerName string, isBac
 func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	// Experimental navigation system (disabled by default)
 	if ui.ExperimentalNavigationEnabled {
+		// Check if a modal is open - if so, let the modal handle Tab
+		if name, _ := ui.Pages.GetFrontPage(); name != "main" {
+			return event
+		}
 		// Store previous container before updating
 		previousContainer := ui.ExperimentalCurrentContainer
 
-		// Check if current position has subchildren
-		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
-			// We're in a container/child that has subchildren (e.g., Request BodyTab)
-			maxSubchild := getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild)
-
-			if ui.ExperimentalCurrentSubchild < maxSubchild {
-				// Move to next subchild
-				ui.ExperimentalCurrentSubchild++
-			} else {
-				// At last subchild, move to next child and reset subchild
+		// Special handling for Request panel (container 4)
+		if ui.ExperimentalCurrentContainer == 4 {
+			// Request panel navigation logic
+			if ui.ExperimentalRequestInTabHeaders {
+				// We're in tab headers mode
+				// Tab should enter the current tab's content
+				ui.ExperimentalRequestInTabHeaders = false
+				// Reset subchild for tab content
 				ui.ExperimentalCurrentSubchild = 0
+				// For Body tab, start at content type selector (subchild 0)
+				// For other tabs, no subchildren
+			} else {
+				// We're in tab content mode
+				if ui.ExperimentalCurrentChild == 0 && hasSubchildren(4, 0, ui) {
+					// Body tab with subchildren
+					// Check if we're in MultipartFields and need to navigate within multipart elements
+					if ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
+						// Navigate within multipart elements
+						maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+						if currentMultipartFieldRows != nil {
+							maxMultipartElement = 1 + len(currentMultipartFieldRows)
+						}
+
+						if ui.ExperimentalCurrentMultipartElement < maxMultipartElement {
+							// Move to next multipart element
+							ui.ExperimentalCurrentMultipartElement++
+						} else {
+							// At last multipart element, wrap back to first multipart element
+							ui.ExperimentalCurrentMultipartElement = 0
+						}
+					} else {
+						// Not in multipart navigation mode, move to next valid subchild
+						maxSubchild := getMaxSubchildForChild(4, 0, ui)
+
+						if ui.ExperimentalCurrentSubchild < maxSubchild {
+							// Move to next valid subchild in BodyTab (skip invalid ones based on content type)
+							ui.ExperimentalCurrentSubchild = getNextValidSubchild(ui.ExperimentalCurrentSubchild, ui)
+							// Reset multipart element when leaving MultipartFields
+							ui.ExperimentalCurrentMultipartElement = 0
+						} else {
+							// At last BodyTab subchild, wrap back to first subchild in same tab
+							ui.ExperimentalCurrentSubchild = 0
+							// Reset multipart element
+							ui.ExperimentalCurrentMultipartElement = 0
+						}
+					}
+				} else {
+					// Other tabs (Auth, Query, Headers) or BodyTab without subchildren
+					// For these tabs, tab should exit tab content mode and go back to tab headers
+					ui.ExperimentalRequestInTabHeaders = true
+					// Stay on current child (current tab header)
+					ui.ExperimentalCurrentSubchild = 0
+					ui.ExperimentalCurrentMultipartElement = 0
+				}
+			}
+		} else if ui.ExperimentalCurrentContainer == 5 {
+			// Response panel navigation logic
+			if ui.ExperimentalResponseInTabHeaders {
+				// We're in tab headers mode
+				maxTabHeader := 3 // 0=Preview, 1=Headers, 2=Cookies, 3=Timeline
+
+				if ui.ExperimentalCurrentChild < maxTabHeader {
+					// Move to next tab header
+					ui.ExperimentalCurrentChild++
+				} else {
+					// At last tab header (Timeline), exit tab headers mode
+					// Stay on current child (3 = Timeline) but exit tab headers mode
+					ui.ExperimentalResponseInTabHeaders = false
+					// Reset subchild (Response panel doesn't have subchildren)
+					ui.ExperimentalCurrentSubchild = 0
+				}
+			} else {
+				// We're in tab content mode
+				// For response tabs, tab should exit tab content mode and go back to tab headers
+				ui.ExperimentalResponseInTabHeaders = true
+				// Stay on current child (current tab header)
+				ui.ExperimentalCurrentSubchild = 0
+			}
+		} else {
+			// Normal navigation for other containers
+			// Check if current position has subchildren
+			if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui) {
+				// We're in a container/child that has subchildren (e.g., Request BodyTab)
+				maxSubchild := getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui)
+
+				if ui.ExperimentalCurrentSubchild < maxSubchild {
+					// Move to next subchild
+					ui.ExperimentalCurrentSubchild++
+					// If moving to MultipartFields, reset multipart element
+					if ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
+						ui.ExperimentalCurrentMultipartElement = 0
+					} else {
+						ui.ExperimentalCurrentMultipartElement = 0
+					}
+				} else {
+					// At last subchild, move to next child and reset subchild
+					ui.ExperimentalCurrentSubchild = 0
+					ui.ExperimentalCurrentMultipartElement = 0
+					maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
+
+					if ui.ExperimentalCurrentChild < maxChild {
+						// Move to next child in same container
+						ui.ExperimentalCurrentChild++
+					} else {
+						// At last child, move to next container and reset child
+						ui.ExperimentalCurrentChild = 0
+						ui.ExperimentalCurrentContainer = (ui.ExperimentalCurrentContainer + 1) % 6 // 6 containers total
+					}
+				}
+			} else {
+				// No subchildren at current position
 				maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
 
 				if ui.ExperimentalCurrentChild < maxChild {
@@ -1406,21 +1870,9 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					ui.ExperimentalCurrentChild = 0
 					ui.ExperimentalCurrentContainer = (ui.ExperimentalCurrentContainer + 1) % 6 // 6 containers total
 				}
+				// Reset subchild when moving to a position without subchildren
+				ui.ExperimentalCurrentSubchild = 0
 			}
-		} else {
-			// No subchildren at current position
-			maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
-
-			if ui.ExperimentalCurrentChild < maxChild {
-				// Move to next child in same container
-				ui.ExperimentalCurrentChild++
-			} else {
-				// At last child, move to next container and reset child
-				ui.ExperimentalCurrentChild = 0
-				ui.ExperimentalCurrentContainer = (ui.ExperimentalCurrentContainer + 1) % 6 // 6 containers total
-			}
-			// Reset subchild when moving to a position without subchildren
-			ui.ExperimentalCurrentSubchild = 0
 		}
 
 		// Update borders if container changed
@@ -1437,12 +1889,18 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 			ui.ExperimentalPreviousContainer = previousContainer
 		}
 
+		// Sync MainCycle.current with experimental container
+		syncMainCycleWithExperimental(ui)
+
+		// Sync experimental child with current tab index before getting message
+		syncExperimentalChildWithCurrentTab(ui)
+
 		// Print the current position
 		containerName := getContainerName(ui.ExperimentalCurrentContainer)
 
 		// Format message based on whether we have subchildren
 		var message string
-		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
+		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui) {
 			message = fmt.Sprintf("[%d,%d,%d] %s", ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui.ExperimentalCurrentSubchild, containerName)
 		} else {
 			message = fmt.Sprintf("[%d,%d] %s", ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, containerName)
@@ -1688,56 +2146,146 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	// Experimental navigation system (disabled by default)
 	if ui.ExperimentalNavigationEnabled {
+		// Check if a modal is open - if so, let the modal handle Backtab
+		if name, _ := ui.Pages.GetFrontPage(); name != "main" {
+			return event
+		}
 		// Store previous container before updating
 		previousContainer := ui.ExperimentalCurrentContainer
 
-		// Reverse navigation logic for backtab
-		// Check if current position has subchildren
-		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
-			// We're in a container/child that has subchildren
-			if ui.ExperimentalCurrentSubchild > 0 {
-				// Move to previous subchild
-				ui.ExperimentalCurrentSubchild--
+		// Special handling for Request panel (container 4)
+		if ui.ExperimentalCurrentContainer == 4 {
+			// Request panel backtab navigation logic
+			if ui.ExperimentalRequestInTabHeaders {
+				// We're in tab headers mode
+				// Backtab should move to previous container (URLBar)
+				ui.ExperimentalCurrentContainer = 3                      // URLBar panel
+				ui.ExperimentalCurrentChild = getMaxChildForContainer(3) // Last child of URLBar
+				ui.ExperimentalRequestInTabHeaders = true                // Reset for Request panel
+				ui.ExperimentalCurrentSubchild = 0
 			} else {
-				// At first subchild, need to move to previous child
+				// We're in tab content mode
+				if ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild > 0 {
+					// Body tab with subchildren, not at first subchild
+					// Check if we're in MultipartFields and need to navigate within multipart elements
+					if ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" && ui.ExperimentalCurrentMultipartElement > 0 {
+						// Navigate within multipart elements
+						ui.ExperimentalCurrentMultipartElement--
+					} else {
+						// Move to previous subchild
+						ui.ExperimentalCurrentSubchild = getPrevValidSubchild(ui.ExperimentalCurrentSubchild, ui)
+						// Reset multipart element when leaving MultipartFields
+						ui.ExperimentalCurrentMultipartElement = 0
+					}
+				} else if ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 0 {
+					// At first BodyTab subchild, enter tab headers mode
+					ui.ExperimentalRequestInTabHeaders = true
+					// Stay on child 0 (Body tab header)
+					// Reset multipart element
+					ui.ExperimentalCurrentMultipartElement = 0
+				} else if ui.ExperimentalCurrentChild > 0 {
+					// Other tabs (Auth, Query, Headers)
+					// For these tabs, backtab should exit tab content mode and go back to tab headers
+					ui.ExperimentalRequestInTabHeaders = true
+					// Stay on current child (current tab header)
+					ui.ExperimentalCurrentSubchild = 0
+					ui.ExperimentalCurrentMultipartElement = 0
+				}
+			}
+		} else if ui.ExperimentalCurrentContainer == 5 {
+			// Response panel backtab navigation logic
+			if ui.ExperimentalResponseInTabHeaders {
+				// We're in tab headers mode
+				if ui.ExperimentalCurrentChild > 0 {
+					// Move to previous tab header
+					ui.ExperimentalCurrentChild--
+				} else {
+					// At first tab header (Preview), move to previous container (Request)
+					ui.ExperimentalCurrentContainer = 4                      // Request panel
+					ui.ExperimentalCurrentChild = getMaxChildForContainer(4) // Last child of Request
+					ui.ExperimentalResponseInTabHeaders = true               // Reset for Response panel
+					ui.ExperimentalCurrentSubchild = 0
+					// When moving to Request panel, we should be in tab headers mode
+					ui.ExperimentalRequestInTabHeaders = true
+				}
+			} else {
+				// We're in tab content mode
+				// For response tabs, backtab should exit tab content mode and go back to tab headers
+				ui.ExperimentalResponseInTabHeaders = true
+				// Stay on current child (current tab header)
+				ui.ExperimentalCurrentSubchild = 0
+			}
+		} else {
+			// Normal backtab navigation for other containers
+			// Check if current position has subchildren
+			if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui) {
+				// We're in a container/child that has subchildren
+				if ui.ExperimentalCurrentSubchild > 0 {
+					// Move to previous subchild
+					ui.ExperimentalCurrentSubchild--
+				} else {
+					// At first subchild, need to move to previous child
+					if ui.ExperimentalCurrentChild > 0 {
+						// Move to previous child in same container
+						ui.ExperimentalCurrentChild--
+						// Set subchild to max if new child has subchildren
+						if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui) {
+							ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui)
+							// If moving to MultipartFields, set multipart element to last element
+							if ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
+								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+								if currentMultipartFieldRows != nil {
+									maxMultipartElement = 1 + len(currentMultipartFieldRows)
+								}
+								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
+							} else {
+								ui.ExperimentalCurrentMultipartElement = 0
+							}
+						} else {
+							ui.ExperimentalCurrentSubchild = 0
+							ui.ExperimentalCurrentMultipartElement = 0
+						}
+					} else {
+						// At first child, move to previous container
+						prevContainer := (ui.ExperimentalCurrentContainer - 1 + 6) % 6
+						prevMaxChild := getMaxChildForContainer(prevContainer)
+						ui.ExperimentalCurrentContainer = prevContainer
+						ui.ExperimentalCurrentChild = prevMaxChild
+						// Check if new child has subchildren
+						if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui) {
+							ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui)
+							// If moving to MultipartFields, set multipart element to last element
+							if ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
+								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+								if currentMultipartFieldRows != nil {
+									maxMultipartElement = 1 + len(currentMultipartFieldRows)
+								}
+								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
+							} else {
+								ui.ExperimentalCurrentMultipartElement = 0
+							}
+						} else {
+							ui.ExperimentalCurrentSubchild = 0
+							ui.ExperimentalCurrentMultipartElement = 0
+						}
+					}
+				}
+			} else {
+				// No subchildren at current position
 				if ui.ExperimentalCurrentChild > 0 {
 					// Move to previous child in same container
 					ui.ExperimentalCurrentChild--
-					// Set subchild to max if new child has subchildren
-					if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
-						ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild)
-					} else {
-						ui.ExperimentalCurrentSubchild = 0
-					}
+					// Reset subchild
+					ui.ExperimentalCurrentSubchild = 0
 				} else {
 					// At first child, move to previous container
 					prevContainer := (ui.ExperimentalCurrentContainer - 1 + 6) % 6
 					prevMaxChild := getMaxChildForContainer(prevContainer)
 					ui.ExperimentalCurrentContainer = prevContainer
 					ui.ExperimentalCurrentChild = prevMaxChild
-					// Check if new child has subchildren
-					if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild) {
-						ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild)
-					} else {
-						ui.ExperimentalCurrentSubchild = 0
-					}
+					// Reset subchild
+					ui.ExperimentalCurrentSubchild = 0
 				}
-			}
-		} else {
-			// No subchildren at current position
-			if ui.ExperimentalCurrentChild > 0 {
-				// Move to previous child in same container
-				ui.ExperimentalCurrentChild--
-				// Reset subchild
-				ui.ExperimentalCurrentSubchild = 0
-			} else {
-				// At first child, move to previous container
-				prevContainer := (ui.ExperimentalCurrentContainer - 1 + 6) % 6
-				prevMaxChild := getMaxChildForContainer(prevContainer)
-				ui.ExperimentalCurrentContainer = prevContainer
-				ui.ExperimentalCurrentChild = prevMaxChild
-				// Reset subchild
-				ui.ExperimentalCurrentSubchild = 0
 			}
 		}
 
@@ -1754,6 +2302,12 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			// Update previous container tracking
 			ui.ExperimentalPreviousContainer = previousContainer
 		}
+
+		// Sync MainCycle.current with experimental container
+		syncMainCycleWithExperimental(ui)
+
+		// Sync experimental child with current tab index before getting message
+		syncExperimentalChildWithCurrentTab(ui)
 
 		// Print the current position
 		containerName := getContainerName(ui.ExperimentalCurrentContainer)

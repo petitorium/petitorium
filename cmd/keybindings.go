@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -36,6 +37,28 @@ var (
 	navigateTreeDown func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
 	navigateTreeUp   func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
 )
+
+// toggleExperimentalNavigation toggles the experimental navigation system
+func toggleExperimentalNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ExperimentalNavigationEnabled = !ui.ExperimentalNavigationEnabled
+
+	// Update footer to show current mode
+	if ui.ExperimentalNavigationEnabled {
+		ui.FooterRight.SetText("Experimental navigation: ON")
+	} else {
+		ui.FooterRight.SetText("Experimental navigation: OFF")
+	}
+
+	// Clear message after 2 seconds
+	go func() {
+		time.Sleep(2 * time.Second)
+		ui.App.QueueUpdateDraw(func() {
+			ui.FooterRight.SetText("Petitorium ")
+		})
+	}()
+
+	return nil
+}
 
 // getVisibleNodes collects all visible nodes in the tree
 func getVisibleNodes(root *tview.TreeNode) []*tview.TreeNode {
@@ -157,6 +180,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Key:         tcell.KeyF4,
 			Action:      openExternalEditor,
 			Description: "Open body in external editor",
+			Context:     "global",
+		},
+		{
+			Key:         tcell.KeyF2,
+			Action:      toggleExperimentalNavigation,
+			Description: "Toggle experimental navigation",
 			Context:     "global",
 		},
 		// {
