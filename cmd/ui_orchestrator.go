@@ -140,6 +140,7 @@ type UIOrchestrator struct {
 	ExperimentalCurrentChild            int
 	ExperimentalCurrentSubchild         int
 	ExperimentalCurrentMultipartElement int // For navigation within multipart fields (0: Add Field, 1: Delete All, 2+: field rows)
+	ExperimentalCurrentFieldRowElement  int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: X)
 	ExperimentalPreviousContainer       int
 	ExperimentalRequestInTabHeaders     bool // True when in Request panel tab headers
 	ExperimentalResponseInTabHeaders    bool // True when in Response panel tab headers
@@ -648,6 +649,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		ExperimentalCurrentChild:            0,
 		ExperimentalCurrentSubchild:         0,
 		ExperimentalCurrentMultipartElement: 0,
+		ExperimentalCurrentFieldRowElement:  0,
 		ExperimentalPreviousContainer:       0,
 		ExperimentalRequestInTabHeaders:     true, // Start in tab headers when in Request panel
 		ExperimentalResponseInTabHeaders:    true, // Start in tab headers when in Response panel

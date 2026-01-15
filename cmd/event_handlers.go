@@ -1286,6 +1286,24 @@ func getMaxSubchildForChild(container, child int, ui *UIOrchestrator) int {
 	return 0 // No subchildren by default
 }
 
+// getMaxFieldRowElement returns the maximum field row element index for a field row
+func getMaxFieldRowElement(fieldRow *MultipartFieldRow) int {
+	if fieldRow == nil {
+		return 0
+	}
+
+	// Base elements: Name (0), Type (1), Value (2), X button (3)
+	maxElement := 3
+
+	// Check if Browse button is visible (for file type)
+	selectedType, _ := fieldRow.TypeDropdown.GetCurrentOption()
+	if selectedType == 2 { // "file" is option 2
+		maxElement = 4 // Add Browse button at position 3, X moves to 4
+	}
+
+	return maxElement
+}
+
 // getCurrentContentType returns the current content type from the dropdown
 func getCurrentContentType(ui *UIOrchestrator) string {
 	if ui.ContentTypeDropdown != nil {
@@ -1524,6 +1542,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 								// Bounds checking for multipart element
 								if ui.ExperimentalCurrentMultipartElement < 0 || ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
 									ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 								}
 
 								switch ui.ExperimentalCurrentMultipartElement {
@@ -1552,10 +1571,61 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 								default: // Field rows (starting from index 2)
 									fieldRowIndex := ui.ExperimentalCurrentMultipartElement - 2
 									if fieldRowIndex >= 0 && fieldRowIndex < len(currentMultipartFieldRows) {
-										// Focus the first input field in the row
 										fieldRow := currentMultipartFieldRows[fieldRowIndex]
-										if fieldRow != nil && fieldRow.NameInput != nil {
-											ui.App.SetFocus(fieldRow.NameInput)
+										if fieldRow != nil {
+											// Get max field row element for this row
+											maxFieldRowElement := getMaxFieldRowElement(fieldRow)
+
+											// Bounds checking for field row element
+											if ui.ExperimentalCurrentFieldRowElement < 0 || ui.ExperimentalCurrentFieldRowElement > maxFieldRowElement {
+												ui.ExperimentalCurrentFieldRowElement = 0
+											}
+
+											// Focus the appropriate element in the row
+											switch ui.ExperimentalCurrentFieldRowElement {
+											case 0: // Name input
+												if fieldRow.NameInput != nil {
+													ui.App.SetFocus(fieldRow.NameInput)
+												} else {
+													ui.App.SetFocus(ui.MultipartFieldsTab)
+												}
+											case 1: // Type dropdown
+												if fieldRow.TypeDropdown != nil {
+													ui.App.SetFocus(fieldRow.TypeDropdown)
+												} else {
+													ui.App.SetFocus(ui.MultipartFieldsTab)
+												}
+											case 2: // Value input
+												if fieldRow.ValueInput != nil {
+													ui.App.SetFocus(fieldRow.ValueInput)
+												} else {
+													ui.App.SetFocus(ui.MultipartFieldsTab)
+												}
+											case 3: // Browse button (only for file type) or X button
+												selectedType, _ := fieldRow.TypeDropdown.GetCurrentOption()
+												if selectedType == 2 { // "file" type
+													if fieldRow.FilePickerButton != nil {
+														ui.App.SetFocus(fieldRow.FilePickerButton)
+													} else {
+														ui.App.SetFocus(ui.MultipartFieldsTab)
+													}
+												} else {
+													// Not file type, so case 3 is X button
+													if fieldRow.DeleteButton != nil {
+														ui.App.SetFocus(fieldRow.DeleteButton)
+													} else {
+														ui.App.SetFocus(ui.MultipartFieldsTab)
+													}
+												}
+											case 4: // X button (only for file type, since Browse is at 3)
+												if fieldRow.DeleteButton != nil {
+													ui.App.SetFocus(fieldRow.DeleteButton)
+												} else {
+													ui.App.SetFocus(ui.MultipartFieldsTab)
+												}
+											default:
+												ui.App.SetFocus(ui.MultipartFieldsTab)
+											}
 										} else {
 											ui.App.SetFocus(ui.MultipartFieldsTab)
 										}
@@ -1766,18 +1836,52 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					// Body tab with subchildren
 					// Check if we're in MultipartFields and need to navigate within multipart elements
 					if ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
-						// Navigate within multipart elements
-						maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
-						if currentMultipartFieldRows != nil {
-							maxMultipartElement = 1 + len(currentMultipartFieldRows)
-						}
+						// Check if we're in a field row (multipart element >= 2)
+						if ui.ExperimentalCurrentMultipartElement >= 2 {
+							// We're in a field row, navigate within field row elements
+							fieldRowIndex := ui.ExperimentalCurrentMultipartElement - 2
+							if fieldRowIndex >= 0 && fieldRowIndex < len(currentMultipartFieldRows) {
+								fieldRow := currentMultipartFieldRows[fieldRowIndex]
+								if fieldRow != nil {
+									maxFieldRowElement := getMaxFieldRowElement(fieldRow)
 
-						if ui.ExperimentalCurrentMultipartElement < maxMultipartElement {
-							// Move to next multipart element
-							ui.ExperimentalCurrentMultipartElement++
+									if ui.ExperimentalCurrentFieldRowElement < maxFieldRowElement {
+										// Move to next element within the field row
+										ui.ExperimentalCurrentFieldRowElement++
+									} else {
+										// At last element in field row, move to next multipart element
+										ui.ExperimentalCurrentFieldRowElement = 0
+										ui.ExperimentalCurrentMultipartElement++
+									}
+								} else {
+									// Field row is nil, move to next multipart element
+									ui.ExperimentalCurrentFieldRowElement = 0
+									ui.ExperimentalCurrentMultipartElement++
+								}
+							} else {
+								// Invalid field row index, reset
+								ui.ExperimentalCurrentFieldRowElement = 0
+								ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+							}
 						} else {
-							// At last multipart element, wrap back to first multipart element
-							ui.ExperimentalCurrentMultipartElement = 0
+							// We're at a button (Add Field or Delete All), move to next multipart element
+							maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+							if currentMultipartFieldRows != nil {
+								maxMultipartElement = 1 + len(currentMultipartFieldRows)
+							}
+
+							if ui.ExperimentalCurrentMultipartElement < maxMultipartElement {
+								// Move to next multipart element
+								ui.ExperimentalCurrentMultipartElement++
+								// Reset field row element when moving to a new multipart element
+								ui.ExperimentalCurrentFieldRowElement = 0
+							} else {
+								// At last multipart element, wrap back to first multipart element
+								ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+								ui.ExperimentalCurrentFieldRowElement = 0
+							}
 						}
 					} else {
 						// Not in multipart navigation mode, move to next valid subchild
@@ -1788,11 +1892,14 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 							ui.ExperimentalCurrentSubchild = getNextValidSubchild(ui.ExperimentalCurrentSubchild, ui)
 							// Reset multipart element when leaving MultipartFields
 							ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 						} else {
 							// At last BodyTab subchild, wrap back to first subchild in same tab
 							ui.ExperimentalCurrentSubchild = 0
 							// Reset multipart element
 							ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+							ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					}
 				} else {
@@ -1802,6 +1909,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					// Stay on current child (current tab header)
 					ui.ExperimentalCurrentSubchild = 0
 					ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 				}
 			}
 		} else if ui.ExperimentalCurrentContainer == 5 {
@@ -1840,13 +1948,16 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					// If moving to MultipartFields, reset multipart element
 					if ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
 						ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 					} else {
 						ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 					}
 				} else {
 					// At last subchild, move to next child and reset subchild
 					ui.ExperimentalCurrentSubchild = 0
 					ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 					maxChild := getMaxChildForContainer(ui.ExperimentalCurrentContainer)
 
 					if ui.ExperimentalCurrentChild < maxChild {
@@ -2168,14 +2279,53 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 				if ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild > 0 {
 					// Body tab with subchildren, not at first subchild
 					// Check if we're in MultipartFields and need to navigate within multipart elements
-					if ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" && ui.ExperimentalCurrentMultipartElement > 0 {
-						// Navigate within multipart elements
-						ui.ExperimentalCurrentMultipartElement--
+					if ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
+						// Check if we're in a field row (multipart element >= 2)
+						if ui.ExperimentalCurrentMultipartElement >= 2 {
+							// We're in a field row
+							if ui.ExperimentalCurrentFieldRowElement > 0 {
+								// Move to previous element within the field row
+								ui.ExperimentalCurrentFieldRowElement--
+							} else {
+								// At first element in field row, move to previous multipart element
+								ui.ExperimentalCurrentFieldRowElement = 0
+
+								// Move to previous multipart element
+								if ui.ExperimentalCurrentMultipartElement > 0 {
+									ui.ExperimentalCurrentMultipartElement--
+
+									// If moving to another field row, set field row element to last element
+									if ui.ExperimentalCurrentMultipartElement >= 2 {
+										fieldRowIndex := ui.ExperimentalCurrentMultipartElement - 2
+										if fieldRowIndex >= 0 && fieldRowIndex < len(currentMultipartFieldRows) {
+											fieldRow := currentMultipartFieldRows[fieldRowIndex]
+											if fieldRow != nil {
+												ui.ExperimentalCurrentFieldRowElement = getMaxFieldRowElement(fieldRow)
+											}
+										}
+									}
+								}
+							}
+						} else if ui.ExperimentalCurrentMultipartElement > 0 {
+							// We're at a button (Delete All), move to previous multipart element
+							ui.ExperimentalCurrentMultipartElement--
+							ui.ExperimentalCurrentFieldRowElement = 0
+						} else {
+							// At Add Field button (multipart element 0), move to previous subchild
+							ui.ExperimentalCurrentSubchild = getPrevValidSubchild(ui.ExperimentalCurrentSubchild, ui)
+							// Reset multipart element when leaving MultipartFields
+							ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+							ui.ExperimentalCurrentFieldRowElement = 0
+						}
 					} else {
-						// Move to previous subchild
+						// Not in multipart navigation mode, move to previous subchild
 						ui.ExperimentalCurrentSubchild = getPrevValidSubchild(ui.ExperimentalCurrentSubchild, ui)
 						// Reset multipart element when leaving MultipartFields
 						ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 					}
 				} else if ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 0 {
 					// At first BodyTab subchild, enter tab headers mode
@@ -2183,6 +2333,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// Stay on child 0 (Body tab header)
 					// Reset multipart element
 					ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 				} else if ui.ExperimentalCurrentChild > 0 {
 					// Other tabs (Auth, Query, Headers)
 					// For these tabs, backtab should exit tab content mode and go back to tab headers
@@ -2190,6 +2341,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// Stay on current child (current tab header)
 					ui.ExperimentalCurrentSubchild = 0
 					ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 				}
 			}
 		} else if ui.ExperimentalCurrentContainer == 5 {
@@ -2240,10 +2392,12 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
 							} else {
 								ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 							}
 						} else {
 							ui.ExperimentalCurrentSubchild = 0
 							ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					} else {
 						// At first child, move to previous container
@@ -2263,10 +2417,12 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
 							} else {
 								ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 							}
 						} else {
 							ui.ExperimentalCurrentSubchild = 0
 							ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					}
 				}
