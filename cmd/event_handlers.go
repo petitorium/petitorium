@@ -1860,8 +1860,9 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 										}
 
 										if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
-											// Past the last multipart element, jump to response panel
+											// Past the last multipart element, exit multipart fields and jump to response panel
 											ui.ExperimentalCurrentMultipartElement = 0
+											ui.ExperimentalCurrentFieldRowElement = 0
 											ui.ExperimentalCurrentContainer = 5 // Response panel
 											ui.ExperimentalCurrentChild = 0     // PreviewTab
 											ui.ExperimentalCurrentSubchild = 0
@@ -1880,8 +1881,9 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 									}
 
 									if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
-										// Past the last multipart element, jump to response panel
+										// Past the last multipart element, exit multipart fields and jump to response panel
 										ui.ExperimentalCurrentMultipartElement = 0
+										ui.ExperimentalCurrentFieldRowElement = 0
 										ui.ExperimentalCurrentContainer = 5 // Response panel
 										ui.ExperimentalCurrentChild = 0     // PreviewTab
 										ui.ExperimentalCurrentSubchild = 0
@@ -1897,7 +1899,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 								}
 
 								if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
-									// Past the last multipart element, jump to response panel
+									// Past the last multipart element, exit multipart fields and jump to response panel
 									ui.ExperimentalCurrentMultipartElement = 0
 									ui.ExperimentalCurrentFieldRowElement = 0
 									ui.ExperimentalCurrentContainer = 5 // Response panel
@@ -1923,7 +1925,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 								// Reset field row element when moving to a new multipart element
 								ui.ExperimentalCurrentFieldRowElement = 0
 							} else {
-								// At last multipart element, jump to response panel (container 5)
+								// At last multipart element, exit multipart fields and jump to response panel
 								ui.ExperimentalCurrentMultipartElement = 0
 								ui.ExperimentalCurrentFieldRowElement = 0
 								ui.ExperimentalCurrentContainer = 5 // Response panel
@@ -1936,6 +1938,50 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						// Not in multipart navigation mode, move to next valid subchild
 						maxSubchild := getMaxSubchildForChild(4, 0, ui)
 
+						// Special case: JSON with no content at ContentTypeSelector
+						if ui.ExperimentalCurrentSubchild == 0 && getCurrentContentType(ui) == "JSON" {
+							// Check if JSON has content
+							hasJSONContent := false
+							if ui.CurrentBodyContent != "" && ui.CurrentBodyContent != "{}" && ui.CurrentBodyContent != "[]" {
+								hasJSONContent = true
+							} else if ui.JSONBodyContent != "" && ui.JSONBodyContent != "{}" && ui.JSONBodyContent != "[]" {
+								hasJSONContent = true
+							}
+
+							if !hasJSONContent {
+								// JSON has no content, jump directly to response panel
+								ui.ExperimentalCurrentContainer = 5 // Response panel
+								ui.ExperimentalCurrentChild = 0     // PreviewTab
+								// Don't reset subchild - keep it as 0 (ContentTypeSelector)
+								ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+								// Set Request panel to tab headers mode for backtab navigation
+								ui.ExperimentalRequestInTabHeaders = true
+								// Reset multipart element
+								ui.ExperimentalCurrentMultipartElement = 0
+								ui.ExperimentalCurrentFieldRowElement = 0
+								// Update borders and sync state
+								if previousContainer != ui.ExperimentalCurrentContainer {
+									// Deactivate border of previous container
+									if previousContainer < len(ui.MainCycle.panels) {
+										ui.SetInactiveBorder(ui.MainCycle.panels[previousContainer])
+									}
+									// Activate border of current container
+									if ui.ExperimentalCurrentContainer < len(ui.MainCycle.panels) {
+										ui.SetActiveBorder(ui.MainCycle.panels[ui.ExperimentalCurrentContainer])
+									}
+									// Update previous container tracking
+									ui.ExperimentalPreviousContainer = previousContainer
+								}
+								// Sync MainCycle.current with experimental container
+								syncMainCycleWithExperimental(ui)
+								// Set focus based on new coordinates
+								setFocusForCoordinates(ui)
+								// Update footer with navigation info
+								ui.UpdateFooter()
+								return nil
+							}
+						}
+
 						if ui.ExperimentalCurrentSubchild < maxSubchild {
 							// Move to next valid subchild in BodyTab (skip invalid ones based on content type)
 							ui.ExperimentalCurrentSubchild = getNextValidSubchild(ui.ExperimentalCurrentSubchild, ui)
@@ -1943,11 +1989,16 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 							ui.ExperimentalCurrentMultipartElement = 0
 							ui.ExperimentalCurrentFieldRowElement = 0
 						} else {
-							// At last BodyTab subchild, wrap back to first subchild in same tab
-							ui.ExperimentalCurrentSubchild = 0
+							// At last BodyTab subchild, jump to response panel
+							ui.ExperimentalCurrentContainer = 5 // Response panel
+							ui.ExperimentalCurrentChild = 0     // PreviewTab
+							// Don't reset subchild - keep it for returning to same position
+							// ui.ExperimentalCurrentSubchild remains as is (1 for JSONEditor, etc.)
+							ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+							// Set Request panel to tab headers mode
+							ui.ExperimentalRequestInTabHeaders = true
 							// Reset multipart element
 							ui.ExperimentalCurrentMultipartElement = 0
-							ui.ExperimentalCurrentFieldRowElement = 0
 							ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					}
@@ -1965,24 +2016,21 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 			// Response panel navigation logic
 			if ui.ExperimentalResponseInTabHeaders {
 				// We're in tab headers mode
-				maxTabHeader := 3 // 0=Preview, 1=Headers, 2=Cookies, 3=Timeline
-
-				if ui.ExperimentalCurrentChild < maxTabHeader {
-					// Move to next tab header
-					ui.ExperimentalCurrentChild++
-				} else {
-					// At last tab header (Timeline), exit tab headers mode
-					// Stay on current child (3 = Timeline) but exit tab headers mode
-					ui.ExperimentalResponseInTabHeaders = false
-					// Reset subchild (Response panel doesn't have subchildren)
-					ui.ExperimentalCurrentSubchild = 0
-				}
+				// Tab should enter the current tab's content
+				ui.ExperimentalResponseInTabHeaders = false
+				// Reset subchild for tab content (Response panel doesn't have subchildren)
+				ui.ExperimentalCurrentSubchild = 0
 			} else {
 				// We're in tab content mode
-				// For response tabs, tab should exit tab content mode and go back to tab headers
-				ui.ExperimentalResponseInTabHeaders = true
-				// Stay on current child (current tab header)
+				// Tab should move to next container (Workspace panel)
+				ui.ExperimentalCurrentContainer = 0 // Workspace panel
+				ui.ExperimentalCurrentChild = 0     // WorkspaceSelector
 				ui.ExperimentalCurrentSubchild = 0
+				// Reset multipart and field row elements
+				ui.ExperimentalCurrentMultipartElement = 0
+				ui.ExperimentalCurrentFieldRowElement = 0
+				// Reset response tab headers for next time
+				ui.ExperimentalResponseInTabHeaders = true
 			}
 		} else {
 			// Normal navigation for other containers
@@ -2365,7 +2413,6 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 							// Reset multipart element when leaving MultipartFields
 							ui.ExperimentalCurrentMultipartElement = 0
 							ui.ExperimentalCurrentFieldRowElement = 0
-							ui.ExperimentalCurrentFieldRowElement = 0
 						}
 					} else {
 						// Not in multipart navigation mode, move to previous subchild
@@ -2397,21 +2444,23 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			// Response panel backtab navigation logic
 			if ui.ExperimentalResponseInTabHeaders {
 				// We're in tab headers mode
-				if ui.ExperimentalCurrentChild > 0 {
-					// Move to previous tab header
-					ui.ExperimentalCurrentChild--
+				// Backtab should move to previous container (Request panel)
+				ui.ExperimentalCurrentContainer = 4 // Request panel
+
+				// Check if Request panel is in tab headers mode
+				if ui.ExperimentalRequestInTabHeaders {
+					// Request panel is in tab headers mode, focus on current tab header
+					ui.ExperimentalCurrentChild = ui.CurrentTabIndex
 				} else {
-					// At first tab header (Preview), move to previous container (Request)
-					ui.ExperimentalCurrentContainer = 4                      // Request panel
+					// Request panel is in tab content mode, focus on last child
 					ui.ExperimentalCurrentChild = getMaxChildForContainer(4) // Last child of Request
-					ui.ExperimentalResponseInTabHeaders = true               // Reset for Response panel
-					ui.ExperimentalCurrentSubchild = 0
-					// When moving to Request panel, we should be in tab headers mode
-					ui.ExperimentalRequestInTabHeaders = true
 				}
+
+				ui.ExperimentalResponseInTabHeaders = true // Reset for Response panel
+				ui.ExperimentalCurrentSubchild = 0
 			} else {
 				// We're in tab content mode
-				// For response tabs, backtab should exit tab content mode and go back to tab headers
+				// Backtab should exit tab content mode and go back to tab headers
 				ui.ExperimentalResponseInTabHeaders = true
 				// Stay on current child (current tab header)
 				ui.ExperimentalCurrentSubchild = 0
