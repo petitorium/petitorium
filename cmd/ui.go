@@ -2343,8 +2343,11 @@ func (h *HeaderKeyInput) HasFocusOrChildHasFocus() bool {
 
 // MultipartFieldRow represents a single multipart field row in the UI
 type MultipartFieldRow struct {
+	NameLabel        *tview.TextView
 	NameInput        *tview.InputField
+	TypeLabel        *tview.TextView
 	TypeDropdown     *tview.DropDown
+	ValueLabel       *tview.TextView
 	ValueInput       *tview.InputField
 	FilePickerButton *tview.Button
 	DeleteButton     *tview.Button
@@ -2360,6 +2363,7 @@ var currentMultipartFieldRows []*MultipartFieldRow
 
 // Multipart field configuration
 var multipartFieldWidth = 18
+
 var multipartRemoveButtonWidth = 5
 
 // createMultipartFieldsTab creates the multipart fields management UI
@@ -2454,24 +2458,35 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
+	// Create label separately for full control over background
+	nameLabel := tview.NewTextView().
+		SetText("Name: ")
+	nameLabel.SetTextColor(colors.Placeholder)
+	nameLabel.SetBackgroundColor(colors.Background)
+	nameLabel.SetTextAlign(tview.AlignRight)
+
 	nameInput := tview.NewInputField().
-		SetLabel("Name: ").
 		SetFieldWidth(multipartFieldWidth).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground).
-		SetLabelColor(colors.Foreground)
+		SetFieldTextColor(colors.Foreground)
+	nameInput.SetBackgroundColor(colors.Background)
 	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
 		}
 	})
 
+	// Create label separately for full control over background
+	valueLabel := tview.NewTextView().
+		SetText("Value: ")
+	valueLabel.SetTextColor(colors.Placeholder)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignRight)
+
 	valueInput := tview.NewInputField().
-		SetLabel("Value: ").
 		SetFieldWidth(multipartFieldWidth).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground).
-		SetLabelColor(colors.Foreground)
+		SetFieldTextColor(colors.Foreground)
 	valueInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -2493,20 +2508,32 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
 
+	// Create label separately for full control over background
+	typeLabel := tview.NewTextView().
+		SetText("Type: ")
+	typeLabel.SetTextColor(colors.Placeholder)
+	typeLabel.SetBackgroundColor(colors.Background)
+	typeLabel.SetTextAlign(tview.AlignRight)
+
 	typeDropdown := tview.NewDropDown().
-		SetLabel("Type: ").
 		SetOptions([]string{"text", "text_multiline", "file"}, nil).
 		SetCurrentOption(0).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground).
-		SetLabelColor(colors.Foreground)
+		SetFieldTextColor(colors.Foreground)
+	typeDropdown.SetBackgroundColor(colors.Background)
 	// Function to rebuild row layout based on current type
 	rebuildRowLayout := func() {
 		row.Clear()
+		// Add name label and input
+		row.AddItem(nameLabel, 6, 0, false) // Label width
 		row.AddItem(nameInput, multipartFieldWidth, 0, false)
 		row.AddItem(tview.NewBox(), 1, 0, false)
+		// Add type label and dropdown
+		row.AddItem(typeLabel, 6, 0, false) // Label width
 		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
 		row.AddItem(tview.NewBox(), 1, 0, false)
+		// Add value label and input
+		row.AddItem(valueLabel, 7, 0, false) // Label width
 		row.AddItem(valueInput, multipartFieldWidth, 0, false)
 		row.AddItem(tview.NewBox(), 1, 0, false)
 
@@ -2528,8 +2555,11 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	})
 
 	fieldRow := &MultipartFieldRow{
+		NameLabel:        nameLabel,
 		NameInput:        nameInput,
+		TypeLabel:        typeLabel,
 		TypeDropdown:     typeDropdown,
+		ValueLabel:       valueLabel,
 		ValueInput:       valueInput,
 		FilePickerButton: filePickerButton,
 		DeleteButton:     removeButton,
@@ -2562,13 +2592,19 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
+	// Create label separately for full control over background
+	nameLabel := tview.NewTextView().
+		SetText("Name: ")
+	nameLabel.SetTextColor(colors.Placeholder)
+	nameLabel.SetBackgroundColor(colors.Background)
+	nameLabel.SetTextAlign(tview.AlignRight)
+
 	nameInput := tview.NewInputField().
-		SetLabel("Name: ").
 		SetFieldWidth(multipartFieldWidth).
 		SetText(name).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground).
-		SetLabelColor(colors.Foreground)
+		SetFieldTextColor(colors.Foreground)
+	nameInput.SetBackgroundColor(colors.Background)
 	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -2584,21 +2620,33 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		}
 	}
 
+	// Create label separately for full control over background
+	typeLabel := tview.NewTextView().
+		SetText("Type: ")
+	typeLabel.SetTextColor(colors.Placeholder)
+	typeLabel.SetBackgroundColor(colors.Background)
+	typeLabel.SetTextAlign(tview.AlignRight)
+
 	typeDropdown := tview.NewDropDown().
-		SetLabel("Type: ").
 		SetOptions(typeOptions, nil).
 		SetCurrentOption(typeIndex).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground).
-		SetLabelColor(colors.Foreground)
+		SetFieldTextColor(colors.Foreground)
+	typeDropdown.SetBackgroundColor(colors.Background)
+
+	// Create label separately for full control over background
+	valueLabel := tview.NewTextView().
+		SetText("Value: ")
+	valueLabel.SetTextColor(colors.Placeholder)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignRight)
 
 	valueInput := tview.NewInputField().
-		SetLabel("Value: ").
 		SetFieldWidth(multipartFieldWidth).
 		SetText(value).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground).
-		SetLabelColor(colors.Foreground)
+		SetFieldTextColor(colors.Foreground)
+	valueInput.SetBackgroundColor(colors.Background)
 	valueInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -2621,8 +2669,11 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	removeButton.SetBorder(false)
 
 	fieldRow := &MultipartFieldRow{
+		NameLabel:        nameLabel,
 		NameInput:        nameInput,
+		TypeLabel:        typeLabel,
 		TypeDropdown:     typeDropdown,
+		ValueLabel:       valueLabel,
 		ValueInput:       valueInput,
 		FilePickerButton: filePickerButton,
 		DeleteButton:     removeButton,
@@ -2632,10 +2683,16 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	// Function to rebuild row layout based on current type
 	rebuildRowLayout := func() {
 		row.Clear()
+		// Add name label and input
+		row.AddItem(nameLabel, 6, 0, false) // Label width
 		row.AddItem(nameInput, multipartFieldWidth, 0, false)
 		row.AddItem(tview.NewBox(), 1, 0, false)
+		// Add type label and dropdown
+		row.AddItem(typeLabel, 6, 0, false) // Label width
 		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
 		row.AddItem(tview.NewBox(), 1, 0, false)
+		// Add value label and input
+		row.AddItem(valueLabel, 7, 0, false) // Label width
 		row.AddItem(valueInput, multipartFieldWidth, 0, false)
 		row.AddItem(tview.NewBox(), 1, 0, false)
 

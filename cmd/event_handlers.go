@@ -1701,114 +1701,6 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 	}
 }
 
-// handleSpecialCombinations handles special actions for specific container/child combinations
-func handleSpecialCombinations(container, child int, containerName string, isBacktab bool, ui *UIOrchestrator) string {
-	// Check if we have subchildren to decide format
-	var baseMessage string
-	if hasSubchildren(container, child, ui) {
-		baseMessage = fmt.Sprintf("[%d,%d,%d] %s", container, child, ui.ExperimentalCurrentSubchild, containerName)
-	} else {
-		baseMessage = fmt.Sprintf("[%d,%d] %s", container, child, containerName)
-	}
-
-	// Check for special combinations
-	switch {
-	case container == 0 && child == 0: // Workspace panel [0,0]
-		return baseMessage + " - Workspace selector active"
-
-	case container == 2 && child == 0: // Collections panel [2,0]
-		return baseMessage + " - Collections tree (h/j/k/l to navigate)"
-
-	case container == 3 && child == 1: // URLBar URL Input [3,1]
-		return baseMessage + " - URL input focused"
-
-	case container == 4: // Request panel
-		if ui.ExperimentalRequestInTabHeaders {
-			// In tab headers mode
-			switch child {
-			case 0:
-				return baseMessage + " - Body tab header"
-			case 1:
-				return baseMessage + " - Auth tab header"
-			case 2:
-				return baseMessage + " - Query tab header"
-			case 3:
-				return baseMessage + " - Headers tab header"
-			default:
-				return baseMessage + " - Request tab header"
-			}
-		} else {
-			// In tab content mode
-			if child == 0 {
-				// Request Body tab [4,0] in content mode
-				// Handle subchild-specific messages for BodyTab
-				switch ui.ExperimentalCurrentSubchild {
-				case 0:
-					return baseMessage + " - Content type selector (JSON/Multipart/No Body)"
-				case 1:
-					return baseMessage + " - JSON editor"
-				case 2:
-					return baseMessage + " - Multipart fields"
-				case 3:
-					return baseMessage + " - No body"
-				default:
-					return baseMessage + " - Request body tab"
-				}
-			} else {
-				// Other tabs in content mode
-				switch child {
-				case 1:
-					return baseMessage + " - Auth tab content"
-				case 2:
-					return baseMessage + " - Query tab content"
-				case 3:
-					return baseMessage + " - Headers tab content"
-				default:
-					return baseMessage + " - Request tab content"
-				}
-			}
-		}
-
-	case container == 5: // Response panel
-		if ui.ExperimentalResponseInTabHeaders {
-			// In tab headers mode
-			switch child {
-			case 0:
-				return baseMessage + " - Preview tab header"
-			case 1:
-				return baseMessage + " - Headers tab header"
-			case 2:
-				return baseMessage + " - Cookies tab header"
-			case 3:
-				return baseMessage + " - Timeline tab header"
-			default:
-				return baseMessage + " - Response tab header"
-			}
-		} else {
-			// In tab content mode
-			switch child {
-			case 0:
-				return baseMessage + " - Response preview"
-			case 1:
-				return baseMessage + " - Response headers"
-			case 2:
-				return baseMessage + " - Response cookies"
-			case 3:
-				return baseMessage + " - Response timeline"
-			default:
-				return baseMessage + " - Response tab content"
-			}
-		}
-
-	default:
-		// No special handling, return base message
-		if isBacktab {
-			return baseMessage + " (back)"
-		}
-		return baseMessage
-	}
-}
-
 func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	// Experimental navigation system (disabled by default)
 	if ui.ExperimentalNavigationEnabled {
@@ -2102,21 +1994,6 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 		// Sync experimental child with current tab index before getting message
 		syncExperimentalChildWithCurrentTab(ui)
-
-		// Print the current position
-		containerName := getContainerName(ui.ExperimentalCurrentContainer)
-
-		// Format message based on whether we have subchildren
-		var message string
-		if hasSubchildren(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui) {
-			message = fmt.Sprintf("[%d,%d,%d] %s", ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui.ExperimentalCurrentSubchild, containerName)
-		} else {
-			message = fmt.Sprintf("[%d,%d] %s", ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, containerName)
-		}
-
-		// Handle special actions based on container/child combinations
-		message = handleSpecialCombinations(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, containerName, false, ui)
-		ui.FooterRight.SetText(message)
 
 		// Set focus to the appropriate UI element based on current coordinates
 		setFocusForCoordinates(ui)
@@ -2562,13 +2439,6 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 
 		// Sync experimental child with current tab index before getting message
 		syncExperimentalChildWithCurrentTab(ui)
-
-		// Print the current position
-		containerName := getContainerName(ui.ExperimentalCurrentContainer)
-
-		// Handle special actions based on container/child combinations
-		message := handleSpecialCombinations(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, containerName, true, ui)
-		ui.FooterRight.SetText(message)
 
 		// Set focus to the appropriate UI element based on current coordinates
 		setFocusForCoordinates(ui)
