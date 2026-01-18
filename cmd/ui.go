@@ -2349,8 +2349,8 @@ type MultipartFieldRow struct {
 	TypeDropdown     *tview.DropDown
 	ValueLabel       *tview.TextView
 	ValueInput       *tview.InputField
-	FilePickerButton *tview.Button
-	DeleteButton     *tview.Button
+	FilePickerButton *CustomButton
+	DeleteButton     *CustomButton
 	Row              *tview.Flex
 }
 
@@ -2494,19 +2494,13 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	})
 
 	// File picker button
-	filePickerButton := tview.NewButton("Browse")
-	filePickerButton.SetBackgroundColor(colors.Background)
-	filePickerButton.SetLabelColor(colors.Foreground)
-	filePickerButton.SetBorder(false)
+	filePickerButton := createThemedButton("Browse", colors)
 	filePickerButton.SetSelectedFunc(func() {
 		// Open file picker modal
 		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
 	})
 
-	removeButton := tview.NewButton("X")
-	removeButton.SetBackgroundColor(colors.Background)
-	removeButton.SetLabelColor(colors.Foreground)
-	removeButton.SetBorder(false)
+	removeButton := createThemedButton("X", colors)
 
 	// Create label separately for full control over background
 	typeLabel := tview.NewTextView().
@@ -2654,19 +2648,13 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	})
 
 	// File picker button
-	filePickerButton := tview.NewButton("Browse")
-	filePickerButton.SetBackgroundColor(colors.Background)
-	filePickerButton.SetLabelColor(colors.Foreground)
-	filePickerButton.SetBorder(false)
+	filePickerButton := createThemedButton("Browse", colors)
 	filePickerButton.SetSelectedFunc(func() {
 		// Open file picker modal
 		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
 	})
 
-	removeButton := tview.NewButton("X")
-	removeButton.SetBackgroundColor(colors.Background)
-	removeButton.SetLabelColor(colors.Foreground)
-	removeButton.SetBorder(false)
+	removeButton := createThemedButton("X", colors)
 
 	fieldRow := &MultipartFieldRow{
 		NameLabel:        nameLabel,
