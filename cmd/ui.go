@@ -2461,14 +2461,14 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	// Create label separately for full control over background
 	nameLabel := tview.NewTextView().
 		SetText("Name: ")
-	nameLabel.SetTextColor(colors.Placeholder)
+	nameLabel.SetTextColor(colors.LabelColor)
 	nameLabel.SetBackgroundColor(colors.Background)
 	nameLabel.SetTextAlign(tview.AlignRight)
 
 	nameInput := tview.NewInputField().
 		SetFieldWidth(multipartFieldWidth).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground)
+		SetFieldTextColor(colors.ValueColor)
 	nameInput.SetBackgroundColor(colors.Background)
 	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -2479,14 +2479,14 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	// Create label separately for full control over background
 	valueLabel := tview.NewTextView().
 		SetText("Value: ")
-	valueLabel.SetTextColor(colors.Placeholder)
+	valueLabel.SetTextColor(colors.LabelColor)
 	valueLabel.SetBackgroundColor(colors.Background)
 	valueLabel.SetTextAlign(tview.AlignRight)
 
 	valueInput := tview.NewInputField().
 		SetFieldWidth(multipartFieldWidth).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground)
+		SetFieldTextColor(colors.ValueColor)
 	valueInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -2511,7 +2511,7 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	// Create label separately for full control over background
 	typeLabel := tview.NewTextView().
 		SetText("Type: ")
-	typeLabel.SetTextColor(colors.Placeholder)
+	typeLabel.SetTextColor(colors.LabelColor)
 	typeLabel.SetBackgroundColor(colors.Background)
 	typeLabel.SetTextAlign(tview.AlignRight)
 
@@ -2519,31 +2519,31 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 		SetOptions([]string{"text", "text_multiline", "file"}, nil).
 		SetCurrentOption(0).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground)
+		SetFieldTextColor(colors.ValueColor)
 	typeDropdown.SetBackgroundColor(colors.Background)
 	// Function to rebuild row layout based on current type
 	rebuildRowLayout := func() {
 		row.Clear()
 		// Add name label and input
-		row.AddItem(nameLabel, 6, 0, false) // Label width
+		row.AddItem(nameLabel, 6, 0, false)
 		row.AddItem(nameInput, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox(), 1, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		// Add type label and dropdown
-		row.AddItem(typeLabel, 6, 0, false) // Label width
+		row.AddItem(typeLabel, 6, 0, false)
 		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox(), 1, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		// Add value label and input
-		row.AddItem(valueLabel, 7, 0, false) // Label width
+		row.AddItem(valueLabel, 7, 0, false)
 		row.AddItem(valueInput, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox(), 1, 0, false)
 
 		// Add Browse button only for file type
 		selectedType, _ := typeDropdown.GetCurrentOption()
 		if selectedType == 2 { // "file" is option 2
+			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
-			row.AddItem(tview.NewBox(), 1, 0, false)
 		}
 
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		row.AddItem(removeButton, multipartRemoveButtonWidth, 0, false)
 	}
 
@@ -2595,7 +2595,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	// Create label separately for full control over background
 	nameLabel := tview.NewTextView().
 		SetText("Name: ")
-	nameLabel.SetTextColor(colors.Placeholder)
+	nameLabel.SetTextColor(colors.LabelColor)
 	nameLabel.SetBackgroundColor(colors.Background)
 	nameLabel.SetTextAlign(tview.AlignRight)
 
@@ -2603,7 +2603,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		SetFieldWidth(multipartFieldWidth).
 		SetText(name).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground)
+		SetFieldTextColor(colors.ValueColor)
 	nameInput.SetBackgroundColor(colors.Background)
 	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -2623,7 +2623,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	// Create label separately for full control over background
 	typeLabel := tview.NewTextView().
 		SetText("Type: ")
-	typeLabel.SetTextColor(colors.Placeholder)
+	typeLabel.SetTextColor(colors.LabelColor)
 	typeLabel.SetBackgroundColor(colors.Background)
 	typeLabel.SetTextAlign(tview.AlignRight)
 
@@ -2631,13 +2631,13 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		SetOptions(typeOptions, nil).
 		SetCurrentOption(typeIndex).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground)
+		SetFieldTextColor(colors.ValueColor)
 	typeDropdown.SetBackgroundColor(colors.Background)
 
 	// Create label separately for full control over background
 	valueLabel := tview.NewTextView().
 		SetText("Value: ")
-	valueLabel.SetTextColor(colors.Placeholder)
+	valueLabel.SetTextColor(colors.LabelColor)
 	valueLabel.SetBackgroundColor(colors.Background)
 	valueLabel.SetTextAlign(tview.AlignRight)
 
@@ -2645,7 +2645,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		SetFieldWidth(multipartFieldWidth).
 		SetText(value).
 		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.Foreground)
+		SetFieldTextColor(colors.ValueColor)
 	valueInput.SetBackgroundColor(colors.Background)
 	valueInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -2684,25 +2684,25 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	rebuildRowLayout := func() {
 		row.Clear()
 		// Add name label and input
-		row.AddItem(nameLabel, 6, 0, false) // Label width
+		row.AddItem(nameLabel, 6, 0, false)
 		row.AddItem(nameInput, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox(), 1, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		// Add type label and dropdown
-		row.AddItem(typeLabel, 6, 0, false) // Label width
+		row.AddItem(typeLabel, 6, 0, false)
 		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox(), 1, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		// Add value label and input
-		row.AddItem(valueLabel, 7, 0, false) // Label width
+		row.AddItem(valueLabel, 7, 0, false)
 		row.AddItem(valueInput, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox(), 1, 0, false)
 
 		// Add Browse button only for file type
 		selectedType, _ := typeDropdown.GetCurrentOption()
 		if selectedType == 2 { // "file" is option 2
+			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
-			row.AddItem(tview.NewBox(), 1, 0, false)
 		}
 
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		row.AddItem(removeButton, multipartRemoveButtonWidth, 0, false)
 	}
 

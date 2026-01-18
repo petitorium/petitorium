@@ -35,6 +35,8 @@ type ThemeColors struct {
 	Error               string
 	Warning             string
 	SelectedRequestIcon string
+	LabelColor          string // Color for form labels (e.g., "Name:", "Type:", "Value:")
+	ValueColor          string // Color for form values/input text
 	MethodColors        MethodColors
 	StatusColors        StatusColors
 }
@@ -181,10 +183,12 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 		ButtonSelected:      stringColor,
 		DropdownFocused:     tm.adjustBrightness(background, 1.3),
 		Placeholder:         commentColor,
-		Success:             stringColor, // Use string color for success
-		Error:               "#fb4f49",   // Standard error red
-		Warning:             numberColor, // Use number color for warning
-		SelectedRequestIcon: stringColor, // tm.getSelectedRequestIconColor(style.Name, stringColor),
+		Success:             stringColor,  // Use string color for success
+		Error:               "#fb4f49",    // Standard error red
+		Warning:             numberColor,  // Use number color for warning
+		SelectedRequestIcon: stringColor,  // tm.getSelectedRequestIconColor(style.Name, stringColor),
+		LabelColor:          keywordColor, // Use keyword color (blueish) for form labels
+		ValueColor:          foreground,   // Use foreground color for form values
 		MethodColors: MethodColors{
 			GET:     stringColor,  // Green for GET
 			POST:    keywordColor, // Blue for POST
@@ -395,6 +399,8 @@ func (tm *ThemeManager) ApplyTheme(themeName string) error {
 	config.C.Theme.ButtonBackgroundColor = theme.UIColors.ButtonBackground
 	config.C.Theme.ButtonSelectedColor = theme.UIColors.ButtonSelected
 	config.C.Theme.DropdownFocusedBackground = theme.UIColors.DropdownFocused
+	config.C.Theme.LabelColor = theme.UIColors.LabelColor
+	config.C.Theme.ValueColor = theme.UIColors.ValueColor
 	config.C.UI.SelectedRequestIconColor = theme.UIColors.SelectedRequestIcon
 
 	// Update method colors
