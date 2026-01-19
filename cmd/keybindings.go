@@ -40,14 +40,7 @@ var (
 
 // toggleExperimentalNavigation toggles the experimental navigation system
 func toggleExperimentalNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	ui.ExperimentalNavigationEnabled = !ui.ExperimentalNavigationEnabled
-
-	// Update footer to show current mode
-	if ui.ExperimentalNavigationEnabled {
-		ui.FooterRight.SetText("Experimental navigation: ON")
-	} else {
-		ui.FooterRight.SetText("Experimental navigation: OFF")
-	}
+	ui.ExperimentalNavigationEnabled = true
 
 	// Clear message after 2 seconds
 	go func() {

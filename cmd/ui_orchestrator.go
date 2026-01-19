@@ -653,7 +653,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		ExperimentalPreviousContainer:       0,
 		ExperimentalRequestInTabHeaders:     true, // Start in tab headers when in Request panel
 		ExperimentalResponseInTabHeaders:    true, // Start in tab headers when in Response panel
-		ExperimentalNavigationEnabled:       true, // Enabled for testing
+		ExperimentalNavigationEnabled:       true,
 		RequestDataTabs:                     requestDataTabs,
 		MainCycle:                           mainCycle,
 		HeadersCycle:                        headersCycle,
