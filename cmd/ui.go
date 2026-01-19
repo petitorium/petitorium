@@ -2530,11 +2530,12 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 		row.AddItem(valueLabel, 7, 0, false)
 		row.AddItem(valueInput, multipartFieldWidth, 0, false)
 
-		// Add Browse button only for file type
 		selectedType, _ := typeDropdown.GetCurrentOption()
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		if selectedType == 2 { // "file" is option 2
-			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
+		} else {
+			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), multipartFieldWidth, 0, false)
 		}
 
 		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
@@ -2683,11 +2684,12 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		row.AddItem(valueLabel, 7, 0, false)
 		row.AddItem(valueInput, multipartFieldWidth, 0, false)
 
-		// Add Browse button only for file type
 		selectedType, _ := typeDropdown.GetCurrentOption()
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		if selectedType == 2 { // "file" is option 2
-			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
+		} else {
+			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), multipartFieldWidth, 0, false)
 		}
 
 		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)

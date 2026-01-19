@@ -1292,16 +1292,9 @@ func getMaxFieldRowElement(fieldRow *MultipartFieldRow) int {
 		return 0
 	}
 
-	// Base elements: Name (0), Type (1), Value (2), X button (3)
-	maxElement := 3
-
-	// Check if Browse button is visible (for file type)
-	selectedType, _ := fieldRow.TypeDropdown.GetCurrentOption()
-	if selectedType == 2 { // "file" is option 2
-		maxElement = 4 // Add Browse button at position 3, X moves to 4
-	}
-
-	return maxElement
+	// With consistent layout, we always have:
+	// Name (0), Type (1), Value (2), Browse/Empty (3), X button (4)
+	return 4
 }
 
 // getCurrentContentType returns the current content type from the dropdown
@@ -1601,7 +1594,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 												} else {
 													ui.App.SetFocus(ui.MultipartFieldsTab)
 												}
-											case 3: // Browse button (only for file type) or X button
+											case 3: // Browse button (for file type) or empty space (for text type)
 												selectedType, _ := fieldRow.TypeDropdown.GetCurrentOption()
 												if selectedType == 2 { // "file" type
 													if fieldRow.FilePickerButton != nil {
@@ -1610,14 +1603,16 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 														ui.App.SetFocus(ui.MultipartFieldsTab)
 													}
 												} else {
-													// Not file type, so case 3 is X button
+													// For text type, case 3 is empty space (not focusable)
+													// Skip to X button at case 4
+													ui.ExperimentalCurrentFieldRowElement = 4
 													if fieldRow.DeleteButton != nil {
 														ui.App.SetFocus(fieldRow.DeleteButton)
 													} else {
 														ui.App.SetFocus(ui.MultipartFieldsTab)
 													}
 												}
-											case 4: // X button (only for file type, since Browse is at 3)
+											case 4: // X button (always at position 4)
 												if fieldRow.DeleteButton != nil {
 													ui.App.SetFocus(fieldRow.DeleteButton)
 												} else {
