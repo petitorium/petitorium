@@ -2779,23 +2779,46 @@ func collectMultipartFieldsFromUI() string {
 func updateMultipartFieldsFromBody(body string, colors *ColorManager, app *tview.Application, pages *tview.Pages) {
 	// Only clear and rebuild if body actually contains multipart data
 	parsedFields := parseMultipartBody(body)
+
 	if len(parsedFields) > 0 {
 		// Body contains multipart data, clear and rebuild
 		currentMultipartFieldRows = []*MultipartFieldRow{}
-		for _, field := range parsedFields {
-			addMultipartFieldRowWithData(currentMultipartFieldsList, colors, field.Name, field.Type, field.Value, func() {
-				// Refresh function - do nothing for now
-			}, func() {
-				// Save callback - do nothing for now
-			}, nil, nil, app, pages)
+		if currentMultipartFieldsList != nil {
+			// Create a simple refresh function
+			refreshFunc := func() {
+				// Do nothing - we'll refresh at the end
+			}
+
+			for _, field := range parsedFields {
+				addMultipartFieldRowWithData(currentMultipartFieldsList, colors, field.Name, field.Type, field.Value, refreshFunc, func() {
+					// Save callback - do nothing for now
+				}, nil, nil, app, pages)
+			}
+
+			// Refresh the UI after adding all fields
+			currentMultipartFieldsList.Clear()
+			for _, row := range currentMultipartFieldRows {
+				currentMultipartFieldsList.AddItem(row.Row, 1, 0, false)
+			}
 		}
 	} else if len(currentMultipartFieldRows) == 0 {
 		// No multipart data in body AND no existing rows, add one empty row
-		addMultipartFieldRow(currentMultipartFieldsList, colors, func() {
-			// Refresh function - do nothing for now
-		}, func() {
-			// Save callback - do nothing for now
-		}, nil, nil, app, pages)
+		if currentMultipartFieldsList != nil {
+			// Create a simple refresh function
+			refreshFunc := func() {
+				// Do nothing - we'll refresh at the end
+			}
+
+			addMultipartFieldRow(currentMultipartFieldsList, colors, refreshFunc, func() {
+				// Save callback - do nothing for now
+			}, nil, nil, app, pages)
+
+			// Refresh the UI after adding the empty row
+			currentMultipartFieldsList.Clear()
+			for _, row := range currentMultipartFieldRows {
+				currentMultipartFieldsList.AddItem(row.Row, 1, 0, false)
+			}
+		}
 	}
 	// If body is empty/not multipart but we have existing rows, keep them
 }

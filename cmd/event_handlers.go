@@ -1525,15 +1525,15 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 							buttonRowFlex, ok := buttonRow.(*tview.Flex)
 							if ok && buttonRowFlex != nil {
 								// Get max multipart element (buttons + field rows)
-								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+								maxMultipartElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
 
 								// Add field rows if available
 								if currentMultipartFieldRows != nil {
-									maxMultipartElement = 1 + len(currentMultipartFieldRows) // 0: Add, 1: Delete All, 2+: field rows
+									maxMultipartElement = 2 + len(currentMultipartFieldRows) // 0: Add, 1: Delete All, 2+: field rows
 								}
 
 								// Bounds checking for multipart element
-								if ui.ExperimentalCurrentMultipartElement < 0 || ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+								if ui.ExperimentalCurrentMultipartElement < 0 || ui.ExperimentalCurrentMultipartElement >= maxMultipartElement {
 									ui.ExperimentalCurrentMultipartElement = 0
 									ui.ExperimentalCurrentFieldRowElement = 0
 								}
@@ -1741,12 +1741,12 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 										ui.ExperimentalCurrentMultipartElement++
 
 										// Check if we're past the last multipart element
-										maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+										maxMultipartElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
 										if currentMultipartFieldRows != nil {
-											maxMultipartElement = 1 + len(currentMultipartFieldRows)
+											maxMultipartElement = 2 + len(currentMultipartFieldRows)
 										}
 
-										if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+										if ui.ExperimentalCurrentMultipartElement >= maxMultipartElement {
 											// Past the last multipart element, exit multipart fields and jump to response panel
 											ui.ExperimentalCurrentMultipartElement = 0
 											ui.ExperimentalCurrentFieldRowElement = 0
@@ -1762,12 +1762,12 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 									ui.ExperimentalCurrentMultipartElement++
 
 									// Check if we're past the last multipart element
-									maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+									maxMultipartElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
 									if currentMultipartFieldRows != nil {
-										maxMultipartElement = 1 + len(currentMultipartFieldRows)
+										maxMultipartElement = 2 + len(currentMultipartFieldRows)
 									}
 
-									if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+									if ui.ExperimentalCurrentMultipartElement >= maxMultipartElement {
 										// Past the last multipart element, exit multipart fields and jump to response panel
 										ui.ExperimentalCurrentMultipartElement = 0
 										ui.ExperimentalCurrentFieldRowElement = 0
@@ -1780,12 +1780,12 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 							} else {
 								// Invalid field row index - we're past the last field row
 								// Check if we're past the last multipart element
-								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+								maxMultipartElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
 								if currentMultipartFieldRows != nil {
-									maxMultipartElement = 1 + len(currentMultipartFieldRows)
+									maxMultipartElement = 2 + len(currentMultipartFieldRows)
 								}
 
-								if ui.ExperimentalCurrentMultipartElement > maxMultipartElement {
+								if ui.ExperimentalCurrentMultipartElement >= maxMultipartElement {
 									// Past the last multipart element, exit multipart fields and jump to response panel
 									ui.ExperimentalCurrentMultipartElement = 0
 									ui.ExperimentalCurrentFieldRowElement = 0
@@ -1801,9 +1801,9 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 							}
 						} else {
 							// We're at a button (Add Field or Delete All), move to next multipart element
-							maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+							maxMultipartElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
 							if currentMultipartFieldRows != nil {
-								maxMultipartElement = 1 + len(currentMultipartFieldRows)
+								maxMultipartElement = 2 + len(currentMultipartFieldRows)
 							}
 
 							if ui.ExperimentalCurrentMultipartElement < maxMultipartElement {
@@ -2355,9 +2355,9 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 							ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui)
 							// If moving to MultipartFields, set multipart element to last element
 							if ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
-								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+								maxMultipartElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
 								if currentMultipartFieldRows != nil {
-									maxMultipartElement = 1 + len(currentMultipartFieldRows)
+									maxMultipartElement = 2 + len(currentMultipartFieldRows)
 								}
 								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
 							} else {
@@ -2380,9 +2380,9 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 							ui.ExperimentalCurrentSubchild = getMaxSubchildForChild(ui.ExperimentalCurrentContainer, ui.ExperimentalCurrentChild, ui)
 							// If moving to MultipartFields, set multipart element to last element
 							if ui.ExperimentalCurrentContainer == 4 && ui.ExperimentalCurrentChild == 0 && ui.ExperimentalCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
-								maxMultipartElement := 1 // Start with 2 buttons (0: Add, 1: Delete All)
+								maxMultipartElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
 								if currentMultipartFieldRows != nil {
-									maxMultipartElement = 1 + len(currentMultipartFieldRows)
+									maxMultipartElement = 2 + len(currentMultipartFieldRows)
 								}
 								ui.ExperimentalCurrentMultipartElement = maxMultipartElement
 							} else {
