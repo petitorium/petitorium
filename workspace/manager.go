@@ -194,6 +194,26 @@ func LoadWorkspace() (*Workspace, error) {
 	return LoadWorkspaceByName(manager.CurrentWorkspace)
 }
 
+// migrateWorkspaceContentTypes sets default content types for requests that don't have them
+func migrateWorkspaceContentTypes(workspace *Workspace) {
+	migrateCollectionsContentTypes(workspace.Collections)
+}
+
+// migrateCollectionsContentTypes recursively migrates content types for all collections
+func migrateCollectionsContentTypes(collections []Collection) {
+	for i := range collections {
+		// Migrate requests in this collection
+		for j := range collections[i].Requests {
+			if collections[i].Requests[j].ContentType == "" {
+				// Default to JSON for backward compatibility
+				collections[i].Requests[j].ContentType = "JSON"
+			}
+		}
+		// Recursively migrate nested collections
+		migrateCollectionsContentTypes(collections[i].Collections)
+	}
+}
+
 // LoadWorkspaceByName loads a specific workspace by name
 func LoadWorkspaceByName(name string) (*Workspace, error) {
 	workspaceDir := getWorkspaceDir(name)
@@ -208,6 +228,8 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 			if err := LoadExpansionState(&workspace.Collections); err != nil {
 				// Not critical
 			}
+			// Migrate existing requests to have default content types
+			migrateWorkspaceContentTypes(workspace)
 			return workspace, nil
 		}
 	}
@@ -249,6 +271,9 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 	if err := LoadExpansionState(&workspace.Collections); err != nil {
 		// Not critical
 	}
+
+	// Migrate existing requests to have default content types
+	migrateWorkspaceContentTypes(workspace)
 
 	return workspace, nil
 }

@@ -27,6 +27,8 @@ type ColorManager struct {
 	Success     tcell.Color // Success status color
 	Error       tcell.Color // Error status color
 	Warning     tcell.Color // Warning status color
+	LabelColor  tcell.Color // Color for form labels (e.g., "Name:", "Type:", "Value:")
+	ValueColor  tcell.Color // Color for form values/input text
 }
 
 // NewColorManager creates a new ColorManager with colors from the current theme
@@ -35,6 +37,16 @@ func NewColorManager() *ColorManager {
 
 	// Set up tview borders from theme configuration
 	setupBorders(theme)
+
+	// Set label and value colors with fallbacks
+	labelColor := theme.LabelColor
+	if labelColor == "" {
+		labelColor = "#4A5053" // Default placeholder color
+	}
+	valueColor := theme.ValueColor
+	if valueColor == "" {
+		valueColor = theme.ForegroundColor // Default to foreground color
+	}
 
 	return &ColorManager{
 		Background:       hexToColor(theme.BackgroundColor),
@@ -52,6 +64,8 @@ func NewColorManager() *ColorManager {
 		Success:          hexToColor("#28a745"),
 		Error:            hexToColor("#dc3545"),
 		Warning:          hexToColor("#fd7e14"),
+		LabelColor:       hexToColor(labelColor),
+		ValueColor:       hexToColor(valueColor),
 	}
 }
 

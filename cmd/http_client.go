@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,7 +31,7 @@ type HTTPResponse struct {
 }
 
 // SendRequest sends an HTTP request with the given parameters
-func SendRequest(method, url, body string, headers map[string]string) (*HTTPResponse, error) {
+func SendRequest(method, url, body string, contentType string, headers map[string]string) (*HTTPResponse, error) {
 	// Create HTTP client with configurable timeout
 	timeout := time.Duration(config.C.RequestTimeout) * time.Second
 	client := &http.Client{
@@ -37,8 +40,22 @@ func SendRequest(method, url, body string, headers map[string]string) (*HTTPResp
 
 	// Create request body
 	var bodyReader io.Reader
+	var multipartWriter *multipart.Writer
 	if body != "" {
-		bodyReader = bytes.NewBufferString(body)
+		if contentType == "Multipart" {
+			// Parse multipart fields from body string (temporary format: name1=value1&name2=file:/path/to/file)
+			var b bytes.Buffer
+			multipartWriter = multipart.NewWriter(&b)
+			err := createMultipartBodyWithWriter(body, multipartWriter)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create multipart body: %v", err)
+			}
+			// Close the writer to write the final boundary
+			multipartWriter.Close()
+			bodyReader = &b
+		} else {
+			bodyReader = bytes.NewBufferString(body)
+		}
 	}
 
 	// Create HTTP request
@@ -56,14 +73,24 @@ func SendRequest(method, url, body string, headers map[string]string) (*HTTPResp
 	if body != "" && req.Header.Get("Content-Type") == "" {
 		switch method {
 		case "POST", "PUT", "PATCH":
-			// Try to detect content type
-			if strings.TrimSpace(body) != "" {
-				if strings.HasPrefix(strings.TrimSpace(body), "{") && strings.HasSuffix(strings.TrimSpace(body), "}") {
+			// Use explicit content type if provided, otherwise auto-detect
+			if contentType != "" {
+				switch contentType {
+				case "JSON":
 					req.Header.Set("Content-Type", "application/json")
-				} else if strings.HasPrefix(strings.TrimSpace(body), "<") && strings.Contains(body, ">") {
-					req.Header.Set("Content-Type", "application/xml")
-				} else {
-					req.Header.Set("Content-Type", "text/plain")
+				case "Multipart":
+					if multipartWriter != nil {
+						req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
+					} else {
+						req.Header.Set("Content-Type", "multipart/form-data")
+					}
+				}
+			} else {
+				// Fallback to auto-detection for backward compatibility
+				if strings.TrimSpace(body) != "" {
+					if strings.HasPrefix(strings.TrimSpace(body), "{") && strings.HasSuffix(strings.TrimSpace(body), "}") {
+						req.Header.Set("Content-Type", "application/json")
+					}
 				}
 			}
 		}
@@ -108,6 +135,105 @@ func SendRequest(method, url, body string, headers map[string]string) (*HTTPResp
 	}
 
 	return result, nil
+}
+
+// createMultipartBodyWithWriter creates a multipart form body from a string definition
+// Format: name1=value1&name2=file:/path/to/file&name3=value3
+func createMultipartBodyWithWriter(bodyDef string, writer *multipart.Writer) error {
+	// Validate input
+	bodyDef = strings.TrimSpace(bodyDef)
+	if bodyDef == "" {
+		return fmt.Errorf("multipart body cannot be empty")
+	}
+
+	// Parse field definitions
+	fields := strings.Split(bodyDef, "&")
+
+	fieldNames := make(map[string]bool) // Track field names for uniqueness
+	validFields := 0
+
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+
+		parts := strings.SplitN(field, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid field format: %s (expected name=value)", field)
+		}
+
+		name := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Validate field name
+		if name == "" {
+			return fmt.Errorf("field name cannot be empty")
+		}
+		if fieldNames[name] {
+			return fmt.Errorf("duplicate field name: %s", name)
+		}
+		fieldNames[name] = true
+
+		if strings.HasPrefix(value, "file:") {
+			// File field
+			filePath := strings.TrimPrefix(value, "file:")
+
+			// Validate file path is absolute
+			if !filepath.IsAbs(filePath) {
+				return fmt.Errorf("file path must be absolute: %s", filePath)
+			}
+
+			// Validate file exists and is readable
+			fileInfo, err := os.Stat(filePath)
+			if os.IsNotExist(err) {
+				return fmt.Errorf("file does not exist: %s", filePath)
+			}
+			if err != nil {
+				return fmt.Errorf("cannot access file %s: %v", filePath, err)
+			}
+
+			// Check file size (warn for large files, but don't block)
+			const maxRecommendedSize = 10 * 1024 * 1024 // 10MB
+			if fileInfo.Size() > maxRecommendedSize {
+				// Log warning but continue
+				fmt.Printf("Warning: Large file detected (%d MB): %s\n", fileInfo.Size()/(1024*1024), filePath)
+			}
+
+			file, err := os.Open(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to open file %s: %v", filePath, err)
+			}
+			defer file.Close()
+
+			// Get filename from path
+			parts := strings.Split(filePath, "/")
+			filename := parts[len(parts)-1]
+
+			fw, err := writer.CreateFormFile(name, filename)
+			if err != nil {
+				return fmt.Errorf("failed to create form file: %v", err)
+			}
+
+			_, err = io.Copy(fw, file)
+			if err != nil {
+				return fmt.Errorf("failed to copy file content: %v", err)
+			}
+		} else {
+			// Text field
+			err := writer.WriteField(name, value)
+			if err != nil {
+				return fmt.Errorf("failed to write field: %v", err)
+			}
+		}
+		validFields++
+	}
+
+	if validFields == 0 {
+		return fmt.Errorf("no fields found in multipart body")
+	}
+
+	return nil
 }
 
 // FormatResponse formats the HTTP response for display in the UI

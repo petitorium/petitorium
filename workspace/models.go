@@ -21,8 +21,21 @@ type Request struct {
 	Method          string            `yaml:"method"`
 	URL             string            `yaml:"url"`
 	Headers         map[string]string `yaml:"headers,omitempty"`
+	ContentType     string            `yaml:"content_type,omitempty"`
 	Body            string            `yaml:"body,omitempty"`
 	ResponseHistory []HTTPResponse    `yaml:"response_history,omitempty"`
+}
+
+type BodyContent struct {
+	Raw       string           `yaml:"raw,omitempty"` // For JSON content
+	Multipart []MultipartField `yaml:"multipart,omitempty"`
+}
+
+type MultipartField struct {
+	Name     string `yaml:"name"`               // Field name
+	Type     string `yaml:"type"`               // "text", "text_multiline", or "file"
+	Value    string `yaml:"value"`              // Text content or file path
+	Filename string `yaml:"filename,omitempty"` // Optional filename for file fields
 }
 
 type Environment struct {

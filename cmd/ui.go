@@ -16,15 +16,18 @@ import (
 	"github.com/rivo/tview"
 
 	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/workspace"
 )
 
 // Tab names for UI consistency
 // Display names for UI tab headers
 var requestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers"}
+
 var responseTabDisplayNames = []string{"Preview", "Headers", "Cookies", "Timeline"}
 
 // Internal names for page identifiers and logic
 var requestTabInternalNames = []string{"body", "auth", "query", "headers"}
+
 var responseTabInternalNames = []string{"preview", "headers", "cookies", "timeline"}
 
 type PanelOptions struct {
@@ -426,11 +429,6 @@ func createCustomButton(text string, backgroundColor, activatedColor, labelColor
 
 // createThemedButton creates a button with theme-based background colors
 func createThemedButton(text string, colors *ColorManager) *CustomButton {
-	// Write to a debug file to avoid tview suppression
-	// if f, err := os.OpenFile("/tmp/debug_buttons.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644); err == nil {
-	// 	fmt.Fprintf(f, "DEBUG: createThemedButton called with text='%s', ButtonBackground=%v\n", text, colors.ButtonBackground)
-	// 	f.Close()
-	// }
 	return NewCustomButtonWithColors(text, colors)
 }
 
@@ -1468,7 +1466,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex, *tview.DropDown, *tview.Flex) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -1477,15 +1475,13 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	requestDataTabs.SetTitle(" Request ")
 	requestDataTabs.SetTitleColor(colors.Title)
 
-	// Create tab header
-	tabHeader := createTabHeader(requestTabDisplayNames, colors, func(index int) {
-		if tabIndexSetter != nil {
-			tabIndexSetter(index)
-		}
-		if footerUpdater != nil {
-			footerUpdater()
-		}
-	})
+	// Create content type dropdown
+	contentTypeDropdown := createDropDown(
+		"Content Type:",
+		[]string{"JSON", "Multipart", "No Body"},
+		colors,
+	)
+	contentTypeDropdown.SetBorder(false)
 
 	// Create tab pages
 	tabPages := tview.NewPages()
@@ -1495,6 +1491,13 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	bodyContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	bodyContainer.SetBackgroundColor(colors.Background)
 	bodyContainer.AddItem(bodyViewPanel, 0, 1, false)
+
+	// Create multipart fields tab
+	var initialBody string
+	if currentRequest != nil {
+		initialBody = currentRequest.Body
+	}
+	multipartFieldsTab := createMultipartFieldsTab(colors, initialBody, saveCallback, focusSetter, app, pages, footerUpdater)
 
 	// Create auth tab
 	authTab := createAuthTab(colors)
@@ -1511,11 +1514,21 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	tabPages.AddPage(requestTabInternalNames[2], queryTab, true, false)
 	tabPages.AddPage(requestTabInternalNames[3], headersTab, true, false)
 
+	// Create tab header
+	tabHeader := createTabHeader(requestTabDisplayNames, colors, func(index int) {
+		if tabIndexSetter != nil {
+			tabIndexSetter(index)
+		}
+		if footerUpdater != nil {
+			footerUpdater()
+		}
+	})
+
 	// Add to main container
 	requestDataTabs.AddItem(tabHeader, 1, 0, false)
 	requestDataTabs.AddItem(tabPages, 0, 1, false)
 
-	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab
+	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, contentTypeDropdown, multipartFieldsTab
 }
 
 // createResponseTabs creates the response tabs interface
@@ -2326,4 +2339,567 @@ func (h *HeaderKeyInput) IsEditMode() bool {
 // HasFocusOrChildHasFocus returns true if this component or any of its children has focus
 func (h *HeaderKeyInput) HasFocusOrChildHasFocus() bool {
 	return h.HasFocus()
+}
+
+// MultipartFieldRow represents a single multipart field row in the UI
+type MultipartFieldRow struct {
+	NameLabel        *tview.TextView
+	NameInput        *tview.InputField
+	TypeLabel        *tview.TextView
+	TypeDropdown     *tview.DropDown
+	ValueLabel       *tview.TextView
+	ValueInput       *tview.InputField
+	FilePickerButton *CustomButton
+	DeleteButton     *CustomButton
+	Row              *tview.Flex
+}
+
+// Global variables for multipart fields management
+var currentMultipartFieldsTab *tview.Flex
+
+var currentMultipartFieldsList *tview.Flex
+
+var currentMultipartFieldRows []*MultipartFieldRow
+
+// Multipart field configuration
+var multipartFieldWidth = 18
+
+var multipartRemoveButtonWidth = 5
+
+// createMultipartFieldsTab creates the multipart fields management UI
+func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCallback func(), focusSetter func(tview.Primitive), app *tview.Application, pages *tview.Pages, footerUpdater func()) *tview.Flex {
+	multipartContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	multipartContainer.SetBackgroundColor(colors.Background)
+	multipartContainer.SetBorder(true)
+	multipartContainer.SetBorderColor(colors.Background)
+	multipartContainer.SetTitleColor(colors.Title)
+	multipartContainer.SetBackgroundColor(colors.Background)
+
+	// Scrollable area for multipart field entries
+	fieldsList := tview.NewFlex().SetDirection(tview.FlexRow)
+	fieldsList.SetBackgroundColor(colors.Background)
+
+	// Store references for global access
+	currentMultipartFieldsTab = multipartContainer
+	currentMultipartFieldsList = fieldsList
+
+	// Initialize global multipart field rows
+	currentMultipartFieldRows = []*MultipartFieldRow{}
+
+	// Function to refresh the UI
+	var refreshMultipartFieldsUI func()
+	refreshMultipartFieldsUI = func() {
+		fieldsList.Clear()
+		for _, row := range currentMultipartFieldRows {
+			fieldsList.AddItem(row.Row, 1, 0, false)
+		}
+		// Always add at least one empty row if no fields were parsed
+		if len(currentMultipartFieldRows) == 0 {
+			addMultipartFieldRow(fieldsList, colors, refreshMultipartFieldsUI, saveCallback, focusSetter, footerUpdater, app, pages)
+		}
+	}
+
+	// Parse initial body content into fields if it exists
+	if initialBody != "" {
+		parsedFields := parseMultipartBody(initialBody)
+		for _, field := range parsedFields {
+			addMultipartFieldRowWithData(fieldsList, colors, field.Name, field.Type, field.Value, refreshMultipartFieldsUI, saveCallback, focusSetter, footerUpdater, app, pages)
+		}
+	}
+
+	// Always add at least one empty row if no fields were parsed
+	if len(currentMultipartFieldRows) == 0 {
+		addMultipartFieldRow(fieldsList, colors, refreshMultipartFieldsUI, saveCallback, focusSetter, footerUpdater, app, pages)
+	}
+
+	// Add button row at the top
+	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonRow.SetBackgroundColor(colors.Background)
+
+	addButton := createThemedButton(" Add Field ", colors)
+	addButton.SetSelectedFunc(func() {
+		addMultipartFieldRow(fieldsList, colors, refreshMultipartFieldsUI, saveCallback, focusSetter, footerUpdater, app, pages)
+	})
+
+	// Delete all button
+	deleteAllButton := createThemedButton(" Delete All ", colors)
+	deleteAllButton.SetSelectedFunc(func() {
+		deleteCallback := func() {
+			// Clear all multipart field rows
+			currentMultipartFieldRows = []*MultipartFieldRow{}
+			refreshMultipartFieldsUI()
+			if saveCallback != nil {
+				saveCallback()
+			}
+		}
+		form := createDeleteAllMultipartFieldsConfirm(app, pages, colors, deleteCallback)
+		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		pages.AddPage("deleteAllMultipartFields", modal, true, true)
+		app.SetFocus(form)
+	})
+
+	buttonRow.AddItem(addButton, 15, 0, false)
+	buttonRow.AddItem(deleteAllButton, 15, 0, false)
+	buttonRow.AddItem(nil, 0, 1, false)
+
+	multipartContainer.AddItem(buttonRow, 1, 0, false)
+
+	// Add visual spacing between buttons and fields
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	multipartContainer.AddItem(spacer, 1, 0, false)
+
+	multipartContainer.AddItem(fieldsList, 0, 1, false)
+
+	return multipartContainer
+}
+
+// addMultipartFieldRow adds a new multipart field input row to the fields list
+func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshUI func(), saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+
+	// Create label separately for full control over background
+	nameLabel := tview.NewTextView().
+		SetText("Name: ")
+	nameLabel.SetTextColor(colors.LabelColor)
+	nameLabel.SetBackgroundColor(colors.Background)
+	nameLabel.SetTextAlign(tview.AlignRight)
+
+	nameInput := tview.NewInputField().
+		SetFieldWidth(multipartFieldWidth).
+		SetFieldBackgroundColor(colors.Background).
+		SetFieldTextColor(colors.ValueColor)
+	nameInput.SetBackgroundColor(colors.Background)
+	nameInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	// Create label separately for full control over background
+	valueLabel := tview.NewTextView().
+		SetText("Value: ")
+	valueLabel.SetTextColor(colors.LabelColor)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignRight)
+
+	valueInput := tview.NewInputField().
+		SetFieldWidth(multipartFieldWidth).
+		SetFieldBackgroundColor(colors.Background).
+		SetFieldTextColor(colors.ValueColor)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	// File picker button
+	filePickerButton := createThemedButton("Browse", colors)
+	filePickerButton.SetSelectedFunc(func() {
+		// Open file picker modal
+		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
+	})
+
+	removeButton := createThemedButton("X", colors)
+
+	// Create label separately for full control over background
+	typeLabel := tview.NewTextView().
+		SetText("Type: ")
+	typeLabel.SetTextColor(colors.LabelColor)
+	typeLabel.SetBackgroundColor(colors.Background)
+	typeLabel.SetTextAlign(tview.AlignRight)
+
+	typeDropdown := tview.NewDropDown().
+		SetOptions([]string{"text", "text_multiline", "file"}, nil).
+		SetCurrentOption(0).
+		SetFieldBackgroundColor(colors.Background).
+		SetFieldTextColor(colors.ValueColor)
+	typeDropdown.SetBackgroundColor(colors.Background)
+	// Function to rebuild row layout based on current type
+	rebuildRowLayout := func() {
+		row.Clear()
+		// Add name label and input
+		row.AddItem(nameLabel, 6, 0, false)
+		row.AddItem(nameInput, multipartFieldWidth, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		// Add type label and dropdown
+		row.AddItem(typeLabel, 6, 0, false)
+		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		// Add value label and input
+		row.AddItem(valueLabel, 7, 0, false)
+		row.AddItem(valueInput, multipartFieldWidth, 0, false)
+
+		selectedType, _ := typeDropdown.GetCurrentOption()
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		if selectedType == 2 { // "file" is option 2
+			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
+		} else {
+			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), multipartFieldWidth, 0, false)
+		}
+
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		row.AddItem(removeButton, multipartRemoveButtonWidth, 0, false)
+	}
+
+	typeDropdown.SetSelectedFunc(func(text string, index int) {
+		rebuildRowLayout()
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	fieldRow := &MultipartFieldRow{
+		NameLabel:        nameLabel,
+		NameInput:        nameInput,
+		TypeLabel:        typeLabel,
+		TypeDropdown:     typeDropdown,
+		ValueLabel:       valueLabel,
+		ValueInput:       valueInput,
+		FilePickerButton: filePickerButton,
+		DeleteButton:     removeButton,
+		Row:              row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		// Find and remove this row
+		for i, r := range currentMultipartFieldRows {
+			if r == fieldRow {
+				currentMultipartFieldRows = append(currentMultipartFieldRows[:i], currentMultipartFieldRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Build initial layout
+	rebuildRowLayout()
+
+	currentMultipartFieldRows = append(currentMultipartFieldRows, fieldRow)
+	refreshUI()
+}
+
+// addMultipartFieldRowWithData adds a multipart field row with pre-filled data
+func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, name, fieldType, value string, refreshUI func(), saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+
+	// Create label separately for full control over background
+	nameLabel := tview.NewTextView().
+		SetText("Name: ")
+	nameLabel.SetTextColor(colors.LabelColor)
+	nameLabel.SetBackgroundColor(colors.Background)
+	nameLabel.SetTextAlign(tview.AlignRight)
+
+	nameInput := tview.NewInputField().
+		SetFieldWidth(multipartFieldWidth).
+		SetText(name).
+		SetFieldBackgroundColor(colors.Background).
+		SetFieldTextColor(colors.ValueColor)
+	nameInput.SetBackgroundColor(colors.Background)
+	nameInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	typeOptions := []string{"text", "text_multiline", "file"}
+	typeIndex := 0
+	for i, opt := range typeOptions {
+		if opt == fieldType {
+			typeIndex = i
+			break
+		}
+	}
+
+	// Create label separately for full control over background
+	typeLabel := tview.NewTextView().
+		SetText("Type: ")
+	typeLabel.SetTextColor(colors.LabelColor)
+	typeLabel.SetBackgroundColor(colors.Background)
+	typeLabel.SetTextAlign(tview.AlignRight)
+
+	typeDropdown := tview.NewDropDown().
+		SetOptions(typeOptions, nil).
+		SetCurrentOption(typeIndex).
+		SetFieldBackgroundColor(colors.Background).
+		SetFieldTextColor(colors.ValueColor)
+	typeDropdown.SetBackgroundColor(colors.Background)
+
+	// Create label separately for full control over background
+	valueLabel := tview.NewTextView().
+		SetText("Value: ")
+	valueLabel.SetTextColor(colors.LabelColor)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignRight)
+
+	valueInput := tview.NewInputField().
+		SetFieldWidth(multipartFieldWidth).
+		SetText(value).
+		SetFieldBackgroundColor(colors.Background).
+		SetFieldTextColor(colors.ValueColor)
+	valueInput.SetBackgroundColor(colors.Background)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	// File picker button
+	filePickerButton := createThemedButton("Browse", colors)
+	filePickerButton.SetSelectedFunc(func() {
+		// Open file picker modal
+		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
+	})
+
+	removeButton := createThemedButton("X", colors)
+
+	fieldRow := &MultipartFieldRow{
+		NameLabel:        nameLabel,
+		NameInput:        nameInput,
+		TypeLabel:        typeLabel,
+		TypeDropdown:     typeDropdown,
+		ValueLabel:       valueLabel,
+		ValueInput:       valueInput,
+		FilePickerButton: filePickerButton,
+		DeleteButton:     removeButton,
+		Row:              row,
+	}
+
+	// Function to rebuild row layout based on current type
+	rebuildRowLayout := func() {
+		row.Clear()
+		// Add name label and input
+		row.AddItem(nameLabel, 6, 0, false)
+		row.AddItem(nameInput, multipartFieldWidth, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		// Add type label and dropdown
+		row.AddItem(typeLabel, 6, 0, false)
+		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		// Add value label and input
+		row.AddItem(valueLabel, 7, 0, false)
+		row.AddItem(valueInput, multipartFieldWidth, 0, false)
+
+		selectedType, _ := typeDropdown.GetCurrentOption()
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		if selectedType == 2 { // "file" is option 2
+			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
+		} else {
+			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), multipartFieldWidth, 0, false)
+		}
+
+		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		row.AddItem(removeButton, multipartRemoveButtonWidth, 0, false)
+	}
+
+	typeDropdown.SetSelectedFunc(func(text string, index int) {
+		rebuildRowLayout()
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	removeButton.SetSelectedFunc(func() {
+		// Find and remove this row
+		for i, r := range currentMultipartFieldRows {
+			if r == fieldRow {
+				currentMultipartFieldRows = append(currentMultipartFieldRows[:i], currentMultipartFieldRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Build initial layout
+	rebuildRowLayout()
+
+	currentMultipartFieldRows = append(currentMultipartFieldRows, fieldRow)
+	refreshUI()
+}
+
+// parseMultipartBody parses the multipart body string into structured fields
+func parseMultipartBody(body string) []struct{ Name, Type, Value string } {
+	var fields []struct{ Name, Type, Value string }
+
+	lines := strings.Split(body, "&")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Parse format: name=type:value or name=value (defaults to text)
+		if strings.Contains(line, "=") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				name := strings.TrimSpace(parts[0])
+				valuePart := strings.TrimSpace(parts[1])
+
+				// Check if it's a file field
+				if strings.HasPrefix(valuePart, "file:") {
+					value := strings.TrimPrefix(valuePart, "file:")
+					fields = append(fields, struct{ Name, Type, Value string }{name, "file", value})
+				} else {
+					fields = append(fields, struct{ Name, Type, Value string }{name, "text", valuePart})
+				}
+			}
+		}
+	}
+
+	return fields
+}
+
+// collectMultipartFieldsFromUI collects all multipart fields from the UI and formats them as a string
+func collectMultipartFieldsFromUI() string {
+	var fields []string
+	for _, row := range currentMultipartFieldRows {
+		name := strings.TrimSpace(row.NameInput.GetText())
+		fieldTypeIndex, _ := row.TypeDropdown.GetCurrentOption()
+		value := strings.TrimSpace(row.ValueInput.GetText())
+
+		if name != "" && value != "" {
+			if fieldTypeIndex == 2 { // file
+				fields = append(fields, name+"=file:"+value)
+			} else {
+				fields = append(fields, name+"="+value)
+			}
+		}
+	}
+	return strings.Join(fields, "&")
+}
+
+// updateMultipartFieldsFromBody updates the multipart fields UI from body text
+func updateMultipartFieldsFromBody(body string, colors *ColorManager, app *tview.Application, pages *tview.Pages) {
+	// Only clear and rebuild if body actually contains multipart data
+	parsedFields := parseMultipartBody(body)
+
+	if len(parsedFields) > 0 {
+		// Body contains multipart data, clear and rebuild
+		currentMultipartFieldRows = []*MultipartFieldRow{}
+		if currentMultipartFieldsList != nil {
+			// Create a simple refresh function
+			refreshFunc := func() {
+				// Do nothing - we'll refresh at the end
+			}
+
+			for _, field := range parsedFields {
+				addMultipartFieldRowWithData(currentMultipartFieldsList, colors, field.Name, field.Type, field.Value, refreshFunc, func() {
+					// Save callback - do nothing for now
+				}, nil, nil, app, pages)
+			}
+
+			// Refresh the UI after adding all fields
+			currentMultipartFieldsList.Clear()
+			for _, row := range currentMultipartFieldRows {
+				currentMultipartFieldsList.AddItem(row.Row, 1, 0, false)
+			}
+		}
+	} else if len(currentMultipartFieldRows) == 0 {
+		// No multipart data in body AND no existing rows, add one empty row
+		if currentMultipartFieldsList != nil {
+			// Create a simple refresh function
+			refreshFunc := func() {
+				// Do nothing - we'll refresh at the end
+			}
+
+			addMultipartFieldRow(currentMultipartFieldsList, colors, refreshFunc, func() {
+				// Save callback - do nothing for now
+			}, nil, nil, app, pages)
+
+			// Refresh the UI after adding the empty row
+			currentMultipartFieldsList.Clear()
+			for _, row := range currentMultipartFieldRows {
+				currentMultipartFieldsList.AddItem(row.Row, 1, 0, false)
+			}
+		}
+	}
+	// If body is empty/not multipart but we have existing rows, keep them
+}
+
+// openFilePickerModal opens a modal for selecting a file
+func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput *tview.InputField, colors *ColorManager, callback func()) {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	filePathInput := tview.NewInputField().
+		SetLabel("File Path: ").
+		SetText(valueInput.GetText()).
+		SetFieldWidth(50)
+	form.AddFormItem(filePathInput)
+
+	form.AddButton("Select", func() {
+		path := filePathInput.GetText()
+		if path != "" {
+			// Basic validation - should be absolute path
+			if !strings.HasPrefix(path, "/") {
+				// For now, just show a warning but allow relative paths
+				// In a real implementation, we'd validate this more strictly
+			}
+			valueInput.SetText(path)
+			if callback != nil {
+				callback()
+			}
+		}
+		pages.RemovePage("filePickerModal")
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("filePickerModal")
+	})
+
+	form.SetBorder(true).SetTitle(" Select File ")
+	modal := createModal(form, 60, 10, tcell.ColorDefault)
+	pages.AddPage("filePickerModal", modal, true, true)
+	app.SetFocus(form)
+}
+
+// createDeleteAllMultipartFieldsConfirm creates a confirmation dialog for deleting all multipart fields
+func createDeleteAllMultipartFieldsConfirm(app *tview.Application, pages *tview.Pages, colors *ColorManager, deleteCallback func()) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("", "Are you sure you want to delete all multipart fields?", 0, 1, false, false)
+
+	form.AddButton("Delete", func() {
+		deleteCallback()
+		pages.RemovePage("deleteAllMultipartFields")
+	})
+
+	cancelFunc := func() {
+		pages.RemovePage("deleteAllMultipartFields")
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetCancelFunc(cancelFunc)
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancelFunc()
+			return nil
+		}
+		return event
+	})
+
+	form.SetBorder(true).SetTitle(" Delete All Multipart Fields ")
+	return form
 }

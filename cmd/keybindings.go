@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -36,6 +37,28 @@ var (
 	navigateTreeDown func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
 	navigateTreeUp   func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
 )
+
+// toggleExperimentalNavigation toggles the experimental navigation system
+func toggleExperimentalNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ExperimentalNavigationEnabled = !ui.ExperimentalNavigationEnabled
+
+	// Update footer to show current mode
+	if ui.ExperimentalNavigationEnabled {
+		ui.FooterRight.SetText("Experimental navigation: ON")
+	} else {
+		ui.FooterRight.SetText("Experimental navigation: OFF")
+	}
+
+	// Clear message after 2 seconds
+	go func() {
+		time.Sleep(2 * time.Second)
+		ui.App.QueueUpdateDraw(func() {
+			ui.FooterRight.SetText("Petitorium ")
+		})
+	}()
+
+	return nil
+}
 
 // getVisibleNodes collects all visible nodes in the tree
 func getVisibleNodes(root *tview.TreeNode) []*tview.TreeNode {
@@ -157,6 +180,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Key:         tcell.KeyF4,
 			Action:      openExternalEditor,
 			Description: "Open body in external editor",
+			Context:     "global",
+		},
+		{
+			Key:         tcell.KeyF2,
+			Action:      toggleExperimentalNavigation,
+			Description: "Toggle experimental navigation",
 			Context:     "global",
 		},
 		// {
@@ -515,7 +544,7 @@ func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		return event
 	}
 
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 		modal := createModal(form, 50, 12, tcell.ColorDefault)
 		ui.Pages.AddPage("newCollection", modal, true, true)
@@ -530,7 +559,7 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		return event
 	}
 
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		// New request - check if a collection or request is selected
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
@@ -557,7 +586,7 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 }
 
 func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		// Duplicate request - check if a request is selected
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
@@ -579,7 +608,7 @@ func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 }
 
 func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
 			reference := node.GetReference()
@@ -600,7 +629,7 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 				return nil
 			}
 		}
-	} else if ui.MainCycle.current == ui.EnviromentIndex {
+	} else if ui.MainCycle.current == ui.PanelIndices.Environment {
 		// Rename environment
 		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
 		if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
@@ -648,7 +677,7 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		return event
 	}
 
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
 			if col, ok := node.GetReference().(workspace.Collection); ok {
@@ -678,7 +707,7 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		return event
 	}
 
-	if ui.MainCycle.current == ui.CollectionsIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
 			reference := node.GetReference()
@@ -704,7 +733,7 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 }
 
 func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.MainCycle.current == ui.RequestIndex {
+	if ui.MainCycle.current == ui.PanelIndices.Request {
 		if ui.CurrentTabIndex == ui.RPBodyTabIndex {
 			if ui.CurrentRequest != nil {
 				// Suspend TUI to open external editor
@@ -719,6 +748,10 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 					ui.SyncBodyContent(modifiedContent)
 					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 						ui.CurrentRequest.Body = modifiedContent
+						// Also save to JSONBodyContent if we're in JSON mode
+						if ui.CurrentRequest.ContentType == "JSON" {
+							ui.JSONBodyContent = modifiedContent
+						}
 						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
@@ -782,7 +815,7 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 }
 
 func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.RequestIndex {
+	if ui.CurrentFocus == ui.PanelIndices.Request {
 		// Check if focus is on an input field (don't switch tabs if typing)
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
@@ -821,7 +854,7 @@ func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 }
 
 func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.RequestIndex {
+	if ui.CurrentFocus == ui.PanelIndices.Request {
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
 
@@ -848,7 +881,7 @@ func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 }
 
 func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.RequestIndex {
+	if ui.CurrentFocus == ui.PanelIndices.Request {
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
 
@@ -875,7 +908,7 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 }
 
 func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.RequestIndex {
+	if ui.CurrentFocus == ui.PanelIndices.Request {
 		currentFocusedElement := ui.App.GetFocus()
 		isOnInputField := false
 
@@ -902,7 +935,13 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 }
 
 func enterInsertMode(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.MainCycle.current == ui.RequestIndex && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
+	// Don't enter insert mode if content type is Multipart (user is editing fields)
+	// or if content type is No Body (no body to edit)
+	if ui.CurrentRequest != nil && (ui.CurrentRequest.ContentType == "Multipart" || ui.CurrentRequest.ContentType == "No Body") {
+		return event
+	}
+
+	if ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
 		ui.SwitchBodyMode() // Switch to edit mode
 		ui.App.SetFocus(ui.BodyEditPanel)
 		return nil
@@ -911,7 +950,7 @@ func enterInsertMode(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 }
 
 func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.MainCycle.current == ui.RequestIndex && !ui.BodyEditMode {
+	if ui.MainCycle.current == ui.PanelIndices.Request && !ui.BodyEditMode {
 		ui.CurrentTabIndex = (ui.CurrentTabIndex - 1 + 4) % 4
 		tabNames := []string{"body", "auth", "query", "headers"}
 		ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
@@ -936,7 +975,7 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		}
 		ui.UpdateFooter()
 		return nil
-	} else if ui.MainCycle.current == ui.ResponseIndex {
+	} else if ui.MainCycle.current == ui.PanelIndices.Response {
 		// Navigate response tabs
 		ui.CurrentResponseTabIndex = (ui.CurrentResponseTabIndex - 1 + 4) % 4
 		responseTabNames := []string{"preview", "headers", "cookies", "timeline"}
@@ -948,7 +987,7 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 }
 
 func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.MainCycle.current == ui.RequestIndex && !ui.BodyEditMode {
+	if ui.MainCycle.current == ui.PanelIndices.Request && !ui.BodyEditMode {
 		ui.CurrentTabIndex = (ui.CurrentTabIndex + 1) % 4
 		tabNames := []string{"body", "auth", "query", "headers"}
 		ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
@@ -973,7 +1012,7 @@ func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		}
 		ui.UpdateFooter()
 		return nil
-	} else if ui.MainCycle.current == ui.ResponseIndex {
+	} else if ui.MainCycle.current == ui.PanelIndices.Response {
 		// Navigate response tabs
 		ui.CurrentResponseTabIndex = (ui.CurrentResponseTabIndex + 1) % 4
 		responseTabNames := []string{"preview", "headers", "cookies", "timeline"}

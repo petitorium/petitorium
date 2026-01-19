@@ -11,99 +11,283 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
+// PanelIndices defines the indices for main UI panels
+type PanelIndices struct {
+	Workspace   int
+	Environment int
+	Collections int
+	URLBar      int
+	Request     int
+	Response    int
+}
+
+type Workspace struct {
+	WorkspaceSelector int
+	WorkspaceMenu     int
+}
+
+type Environment struct {
+	EnvironmentSelector int
+	EnvironmentMenu     int
+}
+
+type Collections struct {
+	TreeView int
+}
+
+type URLBar struct {
+	MethodDropdown int
+	URLInput       int
+	SendButton     int
+	CurlButton     int
+	AnotherItem    int
+}
+
+type BodyTab struct {
+	ContentTypeSelector int
+	JSONEditor          int
+	MultipartFields     int
+	NoBody              int
+}
+
+type Request struct {
+	BodyTab    BodyTab
+	AuthTab    int
+	QueryTab   int
+	HeadersTab int
+}
+
+type Response struct {
+	PreviewTab  int
+	HeadersTab  int
+	CookiesTab  int
+	TimelineTab int
+}
+
+type ExperimentalIndices struct {
+	Workspace   Workspace
+	Environment Environment
+	Collections Collections
+	URLBar      URLBar
+	Request     Request
+	Response    Response
+}
+
 // UIOrchestrator holds all UI components and state
 type UIOrchestrator struct {
-	App                   *tview.Application
-	WorkspaceData         *workspace.Workspace
-	DataManager           *DataManager
-	EnvironmentsData      *[]workspace.Environment
-	Colors                *ColorManager
-	PluginManager         *plugins.PluginManager
-	RootNode              *tview.TreeNode
-	MethodURLBar          *tview.Flex
-	MethodDropdown        *tview.DropDown
-	URLInput              *URLVariableInput
-	SendButton            *CustomButton
-	CurlButton            *CustomButton
-	BodyViewPanel         *tview.TextView
-	BodyEditPanel         *tview.TextArea
-	Response              *tview.Flex
-	Footer                *tview.Flex
-	FooterLeft            *tview.TextView
-	FooterRight           *tview.TextView
-	CollectionsTreeView   *tview.TreeView
-	TreeSelectionHandler  func(*tview.TreeNode)
-	TreeHighlightHandler  func(*tview.TreeNode)
-	ResponsePages         *tview.Pages
-	ResponseTabHeader     *tview.Flex
-	ResponseInfoBar       *tview.Flex
-	ResponseTimeText      *tview.TextView
-	ResponsePreviewPanel  *tview.TextView
-	ResponseHeadersPanel  tview.Primitive
-	ResponseCookiesPanel  *tview.TextView
-	ResponseTimelinePanel *tview.TextView
-	EnvironmentPanel      *tview.Flex
-	EnvDropdown           *tview.DropDown
-	EnvConfigButton       *CustomButton
-	WorkspacePanel        *tview.Flex
-	WorkspaceSelector     *tview.DropDown
-	WorkspaceConfigButton *CustomButton
-	Pages                 *tview.Pages
-	Grid                  *tview.Grid
-	KeyManager            *KeyBindingManager
-	LastResponse          *HTTPResponse
-	LastResponseTime      *time.Time
+	App                      *tview.Application
+	WorkspaceData            *workspace.Workspace
+	DataManager              *DataManager
+	EnvironmentsData         *[]workspace.Environment
+	Colors                   *ColorManager
+	PluginManager            *plugins.PluginManager
+	RootNode                 *tview.TreeNode
+	MethodURLBar             *tview.Flex
+	MethodDropdown           *tview.DropDown
+	ContentTypeDropdown      *tview.DropDown
+	URLInput                 *URLVariableInput
+	SendButton               *CustomButton
+	CurlButton               *CustomButton
+	BodyViewPanel            *tview.TextView
+	BodyEditPanel            *tview.TextArea
+	BodyContainer            *tview.Flex
+	MultipartFieldsTab       *tview.Flex
+	MultipartAddButton       *CustomButton
+	MultipartDeleteAllButton *CustomButton
+	Response                 *tview.Flex
+	Footer                   *tview.Flex
+	FooterLeft               *tview.TextView
+	FooterRight              *tview.TextView
+	CollectionsTreeView      *tview.TreeView
+	TreeSelectionHandler     func(*tview.TreeNode)
+	TreeHighlightHandler     func(*tview.TreeNode)
+	ResponsePages            *tview.Pages
+	ResponseTabHeader        *tview.Flex
+	ResponseInfoBar          *tview.Flex
+	ResponseTimeText         *tview.TextView
+	ResponsePreviewPanel     *tview.TextView
+	ResponseHeadersPanel     tview.Primitive
+	ResponseCookiesPanel     *tview.TextView
+	ResponseTimelinePanel    *tview.TextView
+	EnvironmentPanel         *tview.Flex
+	EnvDropdown              *tview.DropDown
+	EnvConfigButton          *CustomButton
+	WorkspacePanel           *tview.Flex
+	WorkspaceSelector        *tview.DropDown
+	WorkspaceConfigButton    *CustomButton
+	Pages                    *tview.Pages
+	Grid                     *tview.Grid
+	KeyManager               *KeyBindingManager
+	LastResponse             *HTTPResponse
+	LastResponseTime         *time.Time
 
 	// State variables
-	CurrentSelectedNode            *tview.TreeNode
-	CurrentRequest                 *workspace.Request
-	Navigating                     bool
-	ProgrammaticallyUpdatingMethod bool
-	ProgrammaticallyUpdatingURL    bool
-	RequestInProgress              bool
-	TabPages                       *tview.Pages
-	TabHeader                      *tview.Flex
-	CurrentTabIndex                int
-	CurrentResponseTabIndex        int
-	WorkspaceIndex                 int
-	EnviromentIndex                int
-	CollectionsIndex               int
-	URLBarIndex                    int
-	RequestIndex                   int
-	ResponseIndex                  int
-	RequestDataTabs                *tview.Flex
-	BodyContainer                  *tview.Flex
-	MainCycle                      *MainCycle
-	HeadersCycle                   *HeadersCycle
-	RequestCycle                   *RequestCycle
-	EnvironmentsCycle              *EnvironmentsCycle
-	WorkspaceCycle                 *WorkspaceCycle
-	LastSelectedRequestNode        *tview.TreeNode
-	BodyEditMode                   bool
-	CurrentBodyContent             string
-	RequestPanel                   *tview.Flex
-	RightSide                      *tview.Flex
-	LeftSide                       *tview.Flex
-	CurrentFocus                   int
-	SetPanelFocus                  func(int, bool)
-	SetActiveBorder                func(element tview.Primitive)
-	SetInactiveBorder              func(element tview.Primitive)
-	SyncBodyContent                func(content string)
-	SwitchBodyMode                 func()
-	UpdateFooter                   func()
-	CopyResponse                   func()
-	WorkspaceSelectorIndex         int
-	WorkspaceConfigButtonIndex     int
-	EnvironmentSelectorIndex       int
-	EnvironmentConfigButtonIndex   int
-	URLBarSelectorIndex            int
-	URLBarInputIndex               int
-	URLBarSendButtonIndex          int
-	URLBarCurlButtonIndex          int
-	RPBodyTabIndex                 int
-	RPAuthTabIndex                 int
-	RPQueryTabIndex                int
-	RPHeadersTabIndex              int
+	CurrentSelectedNode                 *tview.TreeNode
+	CurrentRequest                      *workspace.Request
+	Navigating                          bool
+	ProgrammaticallyUpdatingMethod      bool
+	ProgrammaticallyUpdatingURL         bool
+	ProgrammaticallyUpdatingContentType bool
+	RequestInProgress                   bool
+	TabPages                            *tview.Pages
+	TabHeader                           *tview.Flex
+	CurrentTabIndex                     int
+	dropdownAdded                       bool
+	CurrentResponseTabIndex             int
+	PanelIndices                        PanelIndices
+	ExperimentalIndices                 ExperimentalIndices
+	ExperimentalCurrentContainer        int
+	ExperimentalCurrentChild            int
+	ExperimentalCurrentSubchild         int
+	ExperimentalCurrentMultipartElement int // For navigation within multipart fields (0: Add Field, 1: Delete All, 2+: field rows)
+	ExperimentalCurrentFieldRowElement  int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: X)
+	ExperimentalPreviousContainer       int
+	ExperimentalRequestInTabHeaders     bool // True when in Request panel tab headers
+	ExperimentalResponseInTabHeaders    bool // True when in Response panel tab headers
+	ExperimentalNavigationEnabled       bool
+	RequestDataTabs                     *tview.Flex
+	MainCycle                           *MainCycle
+	HeadersCycle                        *HeadersCycle
+	URLBarCycle                         *URLBarCycle
+	EnvironmentsCycle                   *EnvironmentsCycle
+	WorkspaceCycle                      *WorkspaceCycle
+	LastSelectedRequestNode             *tview.TreeNode
+	BodyEditMode                        bool
+	CurrentBodyContent                  string
+	LastJSONBodyContent                 string // Store last JSON body when switching to No Body
+	JSONBodyContent                     string // Store JSON body when switching away from JSON
+	MultipartBodyContent                string // Store multipart fields when switching away from Multipart
+	RequestPanel                        *tview.Flex
+	RightSide                           *tview.Flex
+	LeftSide                            *tview.Flex
+	CurrentFocus                        int
+	SetPanelFocus                       func(int, bool)
+	SetActiveBorder                     func(element tview.Primitive)
+	SetInactiveBorder                   func(element tview.Primitive)
+	SyncBodyContent                     func(content string)
+	SwitchBodyMode                      func()
+	UpdateFooter                        func()
+	CopyResponse                        func()
+	WorkspaceSelectorIndex              int
+	WorkspaceConfigButtonIndex          int
+	EnvironmentSelectorIndex            int
+	EnvironmentConfigButtonIndex        int
+	URLBarSelectorIndex                 int
+	URLBarInputIndex                    int
+	URLBarSendButtonIndex               int
+	URLBarCurlButtonIndex               int
+	RPBodyTabIndex                      int
+	RPAuthTabIndex                      int
+	RPQueryTabIndex                     int
+	RPHeadersTabIndex                   int
+}
+
+// switchBodyContent switches the body container content based on content type
+func (ui *UIOrchestrator) switchBodyContent(newContentType, oldContentType string) {
+	// Save current body content before switching
+	if ui.CurrentRequest != nil {
+		if oldContentType == newContentType {
+			// Initial load or no change - initialize saved content
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			if newContentType == "JSON" {
+				ui.JSONBodyContent = ui.CurrentBodyContent
+			} else if newContentType == "Multipart" {
+				ui.MultipartBodyContent = ui.CurrentBodyContent
+			}
+		} else if oldContentType == "Multipart" && newContentType == "JSON" {
+			// Switching FROM Multipart TO JSON - save current multipart and restore saved JSON body
+			// First save current multipart fields
+			multipartBody := collectMultipartFieldsFromUI()
+			ui.CurrentRequest.Body = multipartBody
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			ui.MultipartBodyContent = ui.CurrentBodyContent
+
+			// Now restore saved JSON body only if we have some
+			// Otherwise keep the current multipart body (might be empty)
+			if ui.JSONBodyContent != "" {
+				ui.CurrentBodyContent = ui.JSONBodyContent
+				ui.CurrentRequest.Body = ui.JSONBodyContent
+			}
+		} else if oldContentType == "JSON" && newContentType == "Multipart" {
+			// Switching FROM JSON TO Multipart - save current JSON and restore saved multipart fields
+			// First save current JSON body content
+			if ui.BodyEditMode {
+				// In edit mode, get from edit panel
+				ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
+			} else {
+				// In view mode, CurrentBodyContent should have the current JSON
+				ui.CurrentRequest.Body = ui.CurrentBodyContent
+			}
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			ui.JSONBodyContent = ui.CurrentBodyContent
+
+			// Now restore saved multipart fields only if we have some
+			// Otherwise keep the current JSON body
+			if ui.MultipartBodyContent != "" {
+				ui.CurrentBodyContent = ui.MultipartBodyContent
+				ui.CurrentRequest.Body = ui.MultipartBodyContent
+			}
+		} else if oldContentType == "No Body" && newContentType == "JSON" {
+			// Switching FROM No Body TO JSON - restore last JSON body content
+			ui.CurrentBodyContent = ui.LastJSONBodyContent
+			ui.CurrentRequest.Body = ui.LastJSONBodyContent
+		} else if oldContentType == "Multipart" && newContentType != "Multipart" {
+			// Switching FROM multipart - collect fields into body text
+			multipartBody := collectMultipartFieldsFromUI()
+			ui.CurrentRequest.Body = multipartBody
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			// Save multipart fields for later restoration
+			ui.MultipartBodyContent = ui.CurrentBodyContent
+		} else if oldContentType == "JSON" && newContentType != "JSON" {
+			// Switching FROM JSON - save current body content
+			// Get the latest body content from the appropriate source
+			if ui.BodyEditMode {
+				// In edit mode, get from edit panel
+				ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
+			} else {
+				// In view mode, CurrentBodyContent should have the current JSON
+				// But to be safe, we'll use CurrentBodyContent which should be synced
+				ui.CurrentRequest.Body = ui.CurrentBodyContent
+			}
+			// CurrentBodyContent should match CurrentRequest.Body
+			ui.CurrentBodyContent = ui.CurrentRequest.Body
+			// Save JSON body content when switching away from JSON
+			ui.JSONBodyContent = ui.CurrentBodyContent
+			if newContentType == "No Body" {
+				ui.LastJSONBodyContent = ui.CurrentBodyContent
+			}
+		}
+	}
+
+	// Exit edit mode if switching to No Body or Multipart
+	if newContentType == "No Body" || newContentType == "Multipart" {
+		ui.BodyEditMode = false
+	}
+
+	ui.BodyContainer.Clear()
+
+	switch newContentType {
+	case "JSON":
+		// Use the standard body view/edit panels
+		ui.BodyContainer.SetTitle("")
+		if ui.BodyEditMode {
+			ui.BodyContainer.AddItem(ui.BodyEditPanel, 0, 1, false)
+			ui.BodyEditPanel.SetText(ui.CurrentBodyContent, false)
+		} else {
+			ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
+			ui.SyncBodyContent(ui.CurrentBodyContent)
+		}
+	case "No Body":
+		// Show empty state for no body
+		ui.BodyContainer.SetTitle("")
+		ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
+		ui.BodyViewPanel.SetText("(No body for this request)")
+		ui.BodyViewPanel.SetTextAlign(tview.AlignCenter)
+	case "Multipart":
+		// Use the multipart fields UI
+		ui.BodyContainer.SetTitle(" Multipart Fields ")
+		ui.BodyContainer.AddItem(ui.MultipartFieldsTab, 0, 1, false)
+	}
 }
 
 // SetupUI initializes all UI components and layout
@@ -211,13 +395,67 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Track current tab index (0=body, 1=auth, 2=query, 3=headers)
 	currentTabIndex := 0
 
-	// Tab indices
-	workspaceIndex := 0
-	enviromentIndex := 1
-	collectionsIndex := 2
-	urlBarIndex := 3
-	requestIndex := 4
-	responseIndex := 5
+	// Panel indices
+	panelIndices := PanelIndices{
+		Workspace:   0,
+		Environment: 1,
+		Collections: 2,
+		URLBar:      3,
+		Request:     4,
+		Response:    5,
+	}
+
+	workspace := Workspace{
+		WorkspaceSelector: 0,
+		WorkspaceMenu:     1,
+	}
+
+	environment := Environment{
+		EnvironmentSelector: 0,
+		EnvironmentMenu:     1,
+	}
+
+	collections := Collections{
+		TreeView: 0,
+	}
+
+	urlBar := URLBar{
+		MethodDropdown: 0,
+		URLInput:       1,
+		SendButton:     2,
+		CurlButton:     3,
+		AnotherItem:    4,
+	}
+
+	bodyTab := BodyTab{
+		ContentTypeSelector: 0,
+		JSONEditor:          1,
+		MultipartFields:     2,
+		NoBody:              3,
+	}
+
+	request := Request{
+		BodyTab:    bodyTab,
+		AuthTab:    1,
+		QueryTab:   2,
+		HeadersTab: 3,
+	}
+
+	response := Response{
+		PreviewTab:  0,
+		HeadersTab:  1,
+		CookiesTab:  2,
+		TimelineTab: 3,
+	}
+
+	experimental := ExperimentalIndices{
+		Workspace:   workspace,
+		Environment: environment,
+		Collections: collections,
+		URLBar:      urlBar,
+		Request:     request,
+		Response:    response,
+	}
 
 	workspaceSelectorIndex := 0
 	workspaceConfigButtonIndex := 1
@@ -239,7 +477,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	var requestDataTabs *tview.Flex
 	var bodyContainer *tview.Flex
 
-	requestCycle = &RequestCycle{
+	urlBarCycle = &URLBarCycle{
 		elements: []tview.Primitive{methodDropdown, urlInput, sendButton, curlButton},
 		current:  0,
 		parent:   nil, // Will be set later
@@ -278,7 +516,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		children: nil,
 	}
 
-	requestCycle.parent = mainCycle
+	urlBarCycle.parent = mainCycle
 
 	// Create main grid layout
 	grid := tview.NewGrid().
@@ -290,7 +528,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	grid.AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	// Initial focus is on requestPanel (panels[1])
-	currentFocus := collectionsIndex
+	currentFocus := panelIndices.Collections
 
 	// Helper function to sync body content between view and edit panels
 	syncBodyContent := func(content string) {
@@ -307,23 +545,29 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	pages.AddPage("main", grid, true, true)
 
 	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
-	tabIndexSetter := func(tabIndex int) {
-		currentTabIndex = tabIndex
-		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
-	}
+	// We'll define tabIndexSetter after uiOrchestrator is created
+	var tabIndexSetter func(int)
 
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _ =
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown, multipartFieldsTab :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
 			func() { saveCurrentRequest(currentRequest, workspaceData) },
 			func(p tview.Primitive) { app.SetFocus(p) },
-			tabIndexSetter,
+			func(tabIndex int) {
+				// Call tabIndexSetter if it's been defined
+				if tabIndexSetter != nil {
+					tabIndexSetter(tabIndex)
+				}
+			},
 			nil,       // panelFocusSetter will be set later
 			func() {}, // footerUpdater - will be replaced later
 			app,
 			pages,
+			currentRequest,
 		)
+
+	// Track if content type dropdown is added (now in uiOrchestrator.dropdownAdded)
 
 	// Create main panels
 	mainPanels := []tview.Primitive{workspacePanel, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
@@ -353,99 +597,128 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
 
 	uiOrchestrator := &UIOrchestrator{
-		App:                            app,
-		WorkspaceData:                  workspaceData,
-		DataManager:                    dataManager,
-		EnvironmentsData:               environmentsData,
-		Colors:                         colors,
-		RootNode:                       rootNode,
-		MethodURLBar:                   methodURLBar,
-		MethodDropdown:                 methodDropdown,
-		URLInput:                       urlInput,
-		SendButton:                     sendButton,
-		CurlButton:                     curlButton,
-		BodyViewPanel:                  bodyViewPanel,
-		BodyEditPanel:                  bodyEditPanel,
-		Response:                       responsePanel,
-		Footer:                         footer,
-		FooterLeft:                     footerLeft,
-		FooterRight:                    footerRight,
-		CollectionsTreeView:            collectionsTreeView,
-		ResponsePages:                  responsePages,
-		ResponseTabHeader:              responseTabHeader,
-		ResponseInfoBar:                responseInfoBar,
-		ResponseTimeText:               responseTimeText,
-		ResponsePreviewPanel:           responsePreviewPanel,
-		ResponseHeadersPanel:           responseHeadersPanel,
-		ResponseCookiesPanel:           responseCookiesPanel,
-		ResponseTimelinePanel:          responseTimelinePanel,
-		EnvironmentPanel:               environmentPanel,
-		EnvDropdown:                    envDropdown,
-		EnvConfigButton:                envConfigButton,
-		WorkspacePanel:                 workspacePanel,
-		WorkspaceSelector:              workspaceSelector,
-		WorkspaceConfigButton:          workspaceConfigButton,
-		Pages:                          pages,
-		Grid:                           grid,
-		CurrentSelectedNode:            currentSelectedNode,
-		CurrentRequest:                 currentRequest,
-		Navigating:                     false,
-		ProgrammaticallyUpdatingMethod: programmaticallyUpdatingMethod,
-		ProgrammaticallyUpdatingURL:    programmaticallyUpdatingURL,
-		TabPages:                       tabPages,
-		TabHeader:                      tabHeader,
-		CurrentTabIndex:                currentTabIndex,
-		CurrentResponseTabIndex:        0, // Start with preview tab
-		WorkspaceIndex:                 workspaceIndex,
-		EnviromentIndex:                enviromentIndex,
-		CollectionsIndex:               collectionsIndex,
-		URLBarIndex:                    urlBarIndex,
-		RequestIndex:                   requestIndex,
-		ResponseIndex:                  responseIndex,
-		RequestDataTabs:                requestDataTabs,
-		BodyContainer:                  bodyContainer,
-		MainCycle:                      mainCycle,
-		HeadersCycle:                   headersCycle,
-		RequestCycle:                   requestCycle,
-		EnvironmentsCycle:              environmentsCycle,
-		WorkspaceCycle:                 workspaceCycle,
-		LastSelectedRequestNode:        nil,
-		TreeHighlightHandler:           nil,
-		BodyEditMode:                   false,
-		CurrentBodyContent:             "",
-		RequestPanel:                   requestPanel,
-		RightSide:                      rightSide,
-		LeftSide:                       leftSide,
-		CurrentFocus:                   currentFocus,
-		SetPanelFocus:                  setPanelFocus,
-		SetActiveBorder:                setActiveBorder,
-		SetInactiveBorder:              setInactiveBorder,
-		SyncBodyContent:                syncBodyContent,
-		SwitchBodyMode:                 switchBodyMode,
-		UpdateFooter:                   func() {}, // Will be set below
-		KeyManager:                     NewKeyBindingManager(),
-		LastResponse:                   nil,
-		LastResponseTime:               nil,
-		WorkspaceSelectorIndex:         workspaceSelectorIndex,
-		WorkspaceConfigButtonIndex:     workspaceConfigButtonIndex,
-		EnvironmentSelectorIndex:       environmentSelectorIndex,
-		EnvironmentConfigButtonIndex:   environmentConfigButtonIndex,
-		URLBarSelectorIndex:            urlBarSelectorIndex,
-		URLBarInputIndex:               urlBarInputIndex,
-		URLBarSendButtonIndex:          urlBarSendButtonIndex,
-		URLBarCurlButtonIndex:          urlBarCurlButtonIndex,
-		RPBodyTabIndex:                 RPBodyTabIndex,
-		RPAuthTabIndex:                 RPAuthTabIndex,
-		RPQueryTabIndex:                RPQueryTabIndex,
-		RPHeadersTabIndex:              RPHeadersTabIndex,
+		App:                                 app,
+		WorkspaceData:                       workspaceData,
+		DataManager:                         dataManager,
+		EnvironmentsData:                    environmentsData,
+		Colors:                              colors,
+		RootNode:                            rootNode,
+		MethodURLBar:                        methodURLBar,
+		MethodDropdown:                      methodDropdown,
+		ContentTypeDropdown:                 contentTypeDropdown,
+		URLInput:                            urlInput,
+		SendButton:                          sendButton,
+		CurlButton:                          curlButton,
+		BodyViewPanel:                       bodyViewPanel,
+		BodyEditPanel:                       bodyEditPanel,
+		BodyContainer:                       bodyContainer,
+		MultipartFieldsTab:                  multipartFieldsTab,
+		Response:                            responsePanel,
+		Footer:                              footer,
+		FooterLeft:                          footerLeft,
+		FooterRight:                         footerRight,
+		CollectionsTreeView:                 collectionsTreeView,
+		ResponsePages:                       responsePages,
+		ResponseTabHeader:                   responseTabHeader,
+		ResponseInfoBar:                     responseInfoBar,
+		ResponseTimeText:                    responseTimeText,
+		ResponsePreviewPanel:                responsePreviewPanel,
+		ResponseHeadersPanel:                responseHeadersPanel,
+		ResponseCookiesPanel:                responseCookiesPanel,
+		ResponseTimelinePanel:               responseTimelinePanel,
+		EnvironmentPanel:                    environmentPanel,
+		EnvDropdown:                         envDropdown,
+		EnvConfigButton:                     envConfigButton,
+		WorkspacePanel:                      workspacePanel,
+		WorkspaceSelector:                   workspaceSelector,
+		WorkspaceConfigButton:               workspaceConfigButton,
+		Pages:                               pages,
+		Grid:                                grid,
+		CurrentSelectedNode:                 currentSelectedNode,
+		CurrentRequest:                      currentRequest,
+		Navigating:                          false,
+		ProgrammaticallyUpdatingMethod:      programmaticallyUpdatingMethod,
+		ProgrammaticallyUpdatingURL:         programmaticallyUpdatingURL,
+		TabPages:                            tabPages,
+		TabHeader:                           tabHeader,
+		CurrentTabIndex:                     currentTabIndex,
+		CurrentResponseTabIndex:             0, // Start with preview tab
+		PanelIndices:                        panelIndices,
+		ExperimentalIndices:                 experimental,
+		ExperimentalCurrentContainer:        0,
+		ExperimentalCurrentChild:            0,
+		ExperimentalCurrentSubchild:         0,
+		ExperimentalCurrentMultipartElement: 0,
+		ExperimentalCurrentFieldRowElement:  0,
+		ExperimentalPreviousContainer:       0,
+		ExperimentalRequestInTabHeaders:     true, // Start in tab headers when in Request panel
+		ExperimentalResponseInTabHeaders:    true, // Start in tab headers when in Response panel
+		ExperimentalNavigationEnabled:       true, // Enabled for testing
+		RequestDataTabs:                     requestDataTabs,
+		MainCycle:                           mainCycle,
+		HeadersCycle:                        headersCycle,
+		URLBarCycle:                         urlBarCycle,
+		EnvironmentsCycle:                   environmentsCycle,
+		WorkspaceCycle:                      workspaceCycle,
+		LastSelectedRequestNode:             nil,
+		TreeHighlightHandler:                nil,
+		BodyEditMode:                        false,
+		CurrentBodyContent:                  "",
+		LastJSONBodyContent:                 "",
+		JSONBodyContent:                     "",
+		MultipartBodyContent:                "",
+		RequestPanel:                        requestPanel,
+		RightSide:                           rightSide,
+		LeftSide:                            leftSide,
+		CurrentFocus:                        currentFocus,
+		SetPanelFocus:                       setPanelFocus,
+		SetActiveBorder:                     setActiveBorder,
+		SetInactiveBorder:                   setInactiveBorder,
+		SyncBodyContent:                     syncBodyContent,
+		SwitchBodyMode:                      switchBodyMode,
+		UpdateFooter:                        func() {}, // Will be set below
+		KeyManager:                          NewKeyBindingManager(),
+		LastResponse:                        nil,
+		LastResponseTime:                    nil,
+		WorkspaceSelectorIndex:              workspaceSelectorIndex,
+		WorkspaceConfigButtonIndex:          workspaceConfigButtonIndex,
+		EnvironmentSelectorIndex:            environmentSelectorIndex,
+		EnvironmentConfigButtonIndex:        environmentConfigButtonIndex,
+		URLBarSelectorIndex:                 urlBarSelectorIndex,
+		URLBarInputIndex:                    urlBarInputIndex,
+		URLBarSendButtonIndex:               urlBarSendButtonIndex,
+		URLBarCurlButtonIndex:               urlBarCurlButtonIndex,
+		RPBodyTabIndex:                      RPBodyTabIndex,
+		RPAuthTabIndex:                      RPAuthTabIndex,
+		RPQueryTabIndex:                     RPQueryTabIndex,
+		RPHeadersTabIndex:                   RPHeadersTabIndex,
 	}
 
-	// Update tabIndexSetter to also update UIOrchestrator's CurrentTabIndex
+	// Define tabIndexSetter now that we have all the variables
 	tabIndexSetter = func(tabIndex int) {
+		// Update content type dropdown visibility
+		if tabIndex == 0 {
+			if !uiOrchestrator.dropdownAdded {
+				requestDataTabs.RemoveItem(tabPages)
+				requestDataTabs.AddItem(contentTypeDropdown, 1, 0, false)
+				requestDataTabs.AddItem(tabPages, 0, 1, false)
+				uiOrchestrator.dropdownAdded = true
+			}
+		} else {
+			if uiOrchestrator.dropdownAdded {
+				requestDataTabs.RemoveItem(contentTypeDropdown)
+				uiOrchestrator.dropdownAdded = false
+			}
+		}
 		currentTabIndex = tabIndex
 		uiOrchestrator.CurrentTabIndex = tabIndex
-		updateTabHeader([]string{"Body", "Auth", "Query", "Headers"}, tabHeader, currentTabIndex, colors)
+		updateTabHeader(requestTabDisplayNames, tabHeader, currentTabIndex, colors)
 		uiOrchestrator.UpdateFooter()
+
+		// Switch to the selected tab page
+		if tabIndex >= 0 && tabIndex < len(requestTabInternalNames) {
+			tabPages.SwitchToPage(requestTabInternalNames[tabIndex])
+		}
 	}
 
 	// Set up tree view expansion handling
@@ -453,6 +726,32 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Set initial focus
 	setPanelFocus(currentFocus, true)
+
+	// Set initial border for experimental navigation
+	if uiOrchestrator.ExperimentalNavigationEnabled && uiOrchestrator.ExperimentalCurrentContainer < len(mainPanels) {
+		uiOrchestrator.SetActiveBorder(mainPanels[uiOrchestrator.ExperimentalCurrentContainer])
+		// Sync MainCycle.current with experimental container
+		// Map experimental container (0-5) to MainCycle panel indices
+		switch uiOrchestrator.ExperimentalCurrentContainer {
+		case 0:
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Workspace
+		case 1:
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Environment
+		case 2:
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Collections
+		case 3:
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.URLBar
+		case 4:
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Request
+		case 5:
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Response
+		}
+		// Also update CurrentFocus for compatibility with old code
+		uiOrchestrator.CurrentFocus = uiOrchestrator.MainCycle.current
+		// Also set initial focus for experimental navigation
+		// Initial position is [0,0,0] - Workspace panel, WorkspaceSelector
+		uiOrchestrator.App.SetFocus(uiOrchestrator.WorkspaceSelector)
+	}
 
 	// Set initial footer right text
 	uiOrchestrator.FooterRight.
@@ -466,25 +765,34 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (c) Clone Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 			return
 		}
+
+		// Check if experimental navigation is enabled
+		var expPrefix string
+		if uiOrchestrator.ExperimentalNavigationEnabled {
+			expPrefix = "[EXP] "
+		} else {
+			expPrefix = ""
+		}
+
 		switch uiOrchestrator.MainCycle.current {
-		case uiOrchestrator.EnviromentIndex:
-			uiOrchestrator.FooterLeft.SetText(" (Tab) Next Panel | (q) Quit") // Environment
-		case uiOrchestrator.CollectionsIndex:
-			uiOrchestrator.FooterLeft.SetText(" (n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
-		case uiOrchestrator.URLBarIndex:
-			uiOrchestrator.FooterLeft.SetText(" (i) Edit URL | (Tab) Next Panel | (c) Export cURL | (q) Quit") // Request
-		case uiOrchestrator.RequestIndex:
+		case uiOrchestrator.PanelIndices.Environment:
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Tab) Next Panel | (q) Quit") // Environment
+		case uiOrchestrator.PanelIndices.Collections:
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
+		case uiOrchestrator.PanelIndices.URLBar:
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit URL | (Tab) Next Panel | (c) Export cURL | (q) Quit") // Request
+		case uiOrchestrator.PanelIndices.Request:
 			switch uiOrchestrator.CurrentTabIndex {
 			case uiOrchestrator.RPBodyTabIndex:
 				if uiOrchestrator.BodyEditMode {
-					uiOrchestrator.FooterLeft.SetText(" (Esc) Exit Edit | (F4) External Editor | (Tab) Next Panel | (q) Quit") // Request Body (Edit)
+					uiOrchestrator.FooterLeft.SetText(expPrefix + "(Esc) Exit Edit | (F4) External Editor | (Tab) Next Panel | (q) Quit") // Request Body (Edit)
 				} else {
-					uiOrchestrator.FooterLeft.SetText(" (i) Edit | (F4) External Editor | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Body
+					uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit | (F4) External Editor | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Body
 				}
 			case uiOrchestrator.RPAuthTabIndex:
-				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Auth
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Auth
 			case uiOrchestrator.RPQueryTabIndex:
-				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Query
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Query
 			case uiOrchestrator.RPHeadersTabIndex:
 				// Check if any header is in edit mode
 				headerInEditMode := false
@@ -497,17 +805,17 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				}
 
 				if headerInEditMode {
-					uiOrchestrator.FooterLeft.SetText(" (Esc) Exit Edit | (Tab) Next Panel | (q) Quit") //  Request Headers (Edit)
+					uiOrchestrator.FooterLeft.SetText(expPrefix + "(Esc) Exit Edit | (Tab) Next Panel | (q) Quit") //  Request Headers (Edit)
 				} else {
-					uiOrchestrator.FooterLeft.SetText(" (i) Edit Key/Value | (n) New Header | (d) Delete Header | (D) Delete All | (F4) Bulk Edit | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Headers
+					uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit Key/Value | (n) New Header | (d) Delete Header | (D) Delete All | (F4) Bulk Edit | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Headers
 				}
 			default:
-				uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request
 			}
-		case uiOrchestrator.ResponseIndex:
-			uiOrchestrator.FooterLeft.SetText(" (1-4/←/→) Switch tabs | (j/k) Scroll up/down | (d/u) Half page scroll | (g/G) Scroll to top/bottom | (f) Open in fx | (Tab) Next Panel | (q) Quit") // Response
+		case uiOrchestrator.PanelIndices.Response:
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch tabs | (j/k) Scroll up/down | (d/u) Half page scroll | (g/G) Scroll to top/bottom | (f) Open in fx | (Tab) Next Panel | (q) Quit") // Response
 		default:
-			uiOrchestrator.FooterLeft.SetText(" (Tab) Cycle Focus | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Tab) Cycle Focus | (q) Quit")
 		}
 	}
 
@@ -549,6 +857,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Initialize request tab header with body tab active
 	updateTabHeader(requestTabDisplayNames, uiOrchestrator.TabHeader, uiOrchestrator.CurrentTabIndex, uiOrchestrator.Colors)
+
+	// Set initial tab to Body (0) to show content type dropdown
+	tabIndexSetter(0)
 
 	return uiOrchestrator, nil
 }
