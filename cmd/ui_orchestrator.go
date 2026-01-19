@@ -645,12 +645,12 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		CurrentResponseTabIndex:             0, // Start with preview tab
 		PanelIndices:                        panelIndices,
 		ExperimentalIndices:                 experimental,
-		ExperimentalCurrentContainer:        0,
+		ExperimentalCurrentContainer:        2,
 		ExperimentalCurrentChild:            0,
 		ExperimentalCurrentSubchild:         0,
 		ExperimentalCurrentMultipartElement: 0,
 		ExperimentalCurrentFieldRowElement:  0,
-		ExperimentalPreviousContainer:       0,
+		ExperimentalPreviousContainer:       2,
 		ExperimentalRequestInTabHeaders:     true, // Start in tab headers when in Request panel
 		ExperimentalResponseInTabHeaders:    true, // Start in tab headers when in Response panel
 		ExperimentalNavigationEnabled:       true,
@@ -748,9 +748,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		}
 		// Also update CurrentFocus for compatibility with old code
 		uiOrchestrator.CurrentFocus = uiOrchestrator.MainCycle.current
-		// Also set initial focus for experimental navigation
-		// Initial position is [0,0,0] - Workspace panel, WorkspaceSelector
-		uiOrchestrator.App.SetFocus(uiOrchestrator.WorkspaceSelector)
+		// Initial position is [2,0,0] - Collections panel, CollectionsTreeView
+		uiOrchestrator.App.SetFocus(uiOrchestrator.CollectionsTreeView)
 	}
 
 	// Set initial footer right text
