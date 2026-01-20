@@ -948,23 +948,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return event
 		}
 
-		// Skip global 'i' keybinding if focused on input fields
-		if event.Rune() == 'i' {
-			focus := ui.App.GetFocus()
-			if _, ok := focus.(*tview.InputField); ok {
-				return event
-			}
-			if _, ok := focus.(*tview.DropDown); ok {
-				return event
-			}
-		}
-
-		// First check if this is a global keybinding
-		if result := ui.KeyManager.HandleKeyEvent(ui, event, "global"); result != event {
-			return result
-		}
-
-		// Check if we're focused on a form input field
+		// Check if we're focused on a form input field - do this BEFORE checking global keybindings
 		focus := ui.App.GetFocus()
 
 		// If we're in a form input field, don't handle collection shortcuts
@@ -975,14 +959,60 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return event // Let text areas handle their own keys
 		}
 
-		// Also check if we're in a form by looking at the current page
+		// Check if we're in a form popup - do this BEFORE checking global keybindings
 		currentPage, _ := ui.Pages.GetFrontPage()
-		if currentPage == "newCollection" || currentPage == "newRequest" || currentPage == "workspaceMenu" || currentPage == "envVariables" || currentPage == "deleteAllHeaders" {
-			// We're in a popup form, check if focus is on the form itself
-			if event.Rune() == 'n' || event.Rune() == 'r' {
-				// Let the form handle these keys
-				return event
+		formPopups := []string{
+			"newCollection",
+			"newRequest",
+			"workspaceMenu",
+			"envVariables",
+			"moveCollection",
+			"moveRequest",
+			"renameCollection",
+			"renameRequest",
+			"deleteCollection",
+			"deleteRequest",
+			"deleteAllHeaders",
+			"duplicateRequest",
+			"cloneEnvironment",
+			"createWorkspace",
+			"deleteEnvironment",
+			"deleteWorkspace",
+			"duplicateWorkspace",
+			"renameEnvironment",
+			"renameWorkspace",
+			"workspaceModal",
+		}
+
+		isFormPopup := false
+		for _, popup := range formPopups {
+			if currentPage == popup {
+				isFormPopup = true
+				break
 			}
+		}
+
+		// If we're in a form popup, disable certain keybindings
+		if isFormPopup {
+			// Check for keys that should work as normal characters in forms
+			problematicKeys := map[rune]bool{
+				'n': true, // new collection
+				'r': true, // new request
+				'R': true, // rename item
+				'm': true, // move item
+				'd': true, // delete item
+				'D': true, // duplicate request
+				'i': true, // enter insert mode
+			}
+
+			if problematicKeys[event.Rune()] {
+				return event // Let the form handle these keys as normal characters
+			}
+		}
+
+		// First check if this is a global keybinding
+		if result := ui.KeyManager.HandleKeyEvent(ui, event, "global"); result != event {
+			return result
 		}
 
 		// If we're in any modal, don't handle tab navigation

@@ -579,6 +579,10 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 }
 
 func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		// Duplicate request - check if a request is selected
 		node := ui.CollectionsTreeView.GetCurrentNode()
@@ -601,6 +605,10 @@ func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 }
 
 func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
@@ -655,6 +663,15 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"deleteCollection",
 		"deleteRequest",
 		"deleteAllHeaders",
+		"duplicateRequest",
+		"cloneEnvironment",
+		"createWorkspace",
+		"deleteEnvironment",
+		"deleteWorkspace",
+		"duplicateWorkspace",
+		"renameEnvironment",
+		"renameWorkspace",
+		"workspaceModal",
 	}
 
 	for _, popup := range formPopups {

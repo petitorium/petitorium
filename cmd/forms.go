@@ -1388,13 +1388,13 @@ func createDuplicateRequestForm(
 		}
 	}
 
-	form.AddInputField("Request Name", duplicatedName, 43, nil, nil)
+	form.AddInputField("Request Name", duplicatedName, 41, nil, nil)
 	form.AddDropDown("Method", methods, methodIndex, nil)
-	form.AddInputField("URL", originalRequest.URL, 43, nil, nil)
+	form.AddInputField("URL", originalRequest.URL, 41, nil, nil)
 
 	bodyInput := tview.NewInputField().
 		SetLabel("Body: ").
-		SetFieldWidth(43).
+		SetFieldWidth(41).
 		SetText(originalRequest.Body).
 		SetPlaceholder("Enter JSON data...")
 
