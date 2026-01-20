@@ -593,7 +593,7 @@ func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 
 				if selectedCollection != nil {
 					form := createDuplicateRequestForm(ui.App, ui.Pages, &req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-					modal := createModal(form, 60, 14, tcell.ColorDefault)
+					modal := createModal(form, 60, 15, tcell.ColorDefault)
 					ui.Pages.AddPage("duplicateRequest", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
