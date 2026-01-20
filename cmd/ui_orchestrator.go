@@ -94,6 +94,8 @@ type UIOrchestrator struct {
 	MultipartFieldsTab       *tview.Flex
 	MultipartAddButton       *CustomButton
 	MultipartDeleteAllButton *CustomButton
+	AddHeaderButton          *CustomButton
+	DeleteAllHeadersButton   *CustomButton
 	Response                 *tview.Flex
 	Footer                   *tview.Flex
 	FooterLeft               *tview.TextView
@@ -141,6 +143,8 @@ type UIOrchestrator struct {
 	ExperimentalCurrentSubchild         int
 	ExperimentalCurrentMultipartElement int // For navigation within multipart fields (0: Add Field, 1: Delete All, 2+: field rows)
 	ExperimentalCurrentFieldRowElement  int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: X)
+	ExperimentalCurrentHeaderRowElement int // For navigation within headers (0: Add Header, 1: Delete All, 2+: header rows)
+	ExperimentalCurrentHeaderElement    int // For navigation within a header row (0: Key input, 1: Value input, 2: Delete button)
 	ExperimentalPreviousContainer       int
 	ExperimentalRequestInTabHeaders     bool // True when in Request panel tab headers
 	ExperimentalResponseInTabHeaders    bool // True when in Response panel tab headers
@@ -650,6 +654,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		ExperimentalCurrentSubchild:         0,
 		ExperimentalCurrentMultipartElement: 0,
 		ExperimentalCurrentFieldRowElement:  0,
+		ExperimentalCurrentHeaderRowElement: 0,
+		ExperimentalCurrentHeaderElement:    0,
 		ExperimentalPreviousContainer:       2,
 		ExperimentalRequestInTabHeaders:     true, // Start in tab headers when in Request panel
 		ExperimentalResponseInTabHeaders:    true, // Start in tab headers when in Response panel

@@ -1297,6 +1297,15 @@ func getMaxFieldRowElement(fieldRow *MultipartFieldRow) int {
 	return 4
 }
 
+func getMaxHeaderRowElement(headerRow *HeaderRow) int {
+	if headerRow == nil {
+		return 0
+	}
+
+	// Header rows have: Key input (0), Value input (1), Delete button (2)
+	return 2
+}
+
 // getCurrentContentType returns the current content type from the dropdown
 func getCurrentContentType(ui *UIOrchestrator) string {
 	if ui.ContentTypeDropdown != nil {
@@ -1654,7 +1663,125 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 
 			case 3: // HeadersTab
 				// Focus headers tab content
-				ui.App.SetFocus(ui.RequestDataTabs)
+				// Use ExperimentalCurrentHeaderRowElement to determine which element to focus on:
+				// 0: Add Header button
+				// 1: Delete All button
+				// 2+: Header rows
+				if currentHeadersTab != nil {
+					// Get the button row (first child of headers container)
+					// Headers container structure: [buttonRow, spacer, headersList]
+					buttonRow := currentHeadersTab.GetItem(0)
+					if buttonRow != nil {
+						buttonRowFlex, ok := buttonRow.(*tview.Flex)
+						if ok && buttonRowFlex != nil && buttonRowFlex.GetItemCount() > 1 {
+							// Determine which element to focus based on ExperimentalCurrentHeaderRowElement
+							if ui.ExperimentalCurrentHeaderRowElement < 2 {
+								// We're on a button (Add Header or Delete All)
+								switch ui.ExperimentalCurrentHeaderRowElement {
+								case 0: // Add Header button
+									addButton := buttonRowFlex.GetItem(0)
+									if addButton != nil {
+										ui.App.SetFocus(addButton)
+									} else {
+										ui.App.SetFocus(currentHeadersTab)
+									}
+								case 1: // Delete All button
+									deleteAllButton := buttonRowFlex.GetItem(1)
+									if deleteAllButton != nil {
+										ui.App.SetFocus(deleteAllButton)
+									} else {
+										// Fallback to Add Header button
+										addButton := buttonRowFlex.GetItem(0)
+										if addButton != nil {
+											ui.App.SetFocus(addButton)
+										} else {
+											ui.App.SetFocus(currentHeadersTab)
+										}
+									}
+								}
+							} else {
+								// We're on a header row (ExperimentalCurrentHeaderRowElement >= 2)
+								headerRowIndex := ui.ExperimentalCurrentHeaderRowElement - 2
+								if headerRowIndex >= 0 && headerRowIndex < len(currentHeaderRows) {
+									headerRow := currentHeaderRows[headerRowIndex]
+									if headerRow != nil {
+										// Determine which element within the header row to focus
+										switch ui.ExperimentalCurrentHeaderElement {
+										case 0: // Key input
+											if headerRow.KeyInput != nil {
+												ui.App.SetFocus(headerRow.KeyInput)
+											} else {
+												// Fallback to value input
+												if headerRow.ValueInput != nil {
+													ui.App.SetFocus(headerRow.ValueInput)
+												} else {
+													ui.App.SetFocus(currentHeadersTab)
+												}
+											}
+										case 1: // Value input
+											if headerRow.ValueInput != nil {
+												ui.App.SetFocus(headerRow.ValueInput)
+											} else {
+												// Fallback to delete button
+												if headerRow.DeleteButton != nil {
+													ui.App.SetFocus(headerRow.DeleteButton)
+												} else {
+													ui.App.SetFocus(currentHeadersTab)
+												}
+											}
+										case 2: // Delete button
+											if headerRow.DeleteButton != nil {
+												ui.App.SetFocus(headerRow.DeleteButton)
+											} else {
+												// Fallback to key input
+												if headerRow.KeyInput != nil {
+													ui.App.SetFocus(headerRow.KeyInput)
+												} else {
+													ui.App.SetFocus(currentHeadersTab)
+												}
+											}
+										default:
+											// Invalid header element, default to key input
+											ui.ExperimentalCurrentHeaderElement = 0
+											if headerRow.KeyInput != nil {
+												ui.App.SetFocus(headerRow.KeyInput)
+											} else {
+												ui.App.SetFocus(currentHeadersTab)
+											}
+										}
+									} else {
+										// Header row is nil, focus on Add Header button
+										ui.ExperimentalCurrentHeaderRowElement = 0
+										ui.ExperimentalCurrentHeaderElement = 0
+										addButton := buttonRowFlex.GetItem(0)
+										if addButton != nil {
+											ui.App.SetFocus(addButton)
+										} else {
+											ui.App.SetFocus(currentHeadersTab)
+										}
+									}
+								} else {
+									// Invalid header row index, focus on Add Header button
+									ui.ExperimentalCurrentHeaderRowElement = 0
+									ui.ExperimentalCurrentHeaderElement = 0
+									addButton := buttonRowFlex.GetItem(0)
+									if addButton != nil {
+										ui.App.SetFocus(addButton)
+									} else {
+										ui.App.SetFocus(currentHeadersTab)
+									}
+								}
+							}
+						} else {
+							ui.App.SetFocus(currentHeadersTab)
+						}
+					} else {
+						ui.App.SetFocus(currentHeadersTab)
+					}
+				} else {
+					// Fallback to focusing on the tab container
+					ui.App.SetFocus(ui.RequestDataTabs)
+				}
 			default:
 				// Fallback to first child
 				ui.ExperimentalCurrentChild = 0
@@ -1891,12 +2018,111 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					}
 				} else {
 					// Other tabs (Auth, Query, Headers) or BodyTab without subchildren
-					// For these tabs, tab should exit tab content mode and go back to tab headers
-					ui.ExperimentalRequestInTabHeaders = true
-					// Stay on current child (current tab header)
-					ui.ExperimentalCurrentSubchild = 0
-					ui.ExperimentalCurrentMultipartElement = 0
-					ui.ExperimentalCurrentFieldRowElement = 0
+					// Check if we're in Headers tab
+					if ui.ExperimentalCurrentChild == 3 {
+						// Headers tab - navigate within headers
+						// Use ExperimentalCurrentHeaderRowElement to track position:
+						// 0: Add Header button
+						// 1: Delete All button
+						// 2+: Header rows
+
+						// Check if we're in a header row (ExperimentalCurrentHeaderRowElement >= 2)
+						if ui.ExperimentalCurrentHeaderRowElement >= 2 {
+							// We're in a header row, navigate within header row elements
+							headerRowIndex := ui.ExperimentalCurrentHeaderRowElement - 2
+							if headerRowIndex >= 0 && headerRowIndex < len(currentHeaderRows) {
+								headerRow := currentHeaderRows[headerRowIndex]
+								if headerRow != nil {
+									maxHeaderElement := getMaxHeaderRowElement(headerRow)
+
+									if ui.ExperimentalCurrentHeaderElement < maxHeaderElement {
+										// Move to next element within the header row
+										ui.ExperimentalCurrentHeaderElement++
+									} else {
+										// At last element in header row, move to next header row
+										ui.ExperimentalCurrentHeaderElement = 0
+										ui.ExperimentalCurrentHeaderRowElement++
+
+										// Check if we're past the last header row
+										maxHeaderRowElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
+										if currentHeaderRows != nil {
+											maxHeaderRowElement = 2 + len(currentHeaderRows)
+										}
+
+										if ui.ExperimentalCurrentHeaderRowElement >= maxHeaderRowElement {
+											// Past the last header row, exit headers tab and jump to response panel
+											ui.ExperimentalCurrentHeaderRowElement = 0
+											ui.ExperimentalCurrentHeaderElement = 0
+											ui.ExperimentalCurrentContainer = 5 // Response panel
+											ui.ExperimentalCurrentChild = 0     // PreviewTab
+											ui.ExperimentalCurrentSubchild = 0
+											ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+										}
+									}
+								} else {
+									// Header row is nil, move to next header row
+									ui.ExperimentalCurrentHeaderElement = 0
+									ui.ExperimentalCurrentHeaderRowElement++
+
+									// Check if we're past the last header row
+									maxHeaderRowElement := 2 // Start with 2 buttons (0: Add, 1: Delete All)
+									if currentHeaderRows != nil {
+										maxHeaderRowElement = 2 + len(currentHeaderRows)
+									}
+
+									if ui.ExperimentalCurrentHeaderRowElement >= maxHeaderRowElement {
+										// Past the last header row, exit headers tab and jump to response panel
+										ui.ExperimentalCurrentHeaderRowElement = 0
+										ui.ExperimentalCurrentHeaderElement = 0
+										ui.ExperimentalCurrentContainer = 5 // Response panel
+										ui.ExperimentalCurrentChild = 0     // PreviewTab
+										ui.ExperimentalCurrentSubchild = 0
+										ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+									}
+								}
+							} else {
+								// Invalid header row index, move to Add Header button
+								ui.ExperimentalCurrentHeaderRowElement = 0
+								ui.ExperimentalCurrentHeaderElement = 0
+							}
+						} else {
+							// We're on a button (Add Header or Delete All)
+							if ui.ExperimentalCurrentHeaderRowElement == 0 {
+								// Currently on Add Header button, move to Delete All button
+								ui.ExperimentalCurrentHeaderRowElement = 1
+								ui.ExperimentalCurrentHeaderElement = 0
+							} else if ui.ExperimentalCurrentHeaderRowElement == 1 {
+								// Currently on Delete All button
+								// Check if there are header rows
+								if currentHeaderRows != nil && len(currentHeaderRows) > 0 {
+									// Move to first header row
+									ui.ExperimentalCurrentHeaderRowElement = 2
+									ui.ExperimentalCurrentHeaderElement = 0
+								} else {
+									// No header rows, exit headers tab and jump to response panel
+									ui.ExperimentalCurrentHeaderRowElement = 0
+									ui.ExperimentalCurrentHeaderElement = 0
+									ui.ExperimentalCurrentContainer = 5 // Response panel
+									ui.ExperimentalCurrentChild = 0     // PreviewTab
+									ui.ExperimentalCurrentSubchild = 0
+									ui.ExperimentalResponseInTabHeaders = true // Start in tab headers mode
+								}
+							} else {
+								// Invalid position, reset to Add Header button
+								ui.ExperimentalCurrentHeaderRowElement = 0
+								ui.ExperimentalCurrentHeaderElement = 0
+							}
+						}
+					} else {
+						// Auth or Query tabs - exit to tab headers
+						ui.ExperimentalRequestInTabHeaders = true
+						// Stay on current child (current tab header)
+						ui.ExperimentalCurrentSubchild = 0
+						ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+						ui.ExperimentalCurrentHeaderRowElement = 0
+						ui.ExperimentalCurrentHeaderElement = 0
+					}
 				}
 			}
 		} else if ui.ExperimentalCurrentContainer == 5 {

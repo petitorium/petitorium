@@ -658,6 +658,8 @@ var currentHeaderRows []*HeaderRow
 
 var currentHeadersList *tview.Flex
 
+var currentAddHeaderButton *CustomButton
+
 // Global variables for environment variables management
 var currentEnvRows []*EnvVarRow
 
@@ -736,8 +738,21 @@ func createHeadersTabWithData(colors *ColorManager,
 	buttonRow.SetBackgroundColor(colors.Background)
 
 	addButton := createThemedButton(" Add Header ", colors)
+	currentAddHeaderButton = addButton
 	addButton.SetSelectedFunc(func() {
 		addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
+	})
+	// Handle Tab navigation for Add Header button
+	addButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			// Tab from Add Header button to first header key input if available
+			if len(currentHeaderRows) > 0 {
+				firstRow := currentHeaderRows[0]
+				focusSetter(firstRow.KeyInput)
+			}
+			return nil
+		}
+		return event
 	})
 
 	// Delete all button
@@ -847,9 +862,10 @@ func addHeaderRow(headersList *tview.Flex,
 		if event.Key() == tcell.KeyTab {
 			// Check if this is the last value input
 			if len(currentHeaderRows) > 0 && currentHeaderRows[len(currentHeaderRows)-1] == headerRow {
-				// Cycle back to first key input
-				firstRow := currentHeaderRows[0]
-				focusSetter(firstRow.KeyInput)
+				// Tab from last value input to Add Header button
+				if currentAddHeaderButton != nil {
+					focusSetter(currentAddHeaderButton)
+				}
 				return nil
 			}
 		}
@@ -958,9 +974,10 @@ func addHeaderRowWithData(headersList *tview.Flex,
 		if event.Key() == tcell.KeyTab {
 			// Check if this is the last value input
 			if len(currentHeaderRows) > 0 && currentHeaderRows[len(currentHeaderRows)-1] == headerRow {
-				// Cycle back to first key input
-				firstRow := currentHeaderRows[0]
-				focusSetter(firstRow.KeyInput)
+				// Tab from last value input to Add Header button
+				if currentAddHeaderButton != nil {
+					focusSetter(currentAddHeaderButton)
+				}
 				return nil
 			}
 		}
