@@ -2309,12 +2309,77 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					ui.ExperimentalCurrentFieldRowElement = 0
 				} else if ui.ExperimentalCurrentChild > 0 {
 					// Other tabs (Auth, Query, Headers)
-					// For these tabs, backtab should exit tab content mode and go back to tab headers
-					ui.ExperimentalRequestInTabHeaders = true
-					// Stay on current child (current tab header)
-					ui.ExperimentalCurrentSubchild = 0
-					ui.ExperimentalCurrentMultipartElement = 0
-					ui.ExperimentalCurrentFieldRowElement = 0
+					// Check if we're in Headers tab
+					if ui.ExperimentalCurrentChild == 3 {
+						// Headers tab - navigate within headers in reverse
+						// Use ExperimentalCurrentHeaderRowElement to track position:
+						// 0: Add Header button
+						// 1: Delete All button
+						// 2+: Header rows
+
+						// Check if we're in a header row (ExperimentalCurrentHeaderRowElement >= 2)
+						if ui.ExperimentalCurrentHeaderRowElement >= 2 {
+							// We're in a header row, navigate within header row elements in reverse
+							headerRowIndex := ui.ExperimentalCurrentHeaderRowElement - 2
+							if headerRowIndex >= 0 && headerRowIndex < len(currentHeaderRows) {
+								headerRow := currentHeaderRows[headerRowIndex]
+								if headerRow != nil {
+									if ui.ExperimentalCurrentHeaderElement > 0 {
+										// Move to previous element within the header row
+										ui.ExperimentalCurrentHeaderElement--
+									} else {
+										// At first element in header row (key input), move to previous header row or Delete All button
+										if ui.ExperimentalCurrentHeaderRowElement > 2 {
+											// Move to previous header row's last element (delete button)
+											ui.ExperimentalCurrentHeaderRowElement--
+											ui.ExperimentalCurrentHeaderElement = 2 // Delete button
+										} else {
+											// At first header row, move to Delete All button
+											ui.ExperimentalCurrentHeaderRowElement = 1
+											ui.ExperimentalCurrentHeaderElement = 0
+										}
+									}
+								} else {
+									// Header row is nil, move to Delete All button
+									ui.ExperimentalCurrentHeaderRowElement = 1
+									ui.ExperimentalCurrentHeaderElement = 0
+								}
+							} else {
+								// Invalid header row index, move to Delete All button
+								ui.ExperimentalCurrentHeaderRowElement = 1
+								ui.ExperimentalCurrentHeaderElement = 0
+							}
+						} else {
+							// We're on a button (Add Header or Delete All)
+							if ui.ExperimentalCurrentHeaderRowElement == 1 {
+								// Currently on Delete All button, move to Add Header button
+								ui.ExperimentalCurrentHeaderRowElement = 0
+								ui.ExperimentalCurrentHeaderElement = 0
+							} else if ui.ExperimentalCurrentHeaderRowElement == 0 {
+								// Currently on Add Header button, exit to tab headers
+								ui.ExperimentalRequestInTabHeaders = true
+								// Stay on child 3 (Headers tab header)
+								ui.ExperimentalCurrentSubchild = 0
+								ui.ExperimentalCurrentMultipartElement = 0
+								ui.ExperimentalCurrentFieldRowElement = 0
+								ui.ExperimentalCurrentHeaderRowElement = 0
+								ui.ExperimentalCurrentHeaderElement = 0
+							} else {
+								// Invalid position, move to Add Header button
+								ui.ExperimentalCurrentHeaderRowElement = 0
+								ui.ExperimentalCurrentHeaderElement = 0
+							}
+						}
+					} else {
+						// Auth or Query tabs - exit to tab headers
+						ui.ExperimentalRequestInTabHeaders = true
+						// Stay on current child (current tab header)
+						ui.ExperimentalCurrentSubchild = 0
+						ui.ExperimentalCurrentMultipartElement = 0
+						ui.ExperimentalCurrentFieldRowElement = 0
+						ui.ExperimentalCurrentHeaderRowElement = 0
+						ui.ExperimentalCurrentHeaderElement = 0
+					}
 				}
 			}
 		} else if ui.ExperimentalCurrentContainer == 5 {

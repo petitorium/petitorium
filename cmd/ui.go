@@ -718,10 +718,7 @@ func createHeadersTabWithData(colors *ColorManager,
 		for _, row := range currentHeaderRows {
 			headersList.AddItem(row.Row, rowHeight, 0, false)
 		}
-		// Always keep at least one empty row
-		if len(currentHeaderRows) == 0 {
-			addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
-		}
+		// Don't automatically add empty row - user can use Add Header button
 	}
 
 	// Add initial rows based on data
@@ -730,8 +727,7 @@ func createHeadersTabWithData(colors *ColorManager,
 			addHeaderRowWithData(headersList, colors, key, value, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
 		}
 	}
-	// Always add at least one empty row
-	addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
+	// Don't automatically add empty row - user can use Add Header button
 
 	// Add button row at the top
 	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -1311,10 +1307,7 @@ func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallbac
 			}, saveCallback, focusSetter, footerUpdater)
 		}
 
-		// Always add one empty row
-		addHeaderRow(currentHeadersList, colors, func() {
-			setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter, footerUpdater)
-		}, saveCallback, focusSetter, footerUpdater)
+		// Don't automatically add empty row - user can use Add Header button
 	}
 }
 
