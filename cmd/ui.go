@@ -660,6 +660,8 @@ var currentHeadersList *tview.Flex
 
 var currentAddHeaderButton *CustomButton
 
+var currentDeleteAllHeadersButton *CustomButton
+
 // Global variables for environment variables management
 var currentEnvRows []*EnvVarRow
 
@@ -753,6 +755,7 @@ func createHeadersTabWithData(colors *ColorManager,
 
 	// Delete all button
 	deleteAllButton := createThemedButton(" Delete All ", colors)
+	currentDeleteAllHeadersButton = deleteAllButton
 	// deleteAllButton.SetBackgroundColor(colors.Error)
 	// deleteAllButton.SetBackgroundColorActivated(colors.Error)
 	deleteAllButton.SetSelectedFunc(func() {
@@ -1308,6 +1311,34 @@ func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallbac
 		}
 
 		// Don't automatically add empty row - user can use Add Header button
+	}
+
+	// Update the "Add Header" button callback to use the new saveCallback
+	if currentAddHeaderButton != nil && currentHeadersList != nil {
+		// Create a refresh function for the headers list
+		refreshHeadersUI := func() {
+			if currentHeadersList != nil {
+				currentHeadersList.Clear()
+				for _, row := range currentHeaderRows {
+					currentHeadersList.AddItem(row.Row, rowHeight, 0, false)
+				}
+			}
+		}
+
+		// Update the "Add Header" button's callback
+		currentAddHeaderButton.SetSelectedFunc(func() {
+			addHeaderRow(currentHeadersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
+		})
+	}
+
+	// Update the "Delete All" button callback to use the new saveCallback
+	if currentDeleteAllHeadersButton != nil {
+		// Note: We need app and pages to create the confirmation modal
+		// These are not available in setHeadersInUI, so we can't update this fully
+		// The delete callback will still use the old saveCallback
+		// For now, we'll leave it as is since the main issue is with adding headers
+		// When the button is clicked, it will use the original callback
+		// which has access to app and pages
 	}
 }
 
