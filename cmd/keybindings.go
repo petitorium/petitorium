@@ -528,7 +528,7 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 			if selectedCollection != nil {
 				form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-				modal := createModal(form, 60, 14, tcell.ColorDefault)
+				modal := createModal(form, 60, 15, tcell.ColorDefault)
 				ui.Pages.AddPage("newRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil

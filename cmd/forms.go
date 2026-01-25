@@ -198,13 +198,13 @@ func createRequestForm(app *tview.Application,
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddInputField("Request Name", "", 43, nil, nil)
+	form.AddInputField("Request Name", "", 41, nil, nil)
 	form.AddDropDown("Method", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"}, 0, nil)
-	form.AddInputField("URL", "", 43, nil, nil)
+	form.AddInputField("URL", "", 41, nil, nil)
 	bodyInput := tview.NewInputField().
 		SetLabel("Body: ").
-		SetFieldWidth(43).
-		SetPlaceholder("Enter JSON data...")
+		SetFieldWidth(41).
+		SetPlaceholder("Enter JSON data or edit later...")
 
 	// Multipart fields management interface
 	multipartContainer := tview.NewFlex().SetDirection(tview.FlexRow)
