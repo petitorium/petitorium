@@ -1266,8 +1266,8 @@ func switchToResponseTimelineTab(ui *UIOrchestrator, event *tcell.EventKey) *tce
 
 func openResponseInFx(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.LastResponse != nil && ui.LastResponse.Body != "" {
-		ui.App.Suspend(func() {
-			openInFx(ui.LastResponse.Body)
+		ui.Suspend(func() {
+			openInFxFunc(ui.LastResponse.Body)
 		})
 	}
 	return nil

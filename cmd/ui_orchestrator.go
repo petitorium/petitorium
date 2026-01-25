@@ -172,6 +172,7 @@ type UIOrchestrator struct {
 	RefreshMultipartFieldsUI            func()
 	UpdateFooter                        func()
 	CopyResponse                        func()
+	Suspend                             func(func()) bool
 	WorkspaceSelectorIndex              int
 	WorkspaceConfigButtonIndex          int
 	EnvironmentSelectorIndex            int
@@ -708,6 +709,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		DeleteAllHeadersButton:         currentDeleteAllHeadersButton,
 		MultipartAddButton:             currentMultipartAddButton,
 		MultipartDeleteAllButton:       currentMultipartDeleteAllButton,
+		Suspend:                        app.Suspend,
 	}
 
 	// Define tabIndexSetter now that we have all the variables

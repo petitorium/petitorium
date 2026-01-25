@@ -302,6 +302,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.SyncBodyContent("")
 		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
+		ui.LastResponse = nil
 		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
 
 		// Restore selection state for the new workspace
@@ -329,9 +330,18 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	})
 
 	// Set up vim-style navigation for response panels
-	ui.ResponsePages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	responseViewCapture := func(event *tcell.EventKey) *tcell.EventKey {
 		return ui.KeyManager.HandleKeyEvent(ui, event, "response_view")
-	})
+	}
+	ui.ResponsePages.SetInputCapture(responseViewCapture)
+	ui.ResponsePreviewPanel.SetInputCapture(responseViewCapture)
+	if ui.ResponseHeadersPanel != nil {
+		if table, ok := ui.ResponseHeadersPanel.(*tview.Table); ok {
+			table.SetInputCapture(responseViewCapture)
+		}
+	}
+	ui.ResponseCookiesPanel.SetInputCapture(responseViewCapture)
+	ui.ResponseTimelinePanel.SetInputCapture(responseViewCapture)
 
 	// Initialize syncBodyContent function
 	ui.SyncBodyContent = func(content string) {
@@ -598,9 +608,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					}
 
 					// For historical responses, show when that specific request was made
+					ui.LastResponse = cmdResp
 					updateResponseTabs(cmdResp, &lastResponse.Timestamp, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
 				} else {
 					// Clear response if no history
+					ui.LastResponse = nil
 					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
 				}
 			}
@@ -613,6 +625,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// Clear current request when a collection is selected
 			ui.CurrentRequest = nil
 			ui.CurrentSelectedNode = nil
+			ui.LastResponse = nil
+			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
 
 			// Track the last selected request node
 			if reference := node.GetReference(); reference != nil {

@@ -569,6 +569,9 @@ func openInExternalEditor(content string) (string, error) {
 	return string(modifiedContent), nil
 }
 
+// openInFxFunc is used for testing to mock fx calls
+var openInFxFunc = openInFx
+
 // openInFx opens JSON content in fx for interactive viewing
 func openInFx(content string) error {
 	// Check if fx is available
