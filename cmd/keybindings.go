@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -37,21 +36,6 @@ var (
 	navigateTreeDown func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
 	navigateTreeUp   func(*UIOrchestrator, *tcell.EventKey) *tcell.EventKey
 )
-
-// toggleExperimentalNavigation toggles the experimental navigation system
-func toggleExperimentalNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	ui.ExperimentalNavigationEnabled = true
-
-	// Clear message after 2 seconds
-	go func() {
-		time.Sleep(2 * time.Second)
-		ui.App.QueueUpdateDraw(func() {
-			ui.FooterRight.SetText("Petitorium ")
-		})
-	}()
-
-	return nil
-}
 
 // getVisibleNodes collects all visible nodes in the tree
 func getVisibleNodes(root *tview.TreeNode) []*tview.TreeNode {
@@ -175,60 +159,6 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Open body in external editor",
 			Context:     "global",
 		},
-		{
-			Key:         tcell.KeyF2,
-			Action:      toggleExperimentalNavigation,
-			Description: "Toggle experimental navigation",
-			Context:     "global",
-		},
-		// {
-		// 	Rune:        '1',
-		// 	Action:      switchToBodyTab,
-		// 	Description: "Switch to Body tab",
-		// 	Context:     "global",
-		// },
-		// {
-		// 	Rune:        '2',
-		// 	Action:      switchToAuthTab,
-		// 	Description: "Switch to Auth tab",
-		// 	Context:     "global",
-		// },
-		// {
-		// 	Rune:        '3',
-		// 	Action:      switchToQueryTab,
-		// 	Description: "Switch to Query tab",
-		// 	Context:     "global",
-		// },
-		// {
-		// 	Rune:        '4',
-		// 	Action:      switchToHeadersTab,
-		// 	Description: "Switch to Headers tab",
-		// 	Context:     "global",
-		// },
-		// {
-		// 	Rune:        '5',
-		// 	Action:      switchToResponsePreviewTab,
-		// 	Description: "Switch to Response Preview tab",
-		// 	Context:     "response_view",
-		// },
-		// {
-		// 	Rune:        '6',
-		// 	Action:      switchToResponseHeadersTab,
-		// 	Description: "Switch to Response Headers tab",
-		// 	Context:     "response_view",
-		// },
-		// {
-		// 	Rune:        '7',
-		// 	Action:      switchToResponseCookiesTab,
-		// 	Description: "Switch to Response Cookies tab",
-		// 	Context:     "global",
-		// },
-		// {
-		// 	Rune:        '8',
-		// 	Action:      switchToResponseTimelineTab,
-		// 	Description: "Switch to Response Timeline tab",
-		// 	Context:     "global",
-		// },
 		{
 			Rune:        'i',
 			Action:      enterInsertMode,

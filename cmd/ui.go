@@ -187,6 +187,7 @@ type CustomButton struct {
 	isActivated             bool
 	disabled                bool
 	sending                 bool
+	app                     *tview.Application
 }
 
 // NewCustomButton creates a new custom button
@@ -207,25 +208,34 @@ func NewCustomButton(text string) *CustomButton {
 		isActivated:             false,
 		disabled:                false,
 		sending:                 false,
+		app:                     globalAppPtr,
 	}
 
-	// Set mouse capture for click handling
-	// box.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
-	// 	if action == tview.MouseLeftClick && cb.onSelected != nil {
-	// 		cb.isActivated = true
-	// 		cb.updateBackground()
-	// 		cb.onSelected()
-	// 		// Reset activation after a short delay
-	// 		go func() {
-	// 			// Small delay to show activated state
-	// 			time.Sleep(100 * time.Millisecond)
-	// 			cb.isActivated = false
-	// 			cb.updateBackground()
-	// 		}()
-	// 	}
-	// 	return action, event
-	// })
+	cb.Box.SetFocusFunc(func() {
+		if cb.app != nil {
+			cb.isActivated = true
+			cb.updateBackground()
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				cb.app.QueueUpdateDraw(func() {
+					cb.isActivated = false
+					cb.updateBackground()
+				})
+			}()
+		}
+	})
 
+	cb.Box.SetBlurFunc(func() {
+		cb.isActivated = false
+		cb.updateBackground()
+	})
+
+	return cb
+}
+
+// SetApp sets the application for the button to handle timed updates
+func (cb *CustomButton) SetApp(app *tview.Application) *CustomButton {
+	cb.app = app
 	return cb
 }
 
@@ -327,8 +337,13 @@ func (cb *CustomButton) updateBackground() {
 		cb.Box.SetBackgroundColor(cb.disabledBackgroundColor)
 	} else if cb.isActivated && cb.activatedColor != tcell.ColorDefault {
 		cb.Box.SetBackgroundColor(cb.activatedColor)
-	} else if cb.backgroundColor != tcell.ColorDefault {
-		cb.Box.SetBackgroundColor(cb.backgroundColor)
+	} else {
+		// Normal state - restore background color
+		if cb.backgroundColor != tcell.ColorDefault {
+			cb.Box.SetBackgroundColor(cb.backgroundColor)
+		} else {
+			cb.Box.SetBackgroundColor(tcell.ColorDefault)
+		}
 	}
 }
 
@@ -379,12 +394,23 @@ func (cb *CustomButton) InputHandler() func(event *tcell.EventKey, setFocus func
 			cb.updateBackground()
 			cb.onSelected()
 			// Reset activation after a short delay
-			go func() {
-				// Small delay to show activated state
-				time.Sleep(100 * time.Millisecond)
-				cb.isActivated = false
-				cb.updateBackground()
-			}()
+			if cb.app != nil {
+				go func() {
+					// Small delay to show activated state
+					time.Sleep(100 * time.Millisecond)
+					cb.app.QueueUpdateDraw(func() {
+						cb.isActivated = false
+						cb.updateBackground()
+					})
+				}()
+			} else {
+				// Fallback if app is nil
+				go func() {
+					time.Sleep(100 * time.Millisecond)
+					cb.isActivated = false
+					cb.updateBackground()
+				}()
+			}
 		}
 	}
 }
@@ -429,8 +455,14 @@ func createCustomButton(text string, backgroundColor, activatedColor, labelColor
 
 // createThemedButton creates a button with theme-based background colors
 func createThemedButton(text string, colors *ColorManager) *CustomButton {
-	return NewCustomButtonWithColors(text, colors)
+	cb := NewCustomButtonWithColors(text, colors)
+	if globalAppPtr != nil {
+		cb.SetApp(globalAppPtr)
+	}
+	return cb
 }
+
+var globalAppPtr *tview.Application
 
 // NewCustomButtonWithColors creates a new custom button with theme colors
 func NewCustomButtonWithColors(text string, colors *ColorManager) *CustomButton {
@@ -740,18 +772,6 @@ func createHeadersTabWithData(colors *ColorManager,
 	addButton.SetSelectedFunc(func() {
 		addHeaderRow(headersList, colors, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
 	})
-	// Handle Tab navigation for Add Header button
-	addButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			// Tab from Add Header button to first header key input if available
-			if len(currentHeaderRows) > 0 {
-				firstRow := currentHeaderRows[0]
-				focusSetter(firstRow.KeyInput)
-			}
-			return nil
-		}
-		return event
-	})
 
 	// Delete all button
 	deleteAllButton := createThemedButton(" Delete All ", colors)
@@ -840,35 +860,6 @@ func addHeaderRow(headersList *tview.Flex,
 				break
 			}
 		}
-	})
-
-	// Handle Tab navigation for delete button
-	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			// Tab from delete button to next row's key input
-			// Simple implementation: cycle to first row's key input
-			if len(currentHeaderRows) > 0 {
-				firstRow := currentHeaderRows[0]
-				focusSetter(firstRow.KeyInput)
-			}
-			return nil
-		}
-		return event
-	})
-
-	// Handle Tab to add new header row when on the last value input
-	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			// Check if this is the last value input
-			if len(currentHeaderRows) > 0 && currentHeaderRows[len(currentHeaderRows)-1] == headerRow {
-				// Tab from last value input to Add Header button
-				if currentAddHeaderButton != nil {
-					focusSetter(currentAddHeaderButton)
-				}
-				return nil
-			}
-		}
-		return event
 	})
 
 	// Wrap button in a container to match row height

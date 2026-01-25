@@ -64,7 +64,7 @@ type Response struct {
 	TimelineTab int
 }
 
-type ExperimentalIndices struct {
+type NavIndices struct {
 	Workspace   Workspace
 	Environment Environment
 	Collections Collections
@@ -137,18 +137,17 @@ type UIOrchestrator struct {
 	dropdownAdded                       bool
 	CurrentResponseTabIndex             int
 	PanelIndices                        PanelIndices
-	ExperimentalIndices                 ExperimentalIndices
-	ExperimentalCurrentContainer        int
-	ExperimentalCurrentChild            int
-	ExperimentalCurrentSubchild         int
-	ExperimentalCurrentMultipartElement int // For navigation within multipart fields (0: Add Field, 1: Delete All, 2+: field rows)
-	ExperimentalCurrentFieldRowElement  int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: X)
-	ExperimentalCurrentHeaderRowElement int // For navigation within headers (0: Add Header, 1: Delete All, 2+: header rows)
-	ExperimentalCurrentHeaderElement    int // For navigation within a header row (0: Key input, 1: Value input, 2: Delete button)
-	ExperimentalPreviousContainer       int
-	ExperimentalRequestInTabHeaders     bool // True when in Request panel tab headers
-	ExperimentalResponseInTabHeaders    bool // True when in Response panel tab headers
-	ExperimentalNavigationEnabled       bool
+	NavIndices                          NavIndices
+	NavCurrentContainer                 int
+	NavCurrentChild                     int
+	NavCurrentSubchild                  int
+	NavCurrentMultipartElement          int // For navigation within multipart fields (0: Add Field, 1: Delete All, 2+: field rows)
+	NavCurrentFieldRowElement           int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: X)
+	NavCurrentHeaderRowElement          int // For navigation within headers (0: Add Header, 1: Delete All, 2+: header rows)
+	NavCurrentHeaderElement             int // For navigation within a header row (0: Key input, 1: Value input, 2: Delete button)
+	NavPreviousContainer                int
+	NavRequestInTabHeaders              bool // True when in Request panel tab headers
+	NavResponseInTabHeaders             bool // True when in Response panel tab headers
 	RequestDataTabs                     *tview.Flex
 	MainCycle                           *MainCycle
 	HeadersCycle                        *HeadersCycle
@@ -302,6 +301,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	colors := tm.GetColorManager()
 
 	app := tview.NewApplication().EnableMouse(true)
+	globalAppPtr = app
 
 	// Create all UI components
 	ui := setupUIComponents(colors, app)
@@ -453,7 +453,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		TimelineTab: 3,
 	}
 
-	experimental := ExperimentalIndices{
+	experimental := NavIndices{
 		Workspace:   workspace,
 		Environment: environment,
 		Collections: collections,
@@ -607,104 +607,103 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	grid.AddItem(rightSide, 0, 1, 1, 1, 0, 0, false)
 
 	uiOrchestrator := &UIOrchestrator{
-		App:                                 app,
-		WorkspaceData:                       workspaceData,
-		DataManager:                         dataManager,
-		EnvironmentsData:                    environmentsData,
-		Colors:                              colors,
-		RootNode:                            rootNode,
-		MethodURLBar:                        methodURLBar,
-		MethodDropdown:                      methodDropdown,
-		ContentTypeDropdown:                 contentTypeDropdown,
-		URLInput:                            urlInput,
-		SendButton:                          sendButton,
-		CurlButton:                          curlButton,
-		BodyViewPanel:                       bodyViewPanel,
-		BodyEditPanel:                       bodyEditPanel,
-		BodyContainer:                       bodyContainer,
-		MultipartFieldsTab:                  multipartFieldsTab,
-		Response:                            responsePanel,
-		Footer:                              footer,
-		FooterLeft:                          footerLeft,
-		FooterRight:                         footerRight,
-		CollectionsTreeView:                 collectionsTreeView,
-		ResponsePages:                       responsePages,
-		ResponseTabHeader:                   responseTabHeader,
-		ResponseInfoBar:                     responseInfoBar,
-		ResponseTimeText:                    responseTimeText,
-		ResponsePreviewPanel:                responsePreviewPanel,
-		ResponseHeadersPanel:                responseHeadersPanel,
-		ResponseCookiesPanel:                responseCookiesPanel,
-		ResponseTimelinePanel:               responseTimelinePanel,
-		EnvironmentPanel:                    environmentPanel,
-		EnvDropdown:                         envDropdown,
-		EnvConfigButton:                     envConfigButton,
-		WorkspacePanel:                      workspacePanel,
-		WorkspaceSelector:                   workspaceSelector,
-		WorkspaceConfigButton:               workspaceConfigButton,
-		Pages:                               pages,
-		Grid:                                grid,
-		CurrentSelectedNode:                 currentSelectedNode,
-		CurrentRequest:                      currentRequest,
-		Navigating:                          false,
-		ProgrammaticallyUpdatingMethod:      programmaticallyUpdatingMethod,
-		ProgrammaticallyUpdatingURL:         programmaticallyUpdatingURL,
-		TabPages:                            tabPages,
-		TabHeader:                           tabHeader,
-		CurrentTabIndex:                     currentTabIndex,
-		CurrentResponseTabIndex:             0, // Start with preview tab
-		PanelIndices:                        panelIndices,
-		ExperimentalIndices:                 experimental,
-		ExperimentalCurrentContainer:        2,
-		ExperimentalCurrentChild:            0,
-		ExperimentalCurrentSubchild:         0,
-		ExperimentalCurrentMultipartElement: 0,
-		ExperimentalCurrentFieldRowElement:  0,
-		ExperimentalCurrentHeaderRowElement: 0,
-		ExperimentalCurrentHeaderElement:    0,
-		ExperimentalPreviousContainer:       2,
-		ExperimentalRequestInTabHeaders:     true, // Start in tab headers when in Request panel
-		ExperimentalResponseInTabHeaders:    true, // Start in tab headers when in Response panel
-		ExperimentalNavigationEnabled:       true,
-		RequestDataTabs:                     requestDataTabs,
-		MainCycle:                           mainCycle,
-		HeadersCycle:                        headersCycle,
-		URLBarCycle:                         urlBarCycle,
-		EnvironmentsCycle:                   environmentsCycle,
-		WorkspaceCycle:                      workspaceCycle,
-		LastSelectedRequestNode:             nil,
-		TreeHighlightHandler:                nil,
-		BodyEditMode:                        false,
-		CurrentBodyContent:                  "",
-		LastJSONBodyContent:                 "",
-		JSONBodyContent:                     "",
-		MultipartBodyContent:                "",
-		RequestPanel:                        requestPanel,
-		RightSide:                           rightSide,
-		LeftSide:                            leftSide,
-		CurrentFocus:                        currentFocus,
-		SetPanelFocus:                       setPanelFocus,
-		SetActiveBorder:                     setActiveBorder,
-		SetInactiveBorder:                   setInactiveBorder,
-		SyncBodyContent:                     syncBodyContent,
-		SwitchBodyMode:                      switchBodyMode,
-		UpdateFooter:                        func() {}, // Will be set below
-		KeyManager:                          NewKeyBindingManager(),
-		LastResponse:                        nil,
-		LastResponseTime:                    nil,
-		WorkspaceSelectorIndex:              workspaceSelectorIndex,
-		WorkspaceConfigButtonIndex:          workspaceConfigButtonIndex,
-		EnvironmentSelectorIndex:            environmentSelectorIndex,
-		EnvironmentConfigButtonIndex:        environmentConfigButtonIndex,
-		URLBarSelectorIndex:                 urlBarSelectorIndex,
-		URLBarInputIndex:                    urlBarInputIndex,
-		URLBarSendButtonIndex:               urlBarSendButtonIndex,
-		URLBarCurlButtonIndex:               urlBarCurlButtonIndex,
-		RPBodyTabIndex:                      RPBodyTabIndex,
-		RPAuthTabIndex:                      RPAuthTabIndex,
-		RPQueryTabIndex:                     RPQueryTabIndex,
-		RPHeadersTabIndex:                   RPHeadersTabIndex,
-		RefreshMultipartFieldsUI:            refreshMultipartFieldsUI,
+		App:                            app,
+		WorkspaceData:                  workspaceData,
+		DataManager:                    dataManager,
+		EnvironmentsData:               environmentsData,
+		Colors:                         colors,
+		RootNode:                       rootNode,
+		MethodURLBar:                   methodURLBar,
+		MethodDropdown:                 methodDropdown,
+		ContentTypeDropdown:            contentTypeDropdown,
+		URLInput:                       urlInput,
+		SendButton:                     sendButton,
+		CurlButton:                     curlButton,
+		BodyViewPanel:                  bodyViewPanel,
+		BodyEditPanel:                  bodyEditPanel,
+		BodyContainer:                  bodyContainer,
+		MultipartFieldsTab:             multipartFieldsTab,
+		Response:                       responsePanel,
+		Footer:                         footer,
+		FooterLeft:                     footerLeft,
+		FooterRight:                    footerRight,
+		CollectionsTreeView:            collectionsTreeView,
+		ResponsePages:                  responsePages,
+		ResponseTabHeader:              responseTabHeader,
+		ResponseInfoBar:                responseInfoBar,
+		ResponseTimeText:               responseTimeText,
+		ResponsePreviewPanel:           responsePreviewPanel,
+		ResponseHeadersPanel:           responseHeadersPanel,
+		ResponseCookiesPanel:           responseCookiesPanel,
+		ResponseTimelinePanel:          responseTimelinePanel,
+		EnvironmentPanel:               environmentPanel,
+		EnvDropdown:                    envDropdown,
+		EnvConfigButton:                envConfigButton,
+		WorkspacePanel:                 workspacePanel,
+		WorkspaceSelector:              workspaceSelector,
+		WorkspaceConfigButton:          workspaceConfigButton,
+		Pages:                          pages,
+		Grid:                           grid,
+		CurrentSelectedNode:            currentSelectedNode,
+		CurrentRequest:                 currentRequest,
+		Navigating:                     false,
+		ProgrammaticallyUpdatingMethod: programmaticallyUpdatingMethod,
+		ProgrammaticallyUpdatingURL:    programmaticallyUpdatingURL,
+		TabPages:                       tabPages,
+		TabHeader:                      tabHeader,
+		CurrentTabIndex:                currentTabIndex,
+		CurrentResponseTabIndex:        0, // Start with preview tab
+		PanelIndices:                   panelIndices,
+		NavIndices:                     experimental,
+		NavCurrentContainer:            2,
+		NavCurrentChild:                0,
+		NavCurrentSubchild:             0,
+		NavCurrentMultipartElement:     0,
+		NavCurrentFieldRowElement:      0,
+		NavCurrentHeaderRowElement:     0,
+		NavCurrentHeaderElement:        0,
+		NavPreviousContainer:           2,
+		NavRequestInTabHeaders:         true, // Start in tab headers when in Request panel
+		NavResponseInTabHeaders:        true, // Start in tab headers when in Response panel
+		RequestDataTabs:                requestDataTabs,
+		MainCycle:                      mainCycle,
+		HeadersCycle:                   headersCycle,
+		URLBarCycle:                    urlBarCycle,
+		EnvironmentsCycle:              environmentsCycle,
+		WorkspaceCycle:                 workspaceCycle,
+		LastSelectedRequestNode:        nil,
+		TreeHighlightHandler:           nil,
+		BodyEditMode:                   false,
+		CurrentBodyContent:             "",
+		LastJSONBodyContent:            "",
+		JSONBodyContent:                "",
+		MultipartBodyContent:           "",
+		RequestPanel:                   requestPanel,
+		RightSide:                      rightSide,
+		LeftSide:                       leftSide,
+		CurrentFocus:                   currentFocus,
+		SetPanelFocus:                  setPanelFocus,
+		SetActiveBorder:                setActiveBorder,
+		SetInactiveBorder:              setInactiveBorder,
+		SyncBodyContent:                syncBodyContent,
+		SwitchBodyMode:                 switchBodyMode,
+		UpdateFooter:                   func() {}, // Will be set below
+		KeyManager:                     NewKeyBindingManager(),
+		LastResponse:                   nil,
+		LastResponseTime:               nil,
+		WorkspaceSelectorIndex:         workspaceSelectorIndex,
+		WorkspaceConfigButtonIndex:     workspaceConfigButtonIndex,
+		EnvironmentSelectorIndex:       environmentSelectorIndex,
+		EnvironmentConfigButtonIndex:   environmentConfigButtonIndex,
+		URLBarSelectorIndex:            urlBarSelectorIndex,
+		URLBarInputIndex:               urlBarInputIndex,
+		URLBarSendButtonIndex:          urlBarSendButtonIndex,
+		URLBarCurlButtonIndex:          urlBarCurlButtonIndex,
+		RPBodyTabIndex:                 RPBodyTabIndex,
+		RPAuthTabIndex:                 RPAuthTabIndex,
+		RPQueryTabIndex:                RPQueryTabIndex,
+		RPHeadersTabIndex:              RPHeadersTabIndex,
+		RefreshMultipartFieldsUI:       refreshMultipartFieldsUI,
 	}
 
 	// Define tabIndexSetter now that we have all the variables
@@ -745,12 +744,12 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Set initial focus
 	setPanelFocus(currentFocus, true)
 
-	// Set initial border for experimental navigation
-	if uiOrchestrator.ExperimentalNavigationEnabled && uiOrchestrator.ExperimentalCurrentContainer < len(mainPanels) {
-		uiOrchestrator.SetActiveBorder(mainPanels[uiOrchestrator.ExperimentalCurrentContainer])
+	// Set initial border for navigation
+	if uiOrchestrator.NavCurrentContainer < len(mainPanels) {
+		uiOrchestrator.SetActiveBorder(mainPanels[uiOrchestrator.NavCurrentContainer])
 		// Sync MainCycle.current with experimental container
 		// Map experimental container (0-5) to MainCycle panel indices
-		switch uiOrchestrator.ExperimentalCurrentContainer {
+		switch uiOrchestrator.NavCurrentContainer {
 		case 0:
 			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Workspace
 		case 1:
@@ -784,12 +783,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		}
 
 		// Check if experimental navigation is enabled
-		var expPrefix string
-		if uiOrchestrator.ExperimentalNavigationEnabled {
-			expPrefix = "[EXP] "
-		} else {
-			expPrefix = ""
-		}
+		var expPrefix string = ""
 
 		switch uiOrchestrator.MainCycle.current {
 		case uiOrchestrator.PanelIndices.Environment:
