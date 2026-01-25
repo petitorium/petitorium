@@ -688,6 +688,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.UpdateFooter()
 		ui.CurlButton.Flash()
 	})
+	ui.ContentTypeDropdown.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 4
+		ui.NavRequestInTabHeaders = false
+		ui.NavCurrentChild = 0
+		ui.NavCurrentSubchild = 0
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
 	ui.TabHeader.SetFocusFunc(func() {
 		ui.NavCurrentContainer = 4
 		ui.NavRequestInTabHeaders = true
@@ -697,8 +705,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	ui.BodyViewPanel.SetFocusFunc(func() {
 		ui.NavCurrentContainer = 4
 		ui.NavRequestInTabHeaders = false
-		ui.NavCurrentChild = 0    // Body tab
-		ui.NavCurrentSubchild = 1 // View panel
+		ui.NavCurrentChild = 0 // Body tab
+		// Use appropriate subchild index based on content type
+		if getCurrentContentType(ui) == "No Body" {
+			ui.NavCurrentSubchild = 3 // No Body panel
+		} else {
+			ui.NavCurrentSubchild = 1 // View panel
+		}
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 	})
