@@ -786,12 +786,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		var expPrefix string = ""
 
 		switch uiOrchestrator.MainCycle.current {
+		case uiOrchestrator.PanelIndices.Workspace:
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select Workspace | (Tab) Next Panel | (q) Quit") // Workspace
 		case uiOrchestrator.PanelIndices.Environment:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Tab) Next Panel | (q) Quit") // Environment
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select Environment | (Tab) Next Panel | (q) Quit") // Environment
 		case uiOrchestrator.PanelIndices.Collections:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + "(N) New Collection | (n) New Request | (r) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
 		case uiOrchestrator.PanelIndices.URLBar:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit URL | (Tab) Next Panel | (c) Export cURL | (q) Quit") // Request
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Send Request | (i) Edit URL | (c) Export cURL | (Tab) Next Panel | (q) Quit") // Request
 		case uiOrchestrator.PanelIndices.Request:
 			switch uiOrchestrator.CurrentTabIndex {
 			case uiOrchestrator.RPBodyTabIndex:
@@ -844,12 +846,25 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Start clock goroutine to update time every second
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
+
+		lastFocus := app.GetFocus()
+
 		for {
 			select {
 			case <-ticker.C:
 				app.QueueUpdateDraw(func() {
+					// Check for focus change to update footer
+					currentFocus := app.GetFocus()
+					if currentFocus != lastFocus {
+						lastFocus = currentFocus
+						updateFooterFunc()
+					}
+
+					// Update time only once per second (approx)
+					// We check if it's been about a second since last time update
+					// But for simplicity, we can just update it every 200ms too, it's not expensive
 					if uiOrchestrator.ResponseTimeText != nil {
 						if uiOrchestrator.LastResponseTime != nil {
 							text := humanize.Time(*uiOrchestrator.LastResponseTime)

@@ -629,6 +629,172 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	// Set the tree highlight handler for navigation
 	ui.TreeHighlightHandler = highlightTreeNode
 
+	// Add focus handlers to update NavCurrentContainer when panels are clicked/focused
+	ui.WorkspaceSelector.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 0
+		ui.NavCurrentChild = 0
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.WorkspaceConfigButton.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 0
+		ui.NavCurrentChild = 1
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.EnvDropdown.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 1
+		ui.NavCurrentChild = 0
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.EnvConfigButton.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 1
+		ui.NavCurrentChild = 1
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.CollectionsTreeView.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 2
+		ui.NavCurrentChild = 0
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.MethodDropdown.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 3
+		ui.NavCurrentChild = 0
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.URLInput.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 3
+		ui.NavCurrentChild = 1
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.SendButton.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 3
+		ui.NavCurrentChild = 2
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.CurlButton.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 3
+		ui.NavCurrentChild = 3
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.TabHeader.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 4
+		ui.NavRequestInTabHeaders = true
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.BodyViewPanel.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 4
+		ui.NavRequestInTabHeaders = false
+		ui.NavCurrentChild = 0    // Body tab
+		ui.NavCurrentSubchild = 1 // View panel
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.BodyEditPanel.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 4
+		ui.NavRequestInTabHeaders = false
+		ui.NavCurrentChild = 0    // Body tab
+		ui.NavCurrentSubchild = 1 // Edit panel
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.ResponseTabHeader.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 5
+		ui.NavResponseInTabHeaders = true
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	ui.ResponsePreviewPanel.SetFocusFunc(func() {
+		ui.NavCurrentContainer = 5
+		ui.NavResponseInTabHeaders = false
+		ui.NavCurrentChild = 0
+		syncMainCycleWithExperimental(ui)
+		ui.UpdateFooter()
+	})
+	if ui.MultipartAddButton != nil {
+		ui.MultipartAddButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 0
+			ui.NavCurrentSubchild = 2
+			ui.NavCurrentMultipartElement = 0
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+		})
+	}
+	if ui.MultipartDeleteAllButton != nil {
+		ui.MultipartDeleteAllButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 0
+			ui.NavCurrentSubchild = 2
+			ui.NavCurrentMultipartElement = 1
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+		})
+	}
+	if ui.AddHeaderButton != nil {
+		ui.AddHeaderButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 3
+			ui.NavCurrentHeaderRowElement = 0
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+		})
+	}
+	if ui.DeleteAllHeadersButton != nil {
+		ui.DeleteAllHeadersButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 3
+			ui.NavCurrentHeaderRowElement = 1
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+		})
+	}
+	if ui.ResponseHeadersPanel != nil {
+		// ResponseHeadersPanel is tview.Primitive, which has SetFocusFunc
+		// But we need to use a type assertion to a concrete type if we want to call SetFocusFunc?
+		// No, Primitive interface doesn't have SetFocusFunc.
+		// Most tview components have it.
+		if component, ok := ui.ResponseHeadersPanel.(interface{ SetFocusFunc(func()) *tview.Box }); ok {
+			component.SetFocusFunc(func() {
+				ui.NavCurrentContainer = 5
+				ui.NavResponseInTabHeaders = false
+				ui.NavCurrentChild = 1
+				syncMainCycleWithExperimental(ui)
+				ui.UpdateFooter()
+			})
+		}
+	}
+	if ui.ResponseCookiesPanel != nil {
+		ui.ResponseCookiesPanel.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 5
+			ui.NavResponseInTabHeaders = false
+			ui.NavCurrentChild = 2
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+		})
+	}
+	if ui.ResponseTimelinePanel != nil {
+		ui.ResponseTimelinePanel.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 5
+			ui.NavResponseInTabHeaders = false
+			ui.NavCurrentChild = 3
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+		})
+	}
+
 	// Set up collections tree view changed function (called on current node change)
 	ui.CollectionsTreeView.SetChangedFunc(func(node *tview.TreeNode) {
 		// Do nothing on current node change - loading only on explicit selection
@@ -935,6 +1101,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				ui.Pages.RemovePage(currentPage)
 				ui.Pages.SwitchToPage("main")
 				ui.App.SetFocus(ui.CollectionsTreeView)
+				ui.UpdateFooter()
 				return nil
 			} else if currentPage == "main" {
 				// On main page, 'q' quits
@@ -1887,6 +2054,9 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 		ui.NavCurrentSubchild = 0
 		ui.App.SetFocus(ui.WorkspaceSelector)
 	}
+
+	// Update footer whenever focus coordinates change
+	ui.UpdateFooter()
 }
 
 func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
