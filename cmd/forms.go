@@ -831,10 +831,23 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 		app.SetFocus(collectionsTreeView)
 	})
 
-	form.AddButton("Cancel", func() {
+	cancelFunc := func() {
 		pages.RemovePage("moveCollection")
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetCancelFunc(cancelFunc)
+
+	// Handle Esc key to cancel
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancelFunc()
+			return nil
+		}
+		return event
 	})
 
 	form.SetBorder(true).SetTitle(" Move Collection ")
@@ -960,10 +973,23 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 		app.SetFocus(collectionsTreeView)
 	})
 
-	form.AddButton("Cancel", func() {
+	cancelFunc := func() {
 		pages.RemovePage("moveRequest")
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetCancelFunc(cancelFunc)
+
+	// Handle Esc key to cancel
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancelFunc()
+			return nil
+		}
+		return event
 	})
 
 	form.SetBorder(true).SetTitle(" Move Request ")
