@@ -146,6 +146,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Delete collection/request",
 			Context:     "global",
 		},
+		// {
+		// 	Key:         tcell.KeyDelete,
+		// 	Action:      deleteItem,
+		// 	Description: "Delete collection/request",
+		// 	Context:     "global",
+		// },
 		{
 			Rune:        'w',
 			Modifiers:   tcell.ModCtrl,
@@ -332,6 +338,30 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Expand collection or select request",
 			Context:     "tree_view",
 		},
+		{
+			Rune:        'g',
+			Action:      navigateTreeToTop,
+			Description: "Go to top of tree",
+			Context:     "tree_view",
+		},
+		{
+			Rune:        'G',
+			Action:      navigateTreeToBottom,
+			Description: "Go to bottom of tree",
+			Context:     "tree_view",
+		},
+		// {
+		// 	Rune:        'd',
+		// 	Action:      navigateTreeHalfPageDown,
+		// 	Description: "Scroll down half page",
+		// 	Context:     "tree_view",
+		// },
+		// {
+		// 	Rune:        'u',
+		// 	Action:      navigateTreeHalfPageUp,
+		// 	Description: "Scroll up half page",
+		// 	Context:     "tree_view",
+		// },
 		{
 			Rune:        'D',
 			Action:      duplicateRequest,
@@ -1190,6 +1220,97 @@ func expandOrSelectRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 		}
 	}
 	return event
+}
+
+func navigateTreeToTop(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	root := ui.CollectionsTreeView.GetRoot()
+	if root == nil {
+		return nil
+	}
+	visibleNodes := getVisibleNodes(root)
+	if len(visibleNodes) > 0 {
+		ui.CollectionsTreeView.SetCurrentNode(visibleNodes[0])
+		if ui.TreeHighlightHandler != nil {
+			ui.TreeHighlightHandler(visibleNodes[0])
+		}
+	}
+	return nil
+}
+
+func navigateTreeToBottom(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	root := ui.CollectionsTreeView.GetRoot()
+	if root == nil {
+		return nil
+	}
+	visibleNodes := getVisibleNodes(root)
+	if len(visibleNodes) > 0 {
+		lastNode := visibleNodes[len(visibleNodes)-1]
+		ui.CollectionsTreeView.SetCurrentNode(lastNode)
+		if ui.TreeHighlightHandler != nil {
+			ui.TreeHighlightHandler(lastNode)
+		}
+	}
+	return nil
+}
+
+func navigateTreeHalfPageDown(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	root := ui.CollectionsTreeView.GetRoot()
+	if root == nil {
+		return nil
+	}
+	visibleNodes := getVisibleNodes(root)
+	current := ui.CollectionsTreeView.GetCurrentNode()
+	_, _, _, height := ui.CollectionsTreeView.GetRect()
+	offset := height / 2
+	if offset == 0 {
+		offset = 1
+	}
+
+	for i, node := range visibleNodes {
+		if node == current {
+			newIndex := i + offset
+			if newIndex >= len(visibleNodes) {
+				newIndex = len(visibleNodes) - 1
+			}
+			next := visibleNodes[newIndex]
+			ui.CollectionsTreeView.SetCurrentNode(next)
+			if ui.TreeHighlightHandler != nil {
+				ui.TreeHighlightHandler(next)
+			}
+			break
+		}
+	}
+	return nil
+}
+
+func navigateTreeHalfPageUp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	root := ui.CollectionsTreeView.GetRoot()
+	if root == nil {
+		return nil
+	}
+	visibleNodes := getVisibleNodes(root)
+	current := ui.CollectionsTreeView.GetCurrentNode()
+	_, _, _, height := ui.CollectionsTreeView.GetRect()
+	offset := height / 2
+	if offset == 0 {
+		offset = 1
+	}
+
+	for i, node := range visibleNodes {
+		if node == current {
+			newIndex := i - offset
+			if newIndex < 0 {
+				newIndex = 0
+			}
+			prev := visibleNodes[newIndex]
+			ui.CollectionsTreeView.SetCurrentNode(prev)
+			if ui.TreeHighlightHandler != nil {
+				ui.TreeHighlightHandler(prev)
+			}
+			break
+		}
+	}
+	return nil
 }
 
 // Body edit actions
