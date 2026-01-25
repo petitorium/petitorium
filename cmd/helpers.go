@@ -215,3 +215,55 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 		responseTimelinePanel.SetText("No request timeline available")
 	}
 }
+
+// getNodeName extracts the name from a tree node's reference
+func getNodeName(node *tview.TreeNode) string {
+	ref := node.GetReference()
+	if col, ok := ref.(workspace.Collection); ok {
+		return col.Name
+	}
+	if req, ok := ref.(workspace.Request); ok {
+		return req.Name
+	}
+	return ""
+}
+
+// findNodePath finds the path of names from root to the target node
+func findNodePath(root, target *tview.TreeNode) []string {
+	if root == target {
+		return []string{}
+	}
+
+	for _, child := range root.GetChildren() {
+		if child == target {
+			return []string{getNodeName(child)}
+		}
+
+		path := findNodePath(child, target)
+		if path != nil {
+			return append([]string{getNodeName(child)}, path...)
+		}
+	}
+	return nil
+}
+
+// findNodeByPath finds a node in the tree matching the given path of names
+func findNodeByPath(root *tview.TreeNode, path []string) *tview.TreeNode {
+	if len(path) == 0 {
+		return root
+	}
+
+	targetName := path[0]
+	for _, child := range root.GetChildren() {
+		if getNodeName(child) == targetName {
+			if len(path) == 1 {
+				return child
+			}
+			result := findNodeByPath(child, path[1:])
+			if result != nil {
+				return result
+			}
+		}
+	}
+	return nil
+}

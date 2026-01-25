@@ -19,10 +19,21 @@ func refreshCollectionsTree(ui *UIOrchestrator) {
 	addWorkspaceToTree(ui.WorkspaceData, ui.RootNode)
 
 	ui.CollectionsTreeView.SetRoot(ui.RootNode)
-	ui.CollectionsTreeView.SetCurrentNode(ui.RootNode)
-	// If there are children, select the first one instead of the root
-	if len(ui.RootNode.GetChildren()) > 0 {
-		ui.CollectionsTreeView.SetCurrentNode(ui.RootNode.GetChildren()[0])
+
+	// Try to restore selection from workspace data
+	var nodeToSelect *tview.TreeNode
+	if len(ui.WorkspaceData.SelectedRequest) > 0 {
+		nodeToSelect = findNodeByPath(ui.RootNode, ui.WorkspaceData.SelectedRequest)
+	}
+
+	if nodeToSelect != nil {
+		ui.CollectionsTreeView.SetCurrentNode(nodeToSelect)
+	} else {
+		ui.CollectionsTreeView.SetCurrentNode(ui.RootNode)
+		// If there are children, select the first one instead of the root
+		if len(ui.RootNode.GetChildren()) > 0 {
+			ui.CollectionsTreeView.SetCurrentNode(ui.RootNode.GetChildren()[0])
+		}
 	}
 }
 
@@ -292,6 +303,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
 		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+
+		// Restore selection state for the new workspace
+		currentNode := ui.CollectionsTreeView.GetCurrentNode()
+		if currentNode != nil && ui.TreeSelectionHandler != nil {
+			ui.TreeSelectionHandler(currentNode)
+		}
 	}
 
 	ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
@@ -534,6 +551,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.CurrentSelectedNode = node
 			ui.LastSelectedRequestNode = node
 
+			// Save selected request path
+			path := findNodePath(ui.RootNode, node)
+			if path != nil {
+				ui.WorkspaceData.SelectedRequest = path
+				// Save workspace to persist selection
+				workspace.SaveWorkspace(ui.WorkspaceData)
+			}
+
 			// Find the request pointer in collectionsData
 			ui.CurrentRequest = ui.DataManager.FindRequestPtr(req)
 
@@ -614,10 +639,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		handleTreeSelection(node)
 	})
 
-	// Set the initial selected style for the current node
+	// Set the initial selected style for the current node and load it
 	currentNode := ui.CollectionsTreeView.GetCurrentNode()
 	if currentNode != nil {
 		currentNode.SetSelectedTextStyle(tcell.StyleDefault.Background(ui.Colors.TreeSelection).Foreground(ui.Colors.Foreground))
+		handleTreeSelection(currentNode)
 	}
 
 	// Set up environment config button click handler
@@ -952,8 +978,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		focus := ui.App.GetFocus()
 
 		// If we're in a form input field, don't handle collection shortcuts
+		// BUT allow Tab and Backtab to pass through for navigation
 		if _, isInput := focus.(*tview.InputField); isInput {
-			return event // Let input fields handle their own keys
+			if event.Key() != tcell.KeyTab && event.Key() != tcell.KeyBacktab {
+				return event // Let input fields handle their own keys
+			}
 		}
 		if _, isTextArea := focus.(*tview.TextArea); isTextArea {
 			return event // Let text areas handle their own keys

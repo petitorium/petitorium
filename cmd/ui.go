@@ -2621,6 +2621,10 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 
 	currentMultipartFieldRows = append(currentMultipartFieldRows, fieldRow)
 	refreshUI()
+
+	if saveCallback != nil {
+		saveCallback()
+	}
 }
 
 // addMultipartFieldRowWithData adds a multipart field row with pre-filled data
@@ -2805,12 +2809,10 @@ func collectMultipartFieldsFromUI() string {
 		fieldTypeIndex, _ := row.TypeDropdown.GetCurrentOption()
 		value := strings.TrimSpace(row.ValueInput.GetText())
 
-		if name != "" && value != "" {
-			if fieldTypeIndex == 2 { // file
-				fields = append(fields, name+"=file:"+value)
-			} else {
-				fields = append(fields, name+"="+value)
-			}
+		if fieldTypeIndex == 2 { // file
+			fields = append(fields, name+"=file:"+value)
+		} else {
+			fields = append(fields, name+"="+value)
 		}
 	}
 	return strings.Join(fields, "&")

@@ -549,14 +549,19 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	pages.AddPage("main", grid, true, true)
 
 	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
-	// We'll define tabIndexSetter after uiOrchestrator is created
+	// We'll define tabIndexSetter and saveCallbackProxy after uiOrchestrator is created
 	var tabIndexSetter func(int)
+	var saveCallbackProxy func()
 
 	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown, multipartFieldsTab :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
-			func() { saveCurrentRequest(currentRequest, workspaceData) },
+			func() {
+				if saveCallbackProxy != nil {
+					saveCallbackProxy()
+				}
+			},
 			func(p tview.Primitive) { app.SetFocus(p) },
 			func(tabIndex int) {
 				// Call tabIndexSetter if it's been defined
@@ -725,6 +730,11 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		if tabIndex >= 0 && tabIndex < len(requestTabInternalNames) {
 			tabPages.SwitchToPage(requestTabInternalNames[tabIndex])
 		}
+	}
+
+	// Define saveCallbackProxy to use the current request from uiOrchestrator
+	saveCallbackProxy = func() {
+		saveCurrentRequest(uiOrchestrator.CurrentRequest, workspaceData)
 	}
 
 	// Set up tree view expansion handling

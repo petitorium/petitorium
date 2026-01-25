@@ -57,6 +57,7 @@ type Workspace struct {
 	Collections         []Collection  `yaml:"collections,omitempty"`
 	Environments        []Environment `yaml:"environments,omitempty"`
 	SelectedEnvironment string        `yaml:"selected_environment,omitempty"`
+	SelectedRequest     []string      `yaml:"selected_request,omitempty"`
 	CreatedAt           time.Time     `yaml:"created_at"`
 	UpdatedAt           time.Time     `yaml:"updated_at"`
 }
