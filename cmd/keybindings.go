@@ -1317,6 +1317,7 @@ func navigateTreeHalfPageUp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 func exitInsertMode(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.CurrentTabIndex == 0 {
 		ui.SwitchBodyMode() // Switch back to view mode
+		ui.App.SetFocus(ui.BodyViewPanel)
 		return nil
 	}
 	return event
