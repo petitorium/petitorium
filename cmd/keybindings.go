@@ -111,13 +111,13 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "global",
 		},
 		{
-			Rune:        'n',
+			Rune:        'N',
 			Action:      newCollection,
 			Description: "Create new collection",
 			Context:     "global",
 		},
 		{
-			Rune:        'r',
+			Rune:        'n',
 			Action:      newRequest,
 			Description: "Create new request",
 			Context:     "global",
@@ -129,7 +129,7 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "tree_view",
 		},
 		{
-			Rune:        'R',
+			Rune:        'r',
 			Action:      renameItem,
 			Description: "Rename collection/request",
 			Context:     "global",

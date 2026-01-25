@@ -298,7 +298,7 @@ func showEnvironmentModal(
 				ui.FooterLeft.SetText(" (F4) External Editor | (Tab) Switch Panel | (Esc) Save & Close") // Environment Variables Editor
 			} else {
 				ui.App.SetFocus(leftPanel)
-				ui.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (c) Clone Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
+				ui.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (N) New Environment | (c) Clone Environment | (r) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 			}
 			return nil
 		}
@@ -323,7 +323,7 @@ func showEnvironmentModal(
 	ui.App.SetFocus(leftPanel)
 
 	// Set initial footer for environment list
-	ui.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (c) Clone Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
+	ui.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (N) New Environment | (c) Clone Environment | (r) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 
 	// Add keybinding to close modal with Escape, q, or Q
 	ui.Pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

@@ -778,7 +778,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	updateFooterFunc := func() {
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
 		if currentPage == "envVariables" {
-			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (n) New Environment | (c) Clone Environment | (r/R) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
+			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (N) New Environment | (c) Clone Environment | (r) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 			return
 		}
 
@@ -789,7 +789,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.PanelIndices.Environment:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Tab) Next Panel | (q) Quit") // Environment
 		case uiOrchestrator.PanelIndices.Collections:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(n) New Collection | (r) New Request | (R) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(N) New Collection | (n) New Request | (r) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
 		case uiOrchestrator.PanelIndices.URLBar:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit URL | (Tab) Next Panel | (c) Export cURL | (q) Quit") // Request
 		case uiOrchestrator.PanelIndices.Request:

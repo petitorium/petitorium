@@ -13,10 +13,10 @@ A powerful TUI (Terminal User Interface) for API interaction and testing.
 
 - `h` - Collapse collection / Move to parent collection
 - `l` - Expand collection / Select request
-- `n` - Create new collection
-- `r` - Create new request
+- `N` - Create new collection
+- `n` - Create new request
 - `D` (Shift+D) - Duplicate selected request
-- `R` (Shift+R) - Rename selected collection/request
+- `r` - Rename selected collection/request
 - `m` - Move selected collection/request
 - `d` - Delete selected collection/request
 

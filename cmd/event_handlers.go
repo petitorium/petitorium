@@ -1025,9 +1025,9 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if isFormPopup {
 			// Check for keys that should work as normal characters in forms
 			problematicKeys := map[rune]bool{
-				'n': true, // new collection
-				'r': true, // new request
-				'R': true, // rename item
+				'N': true, // new collection
+				'n': true, // new request
+				'r': true, // rename item
 				'm': true, // move item
 				'd': true, // delete item
 				'D': true, // duplicate request
@@ -1060,7 +1060,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Collection shortcuts (only when not in input fields and no form popup is active)
-		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'n' && !isFormPopupActive {
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'N' && !isFormPopupActive {
 			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 			modal := createModal(form, 50, 12, tcell.ColorDefault)
 			setFormPopupActive(true)
@@ -1069,7 +1069,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return nil
 		}
 
-		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'r' && !isFormPopupActive {
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'n' && !isFormPopupActive {
 			// New request - check if a collection or request is selected
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
@@ -1101,21 +1101,21 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				return event // Let Esc pass through to close the popup
 			}
 
-			// Handle 'n' and 'r' keys
-			if event.Rune() == 'n' || event.Rune() == 'r' {
+			// Handle 'N' and 'n' keys
+			if event.Rune() == 'N' || event.Rune() == 'n' {
 				if isFormPopupActive {
 					// We're in a popup form, let the key pass through to the form input
 					return event
 				} else {
 					// Normal operation - create new collection/request
-					if event.Rune() == 'n' {
+					if event.Rune() == 'N' {
 						form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 						modal := createModal(form, 50, 12, tcell.ColorDefault)
 						setFormPopupActive(true)
 						ui.Pages.AddPage("newCollection", modal, true, true)
 						ui.App.SetFocus(form)
 						return nil
-					} else if event.Rune() == 'r' {
+					} else if event.Rune() == 'n' {
 						// New request - check if a collection or request is selected
 						node := ui.CollectionsTreeView.GetCurrentNode()
 						if node != nil {
@@ -1143,8 +1143,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Rename functionality (Shift+R)
-		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'R' {
+		// Rename functionality (r)
+		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'r' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()

@@ -144,10 +144,10 @@ func createEnvironmentListPanel(
 				}
 			}
 			return nil // Consume the event
-		case 'n':
+		case 'N':
 			onCreateNew()
 			return nil // Consume the event
-		case 'r', 'R':
+		case 'r':
 			currentItem := list.GetCurrentItem()
 			if currentItem > 0 && currentItem <= len(environments) {
 				env := &environments[currentItem-1]
@@ -244,10 +244,10 @@ func createWorkspaceListPanel(
 				}
 			}
 			return nil // Consume the event
-		case 'n':
+		case 'N':
 			onCreateNew()
 			return nil // Consume the event
-		case 'r', 'R':
+		case 'r':
 			currentItem := list.GetCurrentItem()
 			if currentItem > 0 && currentItem <= len(workspaces) {
 				ws := &workspaces[currentItem-1]
