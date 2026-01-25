@@ -451,7 +451,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					// If switching TO multipart, parse the current body text into fields
 					// This must be called AFTER switchBodyContent which restores the saved multipart content
 					if newContentType == "Multipart" && oldContentType != "Multipart" {
-						updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui.Colors, ui.App, ui.Pages)
+						updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui)
 					}
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
@@ -579,7 +579,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				// Update multipart fields if this is a multipart request
 				// This must be called AFTER switchBodyContent which sets up the container
 				if ui.CurrentRequest.ContentType == "Multipart" {
-					updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui.Colors, ui.App, ui.Pages)
+					updateMultipartFieldsFromBody(ui.CurrentRequest.Body, ui)
 				}
 
 				// Show last response if available

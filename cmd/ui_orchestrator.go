@@ -170,6 +170,7 @@ type UIOrchestrator struct {
 	SetInactiveBorder                   func(element tview.Primitive)
 	SyncBodyContent                     func(content string)
 	SwitchBodyMode                      func()
+	RefreshMultipartFieldsUI            func()
 	UpdateFooter                        func()
 	CopyResponse                        func()
 	WorkspaceSelectorIndex              int
@@ -553,7 +554,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	var tabIndexSetter func(int)
 	var saveCallbackProxy func()
 
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown, multipartFieldsTab :=
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
@@ -703,6 +704,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RPAuthTabIndex:                      RPAuthTabIndex,
 		RPQueryTabIndex:                     RPQueryTabIndex,
 		RPHeadersTabIndex:                   RPHeadersTabIndex,
+		RefreshMultipartFieldsUI:            refreshMultipartFieldsUI,
 	}
 
 	// Define tabIndexSetter now that we have all the variables

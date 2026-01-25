@@ -1507,7 +1507,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex, *tview.DropDown, *tview.Flex) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex, *tview.DropDown, *tview.Flex, func()) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -1538,7 +1538,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	if currentRequest != nil {
 		initialBody = currentRequest.Body
 	}
-	multipartFieldsTab := createMultipartFieldsTab(colors, initialBody, saveCallback, focusSetter, app, pages, footerUpdater)
+	multipartFieldsTab, refreshMultipartFieldsUI := createMultipartFieldsTab(colors, initialBody, saveCallback, focusSetter, app, pages, footerUpdater)
 
 	// Create auth tab
 	authTab := createAuthTab(colors)
@@ -1569,7 +1569,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	requestDataTabs.AddItem(tabHeader, 1, 0, false)
 	requestDataTabs.AddItem(tabPages, 0, 1, false)
 
-	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, contentTypeDropdown, multipartFieldsTab
+	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI
 }
 
 // createResponseTabs creates the response tabs interface
@@ -2408,7 +2408,7 @@ var multipartFieldWidth = 18
 var multipartRemoveButtonWidth = 5
 
 // createMultipartFieldsTab creates the multipart fields management UI
-func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCallback func(), focusSetter func(tview.Primitive), app *tview.Application, pages *tview.Pages, footerUpdater func()) *tview.Flex {
+func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCallback func(), focusSetter func(tview.Primitive), app *tview.Application, pages *tview.Pages, footerUpdater func()) (*tview.Flex, func()) {
 	multipartContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	multipartContainer.SetBackgroundColor(colors.Background)
 	multipartContainer.SetBorder(true)
@@ -2491,7 +2491,7 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 
 	multipartContainer.AddItem(fieldsList, 0, 1, false)
 
-	return multipartContainer
+	return multipartContainer, refreshMultipartFieldsUI
 }
 
 // addMultipartFieldRow adds a new multipart field input row to the fields list
@@ -2819,7 +2819,7 @@ func collectMultipartFieldsFromUI() string {
 }
 
 // updateMultipartFieldsFromBody updates the multipart fields UI from body text
-func updateMultipartFieldsFromBody(body string, colors *ColorManager, app *tview.Application, pages *tview.Pages) {
+func updateMultipartFieldsFromBody(body string, ui *UIOrchestrator) {
 	// Only clear and rebuild if body actually contains multipart data
 	parsedFields := parseMultipartBody(body)
 
@@ -2827,39 +2827,45 @@ func updateMultipartFieldsFromBody(body string, colors *ColorManager, app *tview
 		// Body contains multipart data, clear and rebuild
 		currentMultipartFieldRows = []*MultipartFieldRow{}
 		if currentMultipartFieldsList != nil {
-			// Create a simple refresh function
-			refreshFunc := func() {
-				// Do nothing - we'll refresh at the end
+			// Use the real refresh function from UI orchestrator
+			refreshFunc := ui.RefreshMultipartFieldsUI
+
+			// Create callbacks
+			saveCallback := func() {
+				saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+			}
+			focusSetter := func(p tview.Primitive) {
+				ui.App.SetFocus(p)
 			}
 
 			for _, field := range parsedFields {
-				addMultipartFieldRowWithData(currentMultipartFieldsList, colors, field.Name, field.Type, field.Value, refreshFunc, func() {
-					// Save callback - do nothing for now
-				}, nil, nil, app, pages)
+				addMultipartFieldRowWithData(currentMultipartFieldsList, ui.Colors, field.Name, field.Type, field.Value, refreshFunc, saveCallback, focusSetter, ui.UpdateFooter, ui.App, ui.Pages)
 			}
 
-			// Refresh the UI after adding all fields
-			currentMultipartFieldsList.Clear()
-			for _, row := range currentMultipartFieldRows {
-				currentMultipartFieldsList.AddItem(row.Row, 1, 0, false)
+			// Refresh the UI after adding all fields - using the real refresh function
+			if refreshFunc != nil {
+				refreshFunc()
 			}
 		}
 	} else if len(currentMultipartFieldRows) == 0 {
 		// No multipart data in body AND no existing rows, add one empty row
 		if currentMultipartFieldsList != nil {
-			// Create a simple refresh function
-			refreshFunc := func() {
-				// Do nothing - we'll refresh at the end
+			// Use the real refresh function
+			refreshFunc := ui.RefreshMultipartFieldsUI
+
+			// Create callbacks
+			saveCallback := func() {
+				saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+			}
+			focusSetter := func(p tview.Primitive) {
+				ui.App.SetFocus(p)
 			}
 
-			addMultipartFieldRow(currentMultipartFieldsList, colors, refreshFunc, func() {
-				// Save callback - do nothing for now
-			}, nil, nil, app, pages)
+			addMultipartFieldRow(currentMultipartFieldsList, ui.Colors, refreshFunc, saveCallback, focusSetter, ui.UpdateFooter, ui.App, ui.Pages)
 
 			// Refresh the UI after adding the empty row
-			currentMultipartFieldsList.Clear()
-			for _, row := range currentMultipartFieldRows {
-				currentMultipartFieldsList.AddItem(row.Row, 1, 0, false)
+			if refreshFunc != nil {
+				refreshFunc()
 			}
 		}
 	}
