@@ -1685,6 +1685,7 @@ type URLVariableInput struct {
 	variables      map[string]string
 	onChanged      func(string)
 	onEnterPressed func()
+	onModeChange   func()
 	colors         *ColorManager
 	variableRegex  *regexp.Regexp
 	app            *tview.Application
@@ -1796,6 +1797,9 @@ func (u *URLVariableInput) switchToViewMode() {
 	u.viewMode.SetBackgroundColor(u.colors.Background)
 	u.Pages.SwitchToPage("view")
 	u.updateViewMode()
+	if u.onModeChange != nil {
+		u.onModeChange()
+	}
 }
 
 // switchToEditMode switches to edit mode, showing raw text
@@ -1805,6 +1809,9 @@ func (u *URLVariableInput) switchToEditMode() {
 	u.editMode.SetFieldBackgroundColor(u.colors.Background)
 	u.editMode.SetText(u.rawText)
 	u.Pages.SwitchToPage("edit")
+	if u.onModeChange != nil {
+		u.onModeChange()
+	}
 }
 
 // Focus delegates focus to the appropriate child component

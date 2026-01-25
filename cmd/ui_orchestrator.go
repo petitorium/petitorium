@@ -797,7 +797,20 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.PanelIndices.Collections:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + "(N) New Collection | (n) New Request | (r) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
 		case uiOrchestrator.PanelIndices.URLBar:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Send Request | (i) Edit URL | (c) Export cURL | (Tab) Next Panel | (q) Quit") // Request
+			focused := uiOrchestrator.App.GetFocus()
+			if focused == uiOrchestrator.MethodDropdown {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select the method | (Tab) Next | (q) Quit")
+			} else if focused == uiOrchestrator.URLInput.viewMode {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit URL | (Tab) Next | (q) Quit")
+			} else if focused == uiOrchestrator.URLInput.editMode {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Save | (Esc) Cancel")
+			} else if focused == uiOrchestrator.SendButton {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Send the request | (Tab) Next | (q) Quit")
+			} else if focused == uiOrchestrator.CurlButton {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Export to cURL | (Tab) Next | (q) Quit")
+			} else {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Send Request | (i) Edit URL | (c) Export cURL | (Tab) Next Panel | (q) Quit")
+			}
 		case uiOrchestrator.PanelIndices.Request:
 			switch uiOrchestrator.CurrentTabIndex {
 			case uiOrchestrator.RPBodyTabIndex:
@@ -844,6 +857,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	}
 
 	uiOrchestrator.UpdateFooter = updateFooterFunc
+
+	// Set onModeChange for URLInput to update footer when switching between view/edit modes
+	uiOrchestrator.URLInput.onModeChange = uiOrchestrator.UpdateFooter
 
 	// Set initial footer content
 	uiOrchestrator.UpdateFooter()
