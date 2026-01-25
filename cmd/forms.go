@@ -45,7 +45,7 @@ func createCollectionFormWithLocation(
 	}
 	addCollectionsToOptions(workspaceData.Collections, "")
 
-	form.AddInputField("Collection Name", "", 21, nil, nil)
+	form.AddInputField("Collection Name", "", 30, nil, nil)
 	form.AddDropDown("Location", locationOptions, 0, nil)
 
 	cancelFunc := func() {
