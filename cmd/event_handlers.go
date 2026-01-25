@@ -1683,14 +1683,9 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 														ui.App.SetFocus(ui.MultipartFieldsTab)
 													}
 												} else {
-													// For text type, case 3 is empty space (not focusable)
-													// Skip to X button at case 4
-													ui.NavCurrentFieldRowElement = 4
-													if fieldRow.DeleteButton != nil {
-														ui.App.SetFocus(fieldRow.DeleteButton)
-													} else {
-														ui.App.SetFocus(ui.MultipartFieldsTab)
-													}
+													// For non-file type, index 3 is not focusable.
+													// Navigation logic should have skipped this, but as fallback focus the row container or the whole tab
+													ui.App.SetFocus(ui.MultipartFieldsTab)
 												}
 											case 4: // X button (always at position 4)
 												if fieldRow.DeleteButton != nil {
@@ -1963,6 +1958,15 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 						if fieldRowValid && ui.NavCurrentFieldRowElement < maxFieldRowElement {
 							ui.NavCurrentFieldRowElement++
+
+							// Skip Browse button (3) if not file type
+							if ui.NavCurrentFieldRowElement == 3 {
+								fieldRow := currentMultipartFieldRows[fieldRowIndex]
+								selectedType, _ := fieldRow.TypeDropdown.GetCurrentOption()
+								if selectedType != 2 { // Not file
+									ui.NavCurrentFieldRowElement = 4 // Skip to Delete button
+								}
+							}
 						} else {
 							// Next multipart element
 							ui.NavCurrentFieldRowElement = 0
@@ -2002,24 +2006,6 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 				} else {
 					// Standard Body Tab Navigation
 					maxSubchild := getMaxSubchildForChild(4, 0, ui)
-
-					// Special case: JSON with no content
-					if ui.NavCurrentSubchild == 0 && getCurrentContentType(ui) == "JSON" {
-						hasJSONContent := false
-						if ui.CurrentBodyContent != "" && ui.CurrentBodyContent != "{}" && ui.CurrentBodyContent != "[]" {
-							hasJSONContent = true
-						} else if ui.JSONBodyContent != "" && ui.JSONBodyContent != "{}" && ui.JSONBodyContent != "[]" {
-							hasJSONContent = true
-						}
-
-						if !hasJSONContent {
-							// Jump to Response Panel
-							ui.NavCurrentContainer = 5
-							ui.NavResponseInTabHeaders = true
-							ui.NavRequestInTabHeaders = true // Reset for next entry
-							goto NavigationDone
-						}
-					}
 
 					if ui.NavCurrentSubchild < maxSubchild {
 						ui.NavCurrentSubchild = getNextValidSubchild(ui.NavCurrentSubchild, ui)
@@ -2154,12 +2140,6 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 		}
 	}
 
-NavigationDone:
-	// Reset NavRequestInTabHeaders if we moved out of container 4
-	if previousContainer == 4 && ui.NavCurrentContainer != 4 {
-		ui.NavRequestInTabHeaders = true
-	}
-
 	// Update borders if container changed
 	if previousContainer != ui.NavCurrentContainer {
 		// Deactivate border of previous container
@@ -2233,6 +2213,18 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 							if ui.NavCurrentMultipartElement >= 2 {
 								if ui.NavCurrentFieldRowElement > 0 {
 									ui.NavCurrentFieldRowElement--
+
+									// Skip Browse button (3) if not file type
+									if ui.NavCurrentFieldRowElement == 3 {
+										idx := ui.NavCurrentMultipartElement - 2
+										if idx >= 0 && idx < len(currentMultipartFieldRows) {
+											fieldRow := currentMultipartFieldRows[idx]
+											selectedType, _ := fieldRow.TypeDropdown.GetCurrentOption()
+											if selectedType != 2 { // Not file
+												ui.NavCurrentFieldRowElement = 2 // Skip to Value input
+											}
+										}
+									}
 								} else {
 									// Prev element
 									ui.NavCurrentMultipartElement--
