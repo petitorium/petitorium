@@ -663,8 +663,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		NavCurrentHeaderRowElement:     0,
 		NavCurrentHeaderElement:        0,
 		NavPreviousContainer:           2,
-		NavRequestInTabHeaders:         true, // Start in tab headers when in Request panel
-		NavResponseInTabHeaders:        true, // Start in tab headers when in Response panel
+		NavRequestInTabHeaders:         true,  // Start in tab headers when in Request panel
+		NavResponseInTabHeaders:        false, // Start in tab content when in Response panel
 		RequestDataTabs:                requestDataTabs,
 		MainCycle:                      mainCycle,
 		HeadersCycle:                   headersCycle,

@@ -2120,21 +2120,10 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 			case 0: // Body Tab
 				// Check if we're in MultipartFields and need to navigate within multipart elements
 				if ui.NavCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
-					// ... Multipart internal navigation ...
 					// We're in a field row (multipart element >= 2)
 					if ui.NavCurrentMultipartElement >= 2 {
-						// ... logic for field row ...
 						fieldRowIndex := ui.NavCurrentMultipartElement - 2
-						// ... (simplified logic: rely on getMaxFieldRowElement) ...
-						// For now, let's implement the core logic for moving to next element
-						// or exiting to Response panel
 
-						// Logic:
-						// 1. Try to move next in field row
-						// 2. Else try to move to next multipart element
-						// 3. Else exit to Response Panel
-
-						// Assume valid row for simplicity of flow description
 						fieldRowValid := false
 						if fieldRowIndex >= 0 && fieldRowIndex < len(currentMultipartFieldRows) {
 							if currentMultipartFieldRows[fieldRowIndex] != nil {
@@ -2172,7 +2161,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 							if ui.NavCurrentMultipartElement >= maxMultipartElement {
 								// Exit to Response Panel
 								ui.NavCurrentContainer = 5
-								ui.NavResponseInTabHeaders = true
+								ui.NavResponseInTabHeaders = false
 								ui.NavRequestInTabHeaders = true // Reset for next entry
 							}
 						}
@@ -2190,7 +2179,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						if ui.NavCurrentMultipartElement >= maxMultipartElement {
 							// Exit to Response Panel
 							ui.NavCurrentContainer = 5
-							ui.NavResponseInTabHeaders = true
+							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
 					}
@@ -2206,7 +2195,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					} else {
 						// End of Tab -> Go to Response Panel
 						ui.NavCurrentContainer = 5
-						ui.NavResponseInTabHeaders = true
+						ui.NavResponseInTabHeaders = false
 						ui.NavRequestInTabHeaders = true // Reset for next entry
 					}
 				}
@@ -2244,7 +2233,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						if ui.NavCurrentHeaderRowElement >= maxHeaderRowElement {
 							// Exit to Response Panel
 							ui.NavCurrentContainer = 5
-							ui.NavResponseInTabHeaders = true
+							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
 					}
@@ -2258,7 +2247,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						if currentHeaderRows == nil || len(currentHeaderRows) == 0 {
 							// Exit to Response Panel
 							ui.NavCurrentContainer = 5
-							ui.NavResponseInTabHeaders = true
+							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
 					}
@@ -2267,7 +2256,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 			default: // Auth (1) or Query (2) or others
 				// Simple navigation: if in content, Tab goes to Response Panel
 				ui.NavCurrentContainer = 5
-				ui.NavResponseInTabHeaders = true
+				ui.NavResponseInTabHeaders = false
 				ui.NavRequestInTabHeaders = true // Reset for next entry
 			}
 		}
@@ -2275,33 +2264,25 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	} else if ui.NavCurrentContainer == 5 {
 		// Response panel navigation logic
 		if ui.NavResponseInTabHeaders {
-			// We're in tab headers mode
-			// Tab should enter the current tab's content
+			// If we somehow got into tab headers (e.g. via mouse), Tab enters content
 			ui.NavResponseInTabHeaders = false
-			// Reset subchild for tab content (Response panel doesn't have subchildren)
 			ui.NavCurrentSubchild = 0
 		} else {
-			// We're in tab content mode
-			// Tab should move to next container (Workspace panel)
+			// Tab should always move to next container (Workspace panel)
+			// since we skip tab headers for faster navigation
 			ui.NavCurrentContainer = 0 // Workspace panel
 			ui.NavCurrentChild = 0     // WorkspaceSelector
 			ui.NavCurrentSubchild = 0
 			// Reset multipart and field row elements
 			ui.NavCurrentMultipartElement = 0
 			ui.NavCurrentFieldRowElement = 0
-			// Reset response tab headers for next time
-			ui.NavResponseInTabHeaders = true
+			// Ensure response tab headers is false for next time
+			ui.NavResponseInTabHeaders = false
 		}
 	} else {
 		// Normal navigation for other containers
 		// Check if current position has subchildren
 		if hasSubchildren(ui.NavCurrentContainer, ui.NavCurrentChild, ui) {
-			// This path handles Container 4 (Request) in the old logic, but we have special handled it above.
-			// So this block effectively runs for 0, 1, 2, 3.
-			// Actually, Container 4 is the only one with subchildren in hasSubchildren logic?
-			// Let's check hasSubchildren: returns true ONLY for container 4.
-			// So we can simplify: for 0-3, just iterate Child.
-
 			maxChild := getMaxChildForContainer(ui.NavCurrentContainer)
 
 			if ui.NavCurrentChild < maxChild {
@@ -2311,6 +2292,10 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 				// At last child, move to next container and reset child
 				ui.NavCurrentChild = 0
 				ui.NavCurrentContainer = (ui.NavCurrentContainer + 1) % 6 // 6 containers total
+				// If moving to container 5, ensure we skip headers
+				if ui.NavCurrentContainer == 5 {
+					ui.NavResponseInTabHeaders = false
+				}
 			}
 			// Reset subchild
 			ui.NavCurrentSubchild = 0
@@ -2325,6 +2310,10 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 				// At last child, move to next container and reset child
 				ui.NavCurrentChild = 0
 				ui.NavCurrentContainer = (ui.NavCurrentContainer + 1) % 6 // 6 containers total
+				// If moving to container 5, ensure we skip headers
+				if ui.NavCurrentContainer == 5 {
+					ui.NavResponseInTabHeaders = false
+				}
 			}
 			// Reset subchild when moving to a position without subchildren
 			ui.NavCurrentSubchild = 0
@@ -2399,7 +2388,6 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					if ui.NavCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
 						// Check multipart internal
 						if ui.NavCurrentMultipartElement > 0 {
-							// ... logic for multipart ...
 							// If in field row
 							if ui.NavCurrentMultipartElement >= 2 {
 								if ui.NavCurrentFieldRowElement > 0 {
@@ -2453,7 +2441,6 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			case 3: // Headers
 				// ... Headers back navigation ...
 				if ui.NavCurrentHeaderRowElement > 0 {
-					// logic
 					if ui.NavCurrentHeaderRowElement >= 2 {
 						// In row
 						if ui.NavCurrentHeaderElement > 0 {
@@ -2486,172 +2473,92 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		}
 	} else if ui.NavCurrentContainer == 5 {
 		// Response panel backtab navigation logic
-		if ui.NavResponseInTabHeaders {
-			// We're in tab headers mode
-			// Backtab should move to previous container (Request panel)
-			// AND TARGET THE ACTIVE TAB's LAST ELEMENT
+		// Skip tab headers and go directly to previous container (Request panel)
+		// AND TARGET THE ACTIVE TAB's LAST ELEMENT
 
-			ui.NavCurrentContainer = 4              // Request panel
-			ui.NavCurrentChild = ui.CurrentTabIndex // Active Tab
+		ui.NavCurrentContainer = 4              // Request panel
+		ui.NavCurrentChild = ui.CurrentTabIndex // Active Tab
 
-			// We want to enter content mode, at the end
-			ui.NavRequestInTabHeaders = false
+		// We want to enter content mode, at the end
+		ui.NavRequestInTabHeaders = false
 
-			// Set state to end of tab
-			switch ui.NavCurrentChild {
-			case 0: // Body
-				// Set to last subchild
-				ui.NavCurrentSubchild = getMaxSubchildForChild(4, 0, ui) // e.g. 3 (NoBody) or 2 (Multipart)
+		// Set state to end of tab
+		switch ui.NavCurrentChild {
+		case 0: // Body
+			// Set to last subchild
+			ui.NavCurrentSubchild = getMaxSubchildForChild(4, 0, ui) // e.g. 3 (NoBody) or 2 (Multipart)
 
-				// If multipart, set to last element
-				if ui.NavCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
-					maxMultipartElement := 2
-					if currentMultipartFieldRows != nil {
-						maxMultipartElement = 2 + len(currentMultipartFieldRows)
-					}
-					// Actually index is size-1? No, logic uses strict < checks usually.
-					// Logic check: if element >= max, exit. So last valid is max-1.
-					// But our counters are 0-based index.
-					// Let's assume maxMultipartElement is the "count", so last index is count-1.
-					// But logic says: if >= maxMultipartElement, exit.
-					// So if count is 2 (0, 1), valid are 0, 1.
-
-					// Let's check handleTabNavigation logic:
-					// "if ui.NavCurrentMultipartElement >= maxMultipartElement { exit }"
-					// So last valid is maxMultipartElement - 1.
-
-					// Special case: if 0 elements (just buttons), count is 2. Last index is 1 (Delete All).
-					if maxMultipartElement > 0 {
-						ui.NavCurrentMultipartElement = maxMultipartElement - 1
-					} else {
-						ui.NavCurrentMultipartElement = 0
-					}
-
-					// If in row
-					if ui.NavCurrentMultipartElement >= 2 {
-						idx := ui.NavCurrentMultipartElement - 2
-						if idx >= 0 && idx < len(currentMultipartFieldRows) {
-							ui.NavCurrentFieldRowElement = getMaxFieldRowElement(currentMultipartFieldRows[idx])
-						}
-					} else {
-						ui.NavCurrentFieldRowElement = 0
-					}
+			// If multipart, set to last element
+			if ui.NavCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
+				maxMultipartElement := 2
+				if currentMultipartFieldRows != nil {
+					maxMultipartElement = 2 + len(currentMultipartFieldRows)
 				}
-			case 3: // Headers
-				// Set to last element
-				maxHeaderRowElement := 2
-				if currentHeaderRows != nil {
-					maxHeaderRowElement = 2 + len(currentHeaderRows)
-				}
-				if maxHeaderRowElement > 0 {
-					ui.NavCurrentHeaderRowElement = maxHeaderRowElement - 1
+				if maxMultipartElement > 0 {
+					ui.NavCurrentMultipartElement = maxMultipartElement - 1
 				} else {
-					ui.NavCurrentHeaderRowElement = 0
+					ui.NavCurrentMultipartElement = 0
 				}
 
-				if ui.NavCurrentHeaderRowElement >= 2 {
-					idx := ui.NavCurrentHeaderRowElement - 2
-					if idx >= 0 && idx < len(currentHeaderRows) {
-						ui.NavCurrentHeaderElement = getMaxHeaderRowElement(currentHeaderRows[idx])
+				// If in row
+				if ui.NavCurrentMultipartElement >= 2 {
+					idx := ui.NavCurrentMultipartElement - 2
+					if idx >= 0 && idx < len(currentMultipartFieldRows) {
+						ui.NavCurrentFieldRowElement = getMaxFieldRowElement(currentMultipartFieldRows[idx])
 					}
 				} else {
-					ui.NavCurrentHeaderElement = 0
+					ui.NavCurrentFieldRowElement = 0
 				}
-			default:
-				// Simple tabs, just enter content
-				ui.NavCurrentSubchild = 0
+			}
+		case 3: // Headers
+			// Set to last element
+			maxHeaderRowElement := 2
+			if currentHeaderRows != nil {
+				maxHeaderRowElement = 2 + len(currentHeaderRows)
+			}
+			if maxHeaderRowElement > 0 {
+				ui.NavCurrentHeaderRowElement = maxHeaderRowElement - 1
+			} else {
+				ui.NavCurrentHeaderRowElement = 0
 			}
 
-		} else {
-			// We're in tab content mode
-			// Backtab should exit tab content mode and go back to tab headers
-			ui.NavResponseInTabHeaders = true
-			// Stay on current child (current tab header)
+			if ui.NavCurrentHeaderRowElement >= 2 {
+				idx := ui.NavCurrentHeaderRowElement - 2
+				if idx >= 0 && idx < len(currentHeaderRows) {
+					ui.NavCurrentHeaderElement = getMaxHeaderRowElement(currentHeaderRows[idx])
+				}
+			} else {
+				ui.NavCurrentHeaderElement = 0
+			}
+		default:
+			// Simple tabs, just enter content
 			ui.NavCurrentSubchild = 0
 		}
+		// Ensure response tab headers is false for next time
+		ui.NavResponseInTabHeaders = false
+
 	} else {
 		// Normal backtab navigation for other containers
-		// Check if current position has subchildren
-		if hasSubchildren(ui.NavCurrentContainer, ui.NavCurrentChild, ui) {
-			// Container 4 is handled above, so this is for 0-3 which have no subchildren
+		if ui.NavCurrentChild > 0 {
+			// Move to previous child in same container
+			ui.NavCurrentChild--
+			// Reset subchild
+			ui.NavCurrentSubchild = 0
+		} else {
+			// At first child, move to previous container
+			prevContainer := (ui.NavCurrentContainer - 1 + 6) % 6
+			ui.NavCurrentContainer = prevContainer
 
-			if ui.NavCurrentChild > 0 {
-				// Move to previous child in same container
-				ui.NavCurrentChild--
-				// Reset subchild
-				ui.NavCurrentSubchild = 0
+			if ui.NavCurrentContainer == 5 {
+				// Entering Response from Workspace
+				ui.NavCurrentChild = ui.CurrentResponseTabIndex
+				ui.NavResponseInTabHeaders = false // Enter content
 			} else {
-				// At first child, move to previous container
-				prevContainer := (ui.NavCurrentContainer - 1 + 6) % 6
-
-				ui.NavCurrentContainer = prevContainer
-
-				if prevContainer == 4 {
-					// Entering Request Panel from URLBar via Backtab?
-					// Standard flow: 0->1->2->3->4->5. Backtab: 3<-4.
-					// So if we are at 3 (URLBar) and go back, we go to 2 (Collections).
-					// If we are at 0 (Workspace) and go back, we go to 5 (Response).
-
-					// Special case for entering 4 or 5?
-					// Entering 5 (Response) from 0 (Workspace) via Backtab?
-					// Yes. 5 is Response.
-					// Set to last element of Response.
-					// Response has tabs. Active tab?
-					// Standard logic for 5 is: Tab Headers -> Content.
-					// So entering from bottom should go to Content End?
-					// Logic for 5:
-					// ui.NavCurrentChild = ui.CurrentResponseTabIndex
-					// ui.NavResponseInTabHeaders = false
-					// (Response has no subchildren, so just focus panel)
-				}
-
-				// Use generic max child
 				prevMaxChild := getMaxChildForContainer(prevContainer)
 				ui.NavCurrentChild = prevMaxChild
-
-				// If entering 5 (Response) from 0:
-				if ui.NavCurrentContainer == 5 {
-					// Set to active tab
-					ui.NavCurrentChild = ui.CurrentResponseTabIndex
-					// Enter content mode? Or Headers?
-					// Let's say Headers for now to be safe, or Content if we want full cycle.
-					// Let's stick to Headers for Response bottom-entry to keep it simple?
-					// Actually, if we backtab from 0, we should hit the "end" of 5.
-					// End of 5 is Content of Active Tab.
-					ui.NavResponseInTabHeaders = false
-				}
-
-				// If entering 4 (Request) from ... wait, 3->2->1->0->5->4->3...
-				// Backtab: 3->2.
-				// 0 -> 5.
-
-				ui.NavCurrentSubchild = 0
 			}
-		} else {
-			// No subchildren at current position
-			if ui.NavCurrentChild > 0 {
-				// Move to previous child in same container
-				ui.NavCurrentChild--
-				// Reset subchild
-				ui.NavCurrentSubchild = 0
-			} else {
-				// At first child, move to previous container
-				prevContainer := (ui.NavCurrentContainer - 1 + 6) % 6
-
-				ui.NavCurrentContainer = prevContainer
-
-				if ui.NavCurrentContainer == 5 {
-					// Entering Response from Workspace
-					ui.NavCurrentChild = ui.CurrentResponseTabIndex
-					ui.NavResponseInTabHeaders = false // Enter content
-				} else {
-					prevMaxChild := getMaxChildForContainer(prevContainer)
-					ui.NavCurrentChild = prevMaxChild
-				}
-
-				// Reset subchild
-				ui.NavCurrentSubchild = 0
-			}
+			// Reset subchild
+			ui.NavCurrentSubchild = 0
 		}
 	}
 
