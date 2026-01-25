@@ -396,11 +396,15 @@ func createRenameCollectionForm(app *tview.Application,
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
 	})
-	form.AddButton("Cancel", func() {
+	cancelFunc := func() {
 		pages.RemovePage("renameCollection")
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
-	})
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetCancelFunc(cancelFunc)
 
 	form.SetBorder(true).SetTitle("Rename Collection")
 	return form
@@ -474,6 +478,8 @@ func createRenameRequestForm(app *tview.Application,
 	form.AddButton("Cancel", func() {
 		cancelFunc()
 	})
+
+	form.SetCancelFunc(cancelFunc)
 
 	form.SetBorder(true).SetTitle(" Rename Request ")
 	return form
@@ -597,10 +603,14 @@ func createRenameEnvironmentForm(
 			app.SetFocus(envConfigButton)
 		}
 	})
-	form.AddButton("Cancel", func() {
+	cancelFunc := func() {
 		pages.RemovePage("renameEnvironment")
 		app.SetFocus(currentFocus)
-	})
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetCancelFunc(cancelFunc)
 
 	form.SetBorder(true).SetTitle(" Rename Environment ")
 	return form
@@ -1223,20 +1233,22 @@ func createRenameWorkspaceForm(
 		app.SetFocus(workspaceSelector)
 	})
 
-	form.AddButton("Cancel", func() {
+	cancelFunc := func() {
 		pages.RemovePage("renameWorkspace")
 		pages.SwitchToPage("main")
 		app.SetFocus(workspaceSelector)
-	})
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetCancelFunc(cancelFunc)
 
 	form.SetBorder(true).SetTitle(" Rename Workspace ")
 
 	// Add input capture to handle 'q' to cancel
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Rune() == 'q' || event.Rune() == 'Q' {
-			pages.RemovePage("renameWorkspace")
-			pages.SwitchToPage("main")
-			app.SetFocus(workspaceSelector)
+		if event.Rune() == 'q' || event.Rune() == 'Q' || event.Key() == tcell.KeyEscape {
+			cancelFunc()
 			return nil
 		}
 		return event
