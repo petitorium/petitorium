@@ -61,6 +61,7 @@ type UIConfig struct {
 	HeaderRemoveIcon         string `mapstructure:"headerRemoveIcon"`         // icon for removing headers
 	ConfigButtonIcon         string `mapstructure:"configButtonIcon"`         // icon for environment config button
 	DropdownIndicator        string `mapstructure:"dropdownIndicator"`        // indicator for dropdown
+	ButtonFlashDuration      int    `mapstructure:"buttonFlashDuration"`      // duration of button flash in milliseconds
 }
 
 type MethodColorsConfig struct {
@@ -131,6 +132,7 @@ ui:
   headerRemoveIcon: "✕"
   configButtonIcon: "⚙"
   dropdownIndicator: "▼"
+  buttonFlashDuration: 100
 
 # Syntax highlighting theme (chroma themes)
 # Popular options: github-dark, dracula, monokai, solarized-dark, nord, one-dark, vim, github

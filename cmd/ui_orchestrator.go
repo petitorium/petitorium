@@ -704,6 +704,10 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		RPQueryTabIndex:                RPQueryTabIndex,
 		RPHeadersTabIndex:              RPHeadersTabIndex,
 		RefreshMultipartFieldsUI:       refreshMultipartFieldsUI,
+		AddHeaderButton:                currentAddHeaderButton,
+		DeleteAllHeadersButton:         currentDeleteAllHeadersButton,
+		MultipartAddButton:             currentMultipartAddButton,
+		MultipartDeleteAllButton:       currentMultipartDeleteAllButton,
 	}
 
 	// Define tabIndexSetter now that we have all the variables

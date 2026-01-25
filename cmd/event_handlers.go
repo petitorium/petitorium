@@ -641,6 +641,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.NavCurrentChild = 1
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
+		ui.WorkspaceConfigButton.Flash()
 	})
 	ui.EnvDropdown.SetFocusFunc(func() {
 		ui.NavCurrentContainer = 1
@@ -653,6 +654,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.NavCurrentChild = 1
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
+		ui.EnvConfigButton.Flash()
 	})
 	ui.CollectionsTreeView.SetFocusFunc(func() {
 		ui.NavCurrentContainer = 2
@@ -677,12 +679,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.NavCurrentChild = 2
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
+		ui.SendButton.Flash()
 	})
 	ui.CurlButton.SetFocusFunc(func() {
 		ui.NavCurrentContainer = 3
 		ui.NavCurrentChild = 3
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
+		ui.CurlButton.Flash()
 	})
 	ui.TabHeader.SetFocusFunc(func() {
 		ui.NavCurrentContainer = 4
@@ -728,6 +732,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.NavCurrentMultipartElement = 0
 			syncMainCycleWithExperimental(ui)
 			ui.UpdateFooter()
+			ui.MultipartAddButton.Flash()
 		})
 	}
 	if ui.MultipartDeleteAllButton != nil {
@@ -739,6 +744,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.NavCurrentMultipartElement = 1
 			syncMainCycleWithExperimental(ui)
 			ui.UpdateFooter()
+			ui.MultipartDeleteAllButton.Flash()
 		})
 	}
 	if ui.AddHeaderButton != nil {
@@ -749,6 +755,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.NavCurrentHeaderRowElement = 0
 			syncMainCycleWithExperimental(ui)
 			ui.UpdateFooter()
+			ui.AddHeaderButton.Flash()
 		})
 	}
 	if ui.DeleteAllHeadersButton != nil {
@@ -759,6 +766,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.NavCurrentHeaderRowElement = 1
 			syncMainCycleWithExperimental(ui)
 			ui.UpdateFooter()
+			ui.DeleteAllHeadersButton.Flash()
 		})
 	}
 	if ui.ResponseHeadersPanel != nil {

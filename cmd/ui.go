@@ -190,6 +190,26 @@ type CustomButton struct {
 	app                     *tview.Application
 }
 
+// Flash triggers a brief background color change
+func (cb *CustomButton) Flash() {
+	if cb.app != nil {
+		duration := config.C.UI.ButtonFlashDuration
+		if duration <= 0 {
+			duration = 100 // Default fallback
+		}
+
+		cb.isActivated = true
+		cb.updateBackground()
+		go func() {
+			time.Sleep(time.Duration(duration) * time.Millisecond)
+			cb.app.QueueUpdateDraw(func() {
+				cb.isActivated = false
+				cb.updateBackground()
+			})
+		}()
+	}
+}
+
 // NewCustomButton creates a new custom button
 func NewCustomButton(text string) *CustomButton {
 	box := tview.NewBox()
@@ -212,17 +232,7 @@ func NewCustomButton(text string) *CustomButton {
 	}
 
 	cb.Box.SetFocusFunc(func() {
-		if cb.app != nil {
-			cb.isActivated = true
-			cb.updateBackground()
-			go func() {
-				time.Sleep(100 * time.Millisecond)
-				cb.app.QueueUpdateDraw(func() {
-					cb.isActivated = false
-					cb.updateBackground()
-				})
-			}()
-		}
+		cb.Flash()
 	})
 
 	cb.Box.SetBlurFunc(func() {
@@ -2398,6 +2408,10 @@ var multipartFieldWidth = 18
 
 var multipartRemoveButtonWidth = 5
 
+var currentMultipartAddButton *CustomButton
+
+var currentMultipartDeleteAllButton *CustomButton
+
 // createMultipartFieldsTab creates the multipart fields management UI
 func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCallback func(), focusSetter func(tview.Primitive), app *tview.Application, pages *tview.Pages, footerUpdater func()) (*tview.Flex, func()) {
 	multipartContainer := tview.NewFlex().SetDirection(tview.FlexRow)
@@ -2449,12 +2463,14 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 	buttonRow.SetBackgroundColor(colors.Background)
 
 	addButton := createThemedButton(" Add Field ", colors)
+	currentMultipartAddButton = addButton
 	addButton.SetSelectedFunc(func() {
 		addMultipartFieldRow(fieldsList, colors, refreshMultipartFieldsUI, saveCallback, focusSetter, footerUpdater, app, pages)
 	})
 
 	// Delete all button
 	deleteAllButton := createThemedButton(" Delete All ", colors)
+	currentMultipartDeleteAllButton = deleteAllButton
 	deleteAllButton.SetSelectedFunc(func() {
 		deleteCallback := func() {
 			// Clear all multipart field rows
