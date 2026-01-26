@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,10 +34,18 @@ type HTTPResponse struct {
 // SendRequest sends an HTTP request with the given parameters
 func SendRequest(method, url, body string, contentType string, headers map[string]string) (*HTTPResponse, error) {
 	// Create HTTP client with configurable timeout
-	timeout := time.Duration(config.C.RequestTimeout) * time.Second
+	timeoutVal := config.C.RequestTimeout
+	if timeoutVal <= 0 {
+		timeoutVal = 60 // Default to 60 seconds if not configured or 0
+	}
+	timeout := time.Duration(timeoutVal) * time.Second
 	client := &http.Client{
 		Timeout: timeout,
 	}
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	// Create request body
 	var bodyReader io.Reader
@@ -58,8 +67,8 @@ func SendRequest(method, url, body string, contentType string, headers map[strin
 		}
 	}
 
-	// Create HTTP request
-	req, err := http.NewRequest(method, url, bodyReader)
+	// Create HTTP request with context
+	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}

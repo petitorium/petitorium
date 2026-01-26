@@ -1000,6 +1000,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						ui.PluginManager.ExecuteHooks(plugins.OnError, context)
 					}
 					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+					ui.ResponsePreviewPanel.SetText(fmt.Sprintf("[red]Error: %v[-]", err))
 					return
 				}
 

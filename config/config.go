@@ -144,8 +144,8 @@ syntaxTheme: "tokyonight-night"
 # Selected environment name (defaults to "Base")
 selectedEnvironment: "Base"
 
-# HTTP request timeout in seconds (default: 30)
-requestTimeout: 30
+# HTTP request timeout in seconds (default: 60)
+requestTimeout: 60
 
 # Enable unified theming system (applies syntax theme colors to entire UI)
 unifiedTheming: true
