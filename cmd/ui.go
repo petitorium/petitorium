@@ -1431,22 +1431,29 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	}
 
 	// Determine status background color
-	var statusBgColor tcell.Color
+	var statusBgColor, statusFgColor tcell.Color
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		statusBgColor = colors.Success
+		statusBgColor = colors.StatusSuccessBg
+		statusFgColor = colors.StatusSuccessFg
 	} else if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		statusBgColor = colors.Warning
-	} else if resp.StatusCode >= 400 {
-		statusBgColor = colors.Error
+		statusBgColor = colors.StatusRedirectBg
+		statusFgColor = colors.StatusRedirectFg
+	} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		statusBgColor = colors.StatusClientErrorBg
+		statusFgColor = colors.StatusClientErrorFg
+	} else if resp.StatusCode >= 500 {
+		statusBgColor = colors.StatusServerErrorBg
+		statusFgColor = colors.StatusServerErrorFg
 	} else {
-		statusBgColor = colors.Background // For 1xx or unknown
+		statusBgColor = colors.StatusDefaultBg
+		statusFgColor = colors.StatusDefaultFg
 	}
 
 	// Status code and status
 	statusTextSize := 5
 	statusText := tview.NewTextView()
 	statusText.SetBackgroundColor(statusBgColor)
-	statusText.SetTextColor(colors.Title)
+	statusText.SetTextColor(statusFgColor)
 	statusText.SetText(fmt.Sprintf("%d", resp.StatusCode))
 	statusText.SetTextAlign(tview.AlignCenter)
 	infoBar.AddItem(statusText, statusTextSize, 0, false)

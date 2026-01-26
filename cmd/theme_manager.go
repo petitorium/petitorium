@@ -165,6 +165,15 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 		numberColor = "#ff9e64" // Default orange
 	}
 
+	errorEntry := style.Get(chroma.GenericError)
+	if errorEntry.Colour == 0 {
+		errorEntry = style.Get(chroma.Error)
+	}
+	errorColor := tm.colorToHex(errorEntry.Colour)
+	if errorColor == "" {
+		errorColor = "#fb4f49" // Default red
+	}
+
 	// Create a selection background color that's appropriate for highlighting
 	// This should be a subtle background color, not too bright
 	treeSelection := tm.createSelectionBackground(background, keywordColor, style)
@@ -183,8 +192,8 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 		ButtonSelected:      stringColor,
 		DropdownFocused:     tm.adjustBrightness(background, 1.3),
 		Placeholder:         commentColor,
-		Success:             stringColor,  // Use string color for success
-		Error:               "#fb4f49",    // Standard error red
+		Success:             stringColor, // Use string color for success
+		Error:               errorColor,
 		Warning:             numberColor,  // Use number color for warning
 		SelectedRequestIcon: stringColor,  // tm.getSelectedRequestIconColor(style.Name, stringColor),
 		LabelColor:          keywordColor, // Use keyword color (blueish) for form labels
@@ -194,20 +203,20 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 			POST:    keywordColor, // Blue for POST
 			PUT:     numberColor,  // Orange for PUT
 			PATCH:   numberColor,  // Orange for PATCH
-			DELETE:  "#fb4f49",    // Red for DELETE
+			DELETE:  errorColor,   // Red for DELETE
 			OPTIONS: commentColor, // Gray for OPTIONS
 			HEAD:    commentColor, // Gray for HEAD
 			Default: foreground,   // Default foreground
 		},
 		StatusColors: StatusColors{
-			Success:         stringColor,  // Green for 2xx
-			SuccessText:     background,   // Background color for text
-			Redirection:     numberColor,  // Orange for 3xx
-			RedirectionText: background,   // Background color for text
-			ClientError:     "#fb4f49",    // Red for 4xx
-			ClientErrorText: "#ffffff",    // White text
-			ServerError:     "#8b0000",    // Dark red for 5xx
-			ServerErrorText: "#ffffff",    // White text
+			Success:         stringColor, // Green for 2xx
+			SuccessText:     background,  // Background color for text
+			Redirection:     numberColor, // Orange for 3xx
+			RedirectionText: background,  // Background color for text
+			ClientError:     errorColor,  // Red for 4xx
+			ClientErrorText: background,
+			ServerError:     tm.adjustBrightness(errorColor, 0.7), // Darker red for 5xx
+			ServerErrorText: background,
 			Default:         commentColor, // Gray for unknown
 			DefaultText:     foreground,   // Foreground color for text
 		},

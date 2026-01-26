@@ -29,11 +29,24 @@ type ColorManager struct {
 	Warning     tcell.Color // Warning status color
 	LabelColor  tcell.Color // Color for form labels (e.g., "Name:", "Type:", "Value:")
 	ValueColor  tcell.Color // Color for form values/input text
+
+	// Status colors for response panel
+	StatusSuccessBg     tcell.Color
+	StatusSuccessFg     tcell.Color
+	StatusRedirectBg    tcell.Color
+	StatusRedirectFg    tcell.Color
+	StatusClientErrorBg tcell.Color
+	StatusClientErrorFg tcell.Color
+	StatusServerErrorBg tcell.Color
+	StatusServerErrorFg tcell.Color
+	StatusDefaultBg     tcell.Color
+	StatusDefaultFg     tcell.Color
 }
 
 // NewColorManager creates a new ColorManager with colors from the current theme
 func NewColorManager() *ColorManager {
 	theme := config.C.Theme
+	status := config.C.StatusColors
 
 	// Set up tview borders from theme configuration
 	setupBorders(theme)
@@ -49,23 +62,33 @@ func NewColorManager() *ColorManager {
 	}
 
 	return &ColorManager{
-		Background:       hexToColor(theme.BackgroundColor),
-		Foreground:       hexToColor(theme.ForegroundColor),
-		Border:           hexToColor(theme.BorderColor),
-		BorderFocus:      hexToColor(theme.BorderFocusColor),
-		Title:            hexToColor(theme.TitleColor),
-		Selection:        hexToColor(theme.SelectionBackground),
-		TreeSelection:    hexToColor(theme.TreeSelectionBackground),
-		ActiveTab:        hexToColor(theme.ActiveTabColor),
-		ButtonBackground: hexToColor(theme.ButtonBackgroundColor),
-		ButtonSelect:     hexToColor(theme.ButtonSelectedColor),
-		DropdownFocus:    hexToColor(theme.DropdownFocusedBackground),
-		Placeholder:      hexToColor("#4A5053"),
-		Success:          hexToColor("#28a745"),
-		Error:            hexToColor("#dc3545"),
-		Warning:          hexToColor("#fd7e14"),
-		LabelColor:       hexToColor(labelColor),
-		ValueColor:       hexToColor(valueColor),
+		Background:          hexToColor(theme.BackgroundColor),
+		Foreground:          hexToColor(theme.ForegroundColor),
+		Border:              hexToColor(theme.BorderColor),
+		BorderFocus:         hexToColor(theme.BorderFocusColor),
+		Title:               hexToColor(theme.TitleColor),
+		Selection:           hexToColor(theme.SelectionBackground),
+		TreeSelection:       hexToColor(theme.TreeSelectionBackground),
+		ActiveTab:           hexToColor(theme.ActiveTabColor),
+		ButtonBackground:    hexToColor(theme.ButtonBackgroundColor),
+		ButtonSelect:        hexToColor(theme.ButtonSelectedColor),
+		DropdownFocus:       hexToColor(theme.DropdownFocusedBackground),
+		Placeholder:         hexToColor("#4A5053"),
+		Success:             hexToColor(status.Success),
+		Error:               hexToColor(status.ClientError),
+		Warning:             hexToColor(status.Redirection),
+		LabelColor:          hexToColor(labelColor),
+		ValueColor:          hexToColor(valueColor),
+		StatusSuccessBg:     hexToColor(status.Success),
+		StatusSuccessFg:     hexToColor(status.SuccessText),
+		StatusRedirectBg:    hexToColor(status.Redirection),
+		StatusRedirectFg:    hexToColor(status.RedirectionText),
+		StatusClientErrorBg: hexToColor(status.ClientError),
+		StatusClientErrorFg: hexToColor(status.ClientErrorText),
+		StatusServerErrorBg: hexToColor(status.ServerError),
+		StatusServerErrorFg: hexToColor(status.ServerErrorText),
+		StatusDefaultBg:     hexToColor(status.Default),
+		StatusDefaultFg:     hexToColor(status.DefaultText),
 	}
 }
 
