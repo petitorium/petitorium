@@ -59,6 +59,7 @@ type UIConfig struct {
 	SelectedRequestIcon      string `mapstructure:"selectedRequestIcon"`      // icon to display before selected request names
 	SelectedRequestIconColor string `mapstructure:"selectedRequestIconColor"` // color for selected request icon
 	HeaderRemoveIcon         string `mapstructure:"headerRemoveIcon"`         // icon for removing headers
+	MultipartRemoveIcon      string `mapstructure:"multipartRemoveIcon"`      // icon for removing multipart fields
 	ConfigButtonIcon         string `mapstructure:"configButtonIcon"`         // icon for environment config button
 	DropdownIndicator        string `mapstructure:"dropdownIndicator"`        // indicator for dropdown
 	ButtonFlashDuration      int    `mapstructure:"buttonFlashDuration"`      // duration of button flash in milliseconds
@@ -129,7 +130,8 @@ ui:
   collectionExpandedIcon: ""
   selectedRequestIcon: ""
   selectedRequestIconColor: "#c8d3f5"
-  headerRemoveIcon: "✕"
+  headerRemoveIcon: ""
+  multipartRemoveIcon: ""
   configButtonIcon: "⚙"
   dropdownIndicator: "▼"
   buttonFlashDuration: 100

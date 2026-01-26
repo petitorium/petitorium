@@ -2562,7 +2562,8 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
 	})
 
-	removeButton := createThemedButton("X", colors)
+	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
+	removeButton.SetBackgroundColor(colors.Background)
 
 	// Create label separately for full control over background
 	typeLabel := tview.NewTextView().
@@ -2721,7 +2722,8 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
 	})
 
-	removeButton := createThemedButton("X", colors)
+	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
+	removeButton.SetBackgroundColor(colors.Background)
 
 	fieldRow := &MultipartFieldRow{
 		NameLabel:        nameLabel,
