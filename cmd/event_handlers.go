@@ -385,7 +385,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// Switch to edit mode
 			ui.BodyContainer.AddItem(ui.BodyEditPanel, 0, 1, false)
 			ui.BodyEditPanel.SetText(ui.CurrentBodyContent, false)
-			ui.BodyEditPanel.SetBorderColor(tcell.ColorDefault)
+			ui.BodyEditPanel.SetBorderColor(ui.Colors.Background)
 		} else {
 			// Switch to view mode
 			ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
