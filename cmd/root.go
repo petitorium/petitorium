@@ -15,9 +15,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "petitorium",
-	Short: "A powerful TUI for API interaction and testing.",
-	Run:   runTUI,
+	Use:     "petitorium",
+	Short:   "A powerful TUI for API interaction and testing.",
+	Version: Version,
+	Run:     runTUI,
 }
 
 func Execute() {

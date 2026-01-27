@@ -8,7 +8,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/petitorium/petitorium-plugin-sdk v1.0.0
+	github.com/petitorium/petitorium-plugin-sdk v1.0.1
 	github.com/rivo/tview v0.0.0-20250625164341-a4a78f1e05cb
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -37,5 +37,3 @@ require (
 	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
-
-replace github.com/petitorium/petitorium-plugin-sdk => ../petitorium-plugin-sdk
