@@ -508,12 +508,18 @@ func createDeleteEnvironmentConfirm(
 	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the environment '%s'?", selectedEnvironment.Name), 0, 1, false, false)
 
 	form.AddButton("Delete", func() {
+		oldName := selectedEnvironment.Name
 		// Find and remove the environment
 		for i, e := range *environmentsData {
-			if e.Name == selectedEnvironment.Name {
+			if e.Name == oldName {
 				*environmentsData = append((*environmentsData)[:i], (*environmentsData)[i+1:]...)
 				break
 			}
+		}
+
+		// Update selected environment if it was the one deleted
+		if workspaceData.SelectedEnvironment == oldName {
+			workspaceData.SelectedEnvironment = ""
 		}
 
 		// Save workspace data (which includes environments)
@@ -579,12 +585,18 @@ func createRenameEnvironmentForm(
 			return
 		}
 
+		oldName := selectedEnvironment.Name
 		// Find and update the actual environment in environmentsData
 		for i := range *environmentsData {
-			if (*environmentsData)[i].Name == selectedEnvironment.Name {
+			if (*environmentsData)[i].Name == oldName {
 				(*environmentsData)[i].Name = newName
 				break
 			}
+		}
+
+		// Update selected environment if it was the one renamed
+		if workspaceData.SelectedEnvironment == oldName {
+			workspaceData.SelectedEnvironment = newName
 		}
 
 		// Update dropdown

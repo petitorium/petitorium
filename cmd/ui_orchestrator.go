@@ -130,6 +130,7 @@ type UIOrchestrator struct {
 	ProgrammaticallyUpdatingMethod      bool
 	ProgrammaticallyUpdatingURL         bool
 	ProgrammaticallyUpdatingContentType bool
+	ProgrammaticallyUpdatingEnv         bool
 	RequestInProgress                   bool
 	TabPages                            *tview.Pages
 	TabHeader                           *tview.Flex

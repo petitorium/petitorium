@@ -119,10 +119,11 @@ func createDefaultWorkspaceManager() error {
 func createDefaultWorkspace() *Workspace {
 	now := time.Now()
 	return &Workspace{
-		Name:        "Default",
-		Description: "Default workspace created automatically",
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		Name:                "Default",
+		Description:         "Default workspace created automatically",
+		CreatedAt:           now,
+		UpdatedAt:           now,
+		SelectedEnvironment: "",
 		Collections: []Collection{
 			{
 				Name: "Example Requests",
@@ -262,9 +263,10 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 	}
 
 	workspace = &Workspace{
-		Name:         name,
-		Collections:  collections,
-		Environments: defaultEnvs,
+		Name:                name,
+		Collections:         collections,
+		Environments:        defaultEnvs,
+		SelectedEnvironment: "",
 	}
 
 	// Load expansion state
@@ -620,12 +622,13 @@ func DuplicateWorkspace(sourceName, targetName string) (*Workspace, error) {
 
 	now := time.Now()
 	duplicateWorkspace := &Workspace{
-		Name:         targetName,
-		Description:  fmt.Sprintf("Copy of %s", sourceMetadata.Description),
-		Collections:  make([]Collection, len(sourceWorkspace.Collections)),
-		Environments: make([]Environment, len(sourceWorkspace.Environments)),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		Name:                targetName,
+		Description:         fmt.Sprintf("Copy of %s", sourceMetadata.Description),
+		Collections:         make([]Collection, len(sourceWorkspace.Collections)),
+		Environments:        make([]Environment, len(sourceWorkspace.Environments)),
+		SelectedEnvironment: sourceWorkspace.SelectedEnvironment,
+		CreatedAt:           now,
+		UpdatedAt:           now,
 	}
 
 	for i, col := range sourceWorkspace.Collections {
@@ -687,10 +690,11 @@ func CreateWorkspace(name string) (*Workspace, error) {
 
 	now := time.Now()
 	newWorkspace := &Workspace{
-		Name:        name,
-		Description: "",
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		Name:                name,
+		Description:         "",
+		CreatedAt:           now,
+		UpdatedAt:           now,
+		SelectedEnvironment: "",
 		Collections: []Collection{
 			{
 				Name: "Example Requests",

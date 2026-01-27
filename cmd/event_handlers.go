@@ -248,33 +248,48 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 
 	switchWorkspace := func(text string) {
-		if text == lastWorkspace {
+		if text == lastWorkspace || text == "" {
 			return
 		}
+
+		// 1. Save CURRENT workspace (Project A) before switching
+		if ui.WorkspaceData != nil {
+			// Ensure the current environment selection is captured
+			currentIndex, _ := ui.EnvDropdown.GetCurrentOption()
+			if currentIndex == 0 {
+				ui.WorkspaceData.SelectedEnvironment = ""
+			} else if currentIndex > 0 && currentIndex <= len(*ui.EnvironmentsData) {
+				ui.WorkspaceData.SelectedEnvironment = (*ui.EnvironmentsData)[currentIndex-1].Name
+			}
+			workspace.SaveWorkspace(ui.WorkspaceData)
+		}
+
 		lastWorkspace = text
 
+		// 2. Perform the switch in the manager
 		if err := workspace.SwitchWorkspace(text); err != nil {
-			// ui.FooterRight.SetText(fmt.Sprintf("Error switching workspace: %v", err))
 			return
 		}
 
+		// 3. Load the NEW workspace
 		newWorkspace, err := workspace.LoadWorkspace()
 		if err != nil {
-			// ui.FooterRight.SetText(fmt.Sprintf("Error switching workspace: %v", err))
 			return
 		}
 
+		// 4. Update UI orchestrator state
 		ui.WorkspaceData = newWorkspace
 		ui.EnvironmentsData = &newWorkspace.Environments
 		ui.DataManager = NewDataManager(newWorkspace)
 
-		// Update environment dropdown with new workspace's environments
+		// 5. Update UI components
+		ui.ProgrammaticallyUpdatingEnv = true
 		updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
 
-		// Set selected environment based on workspace
+		// Restore the last used environment
 		selectedEnv := newWorkspace.SelectedEnvironment
 		if selectedEnv == "" {
-			ui.EnvDropdown.SetCurrentOption(0) // Default to "Base Environment"
+			ui.EnvDropdown.SetCurrentOption(0) // "Base Environment"
 		} else {
 			found := false
 			for i, env := range *ui.EnvironmentsData {
@@ -285,9 +300,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				}
 			}
 			if !found {
-				ui.EnvDropdown.SetCurrentOption(0) // Default to "Base Environment"
+				ui.EnvDropdown.SetCurrentOption(0)
 			}
 		}
+		ui.ProgrammaticallyUpdatingEnv = false
 
 		refreshCollectionsTree(ui)
 
@@ -860,29 +876,26 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 	// Save environment selection function
 	saveEnvironmentSelection := func(index int) {
+		if ui.ProgrammaticallyUpdatingEnv || index < 0 {
+			return
+		}
 		var selectedEnvName string
 		if index == 0 {
-			selectedEnvName = "Base"
+			selectedEnvName = "" // Empty represents "Base Environment" (index 0)
 		} else if index > 0 && index <= len(*ui.EnvironmentsData) {
 			selectedEnvName = (*ui.EnvironmentsData)[index-1].Name
 		}
 
-		// Save selected environment to workspace
+		// Update in-memory state
 		ui.WorkspaceData.SelectedEnvironment = selectedEnvName
+
+		// Save selected environment to workspace file immediately
 		if err := workspace.SaveWorkspace(ui.WorkspaceData); err != nil {
 			// Handle error silently for now
 		}
 	}
 
 	ui.EnvDropdown.SetSelectedFunc(func(text string, index int) {
-		saveEnvironmentSelection(index)
-	})
-
-	ui.EnvDropdown.SetDoneFunc(func(key tcell.Key) {
-		if key != tcell.KeyEnter {
-			return
-		}
-		index, _ := ui.EnvDropdown.GetCurrentOption()
 		saveEnvironmentSelection(index)
 	})
 
