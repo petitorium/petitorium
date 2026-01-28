@@ -1696,19 +1696,7 @@ type URLVariableInput struct {
 	colors         *ColorManager
 	variableRegex  *regexp.Regexp
 	app            *tview.Application
-}
-
-// HeaderValueInput is a dual-mode input component for header values with environment variables
-type HeaderValueInput struct {
-	*tview.Pages
-	viewMode      *tview.TextView
-	editMode      *tview.InputField
-	currentMode   string // "view" or "edit"
-	rawText       string // The actual {{variable}} text
-	onChanged     func(string)
-	onModeChange  func()
-	colors        *ColorManager
-	variableRegex *regexp.Regexp
+	lastWidth      int
 }
 
 // NewURLVariableInput creates a new dual-mode URL input component
@@ -1827,7 +1815,20 @@ func (u *URLVariableInput) Focus(delegate func(p tview.Primitive)) {
 	u.Pages.Focus(delegate)
 }
 
+// Draw overrides the default Draw method to handle truncation in view mode
+func (u *URLVariableInput) Draw(screen tcell.Screen) {
+	if u.currentMode == "view" {
+		_, _, width, _ := u.viewMode.GetInnerRect()
+		if width > 0 && width != u.lastWidth {
+			u.lastWidth = width
+			u.updateViewModeWithWidth(width)
+		}
+	}
+	u.Pages.Draw(screen)
+}
+
 // HasFocus returns whether the component or its children have focus
+
 func (u *URLVariableInput) HasFocus() bool {
 	if u.currentMode == "edit" {
 		return u.editMode.HasFocus()
@@ -1847,6 +1848,12 @@ func (u *URLVariableInput) MouseHandler() func(action tview.MouseAction, event *
 
 // updateViewMode renders the text with variables highlighted in view mode
 func (u *URLVariableInput) updateViewMode() {
+	u.lastWidth = 0
+	u.updateViewModeWithWidth(0)
+}
+
+// updateViewModeWithWidth renders the text with variables highlighted and optional truncation
+func (u *URLVariableInput) updateViewModeWithWidth(width int) {
 	if u.rawText == "" {
 		u.viewMode.SetText("")
 		return
@@ -1855,7 +1862,15 @@ func (u *URLVariableInput) updateViewMode() {
 	// Find all variable positions
 	matches := u.variableRegex.FindAllStringIndex(u.rawText, -1)
 	if len(matches) == 0 {
-		u.viewMode.SetText(u.rawText)
+		text := u.rawText
+		if width > 0 {
+			// URLVariableInput has padding (1 left, 1 right)
+			availableWidth := width - 2
+			if availableWidth > 0 {
+				text = TruncateTaggedString(text, availableWidth)
+			}
+		}
+		u.viewMode.SetText(text)
 		return
 	}
 
@@ -1889,7 +1904,16 @@ func (u *URLVariableInput) updateViewMode() {
 	// Add remaining text after last variable
 	result.WriteString(u.rawText[lastEnd:])
 
-	u.viewMode.SetText(result.String())
+	renderedText := result.String()
+	if width > 0 {
+		// URLVariableInput has padding (1 left, 1 right)
+		availableWidth := width - 2
+		if availableWidth > 0 {
+			renderedText = TruncateTaggedString(renderedText, availableWidth)
+		}
+	}
+
+	u.viewMode.SetText(renderedText)
 }
 
 // SetText sets the raw text and updates both modes
@@ -1918,6 +1942,20 @@ func (u *URLVariableInput) SetChangedFunc(callback func(string)) {
 // SetDoneFunc sets the callback for when Enter is pressed
 func (u *URLVariableInput) SetDoneFunc(callback func()) {
 	u.onEnterPressed = callback
+}
+
+// HeaderValueInput is a dual-mode input component for header values with environment variables
+type HeaderValueInput struct {
+	*tview.Pages
+	viewMode      *tview.TextView
+	editMode      *tview.InputField
+	currentMode   string // "view" or "edit"
+	rawText       string // The actual {{variable}} text
+	onChanged     func(string)
+	onModeChange  func()
+	colors        *ColorManager
+	variableRegex *regexp.Regexp
+	lastWidth     int
 }
 
 // NewHeaderValueInput creates a new dual-mode header value input component
@@ -2033,7 +2071,20 @@ func (h *HeaderValueInput) Focus(delegate func(p tview.Primitive)) {
 	h.Pages.Focus(delegate)
 }
 
+// Draw overrides the default Draw method to handle truncation in view mode
+func (h *HeaderValueInput) Draw(screen tcell.Screen) {
+	if h.currentMode == "view" {
+		_, _, width, _ := h.viewMode.GetInnerRect()
+		if width > 0 && width != h.lastWidth {
+			h.lastWidth = width
+			h.updateViewModeWithWidth(width)
+		}
+	}
+	h.Pages.Draw(screen)
+}
+
 // HasFocus returns whether the component or its children have focus
+
 func (h *HeaderValueInput) HasFocus() bool {
 	if h.currentMode == "edit" {
 		return h.editMode.HasFocus()
@@ -2071,6 +2122,12 @@ func (h *HeaderValueInput) MouseHandler() func(action tview.MouseAction, event *
 
 // updateViewMode renders the text with variables highlighted in view mode
 func (h *HeaderValueInput) updateViewMode() {
+	h.lastWidth = 0
+	h.updateViewModeWithWidth(0)
+}
+
+// updateViewModeWithWidth renders the text with variables highlighted and optional truncation
+func (h *HeaderValueInput) updateViewModeWithWidth(width int) {
 	if h.rawText == "" {
 		h.viewMode.SetText("")
 		return
@@ -2079,7 +2136,11 @@ func (h *HeaderValueInput) updateViewMode() {
 	// Find all variable positions
 	matches := h.variableRegex.FindAllStringIndex(h.rawText, -1)
 	if len(matches) == 0 {
-		h.viewMode.SetText(h.rawText)
+		text := h.rawText
+		if width > 0 {
+			text = TruncateTaggedString(text, width)
+		}
+		h.viewMode.SetText(text)
 		return
 	}
 
@@ -2113,7 +2174,12 @@ func (h *HeaderValueInput) updateViewMode() {
 	// Add remaining text after last variable
 	result.WriteString(h.rawText[lastEnd:])
 
-	h.viewMode.SetText(result.String())
+	renderedText := result.String()
+	if width > 0 {
+		renderedText = TruncateTaggedString(renderedText, width)
+	}
+
+	h.viewMode.SetText(renderedText)
 }
 
 // SetText sets the raw text and updates both modes
@@ -2167,6 +2233,7 @@ type HeaderKeyInput struct {
 	onModeChange  func()
 	colors        *ColorManager
 	variableRegex *regexp.Regexp
+	lastWidth     int
 }
 
 // NewHeaderKeyInput creates a new dual-mode header key input component
@@ -2282,7 +2349,20 @@ func (h *HeaderKeyInput) Focus(delegate func(p tview.Primitive)) {
 	h.Pages.Focus(delegate)
 }
 
+// Draw overrides the default Draw method to handle truncation in view mode
+func (h *HeaderKeyInput) Draw(screen tcell.Screen) {
+	if h.currentMode == "view" {
+		_, _, width, _ := h.viewMode.GetInnerRect()
+		if width > 0 && width != h.lastWidth {
+			h.lastWidth = width
+			h.updateViewModeWithWidth(width)
+		}
+	}
+	h.Pages.Draw(screen)
+}
+
 // HasFocus returns whether the component or its children have focus
+
 func (h *HeaderKeyInput) HasFocus() bool {
 	if h.currentMode == "edit" {
 		return h.editMode.HasFocus()
@@ -2320,6 +2400,12 @@ func (h *HeaderKeyInput) MouseHandler() func(action tview.MouseAction, event *tc
 
 // updateViewMode renders the text with variables highlighted in view mode
 func (h *HeaderKeyInput) updateViewMode() {
+	h.lastWidth = 0
+	h.updateViewModeWithWidth(0)
+}
+
+// updateViewModeWithWidth renders the text with variables highlighted and optional truncation
+func (h *HeaderKeyInput) updateViewModeWithWidth(width int) {
 	if h.rawText == "" {
 		h.viewMode.SetText("")
 		return
@@ -2328,7 +2414,11 @@ func (h *HeaderKeyInput) updateViewMode() {
 	// Find all variable positions
 	matches := h.variableRegex.FindAllStringIndex(h.rawText, -1)
 	if len(matches) == 0 {
-		h.viewMode.SetText(h.rawText)
+		text := h.rawText
+		if width > 0 {
+			text = TruncateTaggedString(text, width)
+		}
+		h.viewMode.SetText(text)
 		return
 	}
 
@@ -2362,7 +2452,12 @@ func (h *HeaderKeyInput) updateViewMode() {
 	// Add remaining text after last variable
 	result.WriteString(h.rawText[lastEnd:])
 
-	h.viewMode.SetText(result.String())
+	renderedText := result.String()
+	if width > 0 {
+		renderedText = TruncateTaggedString(renderedText, width)
+	}
+
+	h.viewMode.SetText(renderedText)
 }
 
 // SetText sets the text content

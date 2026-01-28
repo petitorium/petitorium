@@ -735,3 +735,91 @@ func IsFocusOnHeaderInputField(currentFocusedElement tview.Primitive, headerRows
 	}
 	return false
 }
+
+// StripTags removes tview color tags from a string
+func StripTags(text string) string {
+	var result strings.Builder
+	runes := []rune(text)
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '[' {
+			if i+1 < len(runes) && runes[i+1] == '[' {
+				result.WriteRune('[')
+				i++
+				continue
+			}
+			// Skip until ]
+			for i < len(runes) && runes[i] != ']' {
+				i++
+			}
+			continue
+		}
+		result.WriteRune(runes[i])
+	}
+	return result.String()
+}
+
+// TruncateTaggedString truncates a string with color tags while preserving tags and accounting for their zero-width
+func TruncateTaggedString(text string, maxWidth int) string {
+	if maxWidth <= 0 {
+		return ""
+	}
+
+	stripped := StripTags(text)
+	if len(stripped) <= maxWidth {
+		return text
+	}
+
+	// We need space for ellipsis
+	if maxWidth <= 3 {
+		if len(stripped) > maxWidth {
+			return stripped[:maxWidth]
+		}
+		return stripped
+	}
+
+	var result strings.Builder
+	visibleCount := 0
+	inTag := false
+	runes := []rune(text)
+
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+
+		if r == '[' {
+			// Check for escaped [[
+			if i+1 < len(runes) && runes[i+1] == '[' {
+				if visibleCount < maxWidth-3 {
+					result.WriteRune('[')
+					result.WriteRune('[')
+					visibleCount++
+				}
+				i++
+				continue
+			}
+			inTag = true
+			result.WriteRune(r)
+			continue
+		}
+
+		if inTag {
+			result.WriteRune(r)
+			if r == ']' {
+				inTag = false
+			}
+			continue
+		}
+
+		// Visible character
+		if visibleCount < maxWidth-3 {
+			result.WriteRune(r)
+			visibleCount++
+		} else {
+			result.WriteString("...")
+			// Close any potential color tags
+			result.WriteString("[-:-:-]")
+			break
+		}
+	}
+
+	return result.String()
+}
