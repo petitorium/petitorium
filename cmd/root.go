@@ -16,7 +16,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:     "petitorium",
-	Short:   "A powerful TUI for API interaction and testing.",
+	Short:   "A powerful Terminal API Testing Client.",
 	Version: Version,
 	Run:     runTUI,
 }
