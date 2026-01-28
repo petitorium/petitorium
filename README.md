@@ -4,6 +4,8 @@
 
 # Petitorium
 
+[**petitorium.dev**](https://petitorium.dev) — _Detailed documentation and guides_
+
 A powerful Terminal API Testing Client
 
 ## Keybindings
@@ -138,3 +140,7 @@ Configuration files are stored in `~/.config/petitorium/`:
 - `config.yaml` - Application settings and themes
 - `collections.yaml` - API collections and requests
 - `expansion_state.yaml` - Collection expansion states
+
+## Documentation
+
+For detailed guides, configuration options, and advanced usage, please visit [petitorium.dev](https://petitorium.dev).
