@@ -8,6 +8,8 @@
 
 A powerful Terminal API Testing Client
 
+![Petitorium Screenshot](petitorium_screenshot.png)
+
 ## Keybindings
 
 ### Global Navigation
