@@ -82,6 +82,7 @@ func createEnvironmentListPanel(
 	buttonSelectedColor tcell.Color,
 	environments []workspace.Environment,
 	onEnvironmentSelected func(*workspace.Environment),
+	onEnvironmentChosen func(string),
 	onCreateNew func(),
 	onDelete func(*workspace.Environment),
 	onRename func(*workspace.Environment),
@@ -108,7 +109,7 @@ func createEnvironmentListPanel(
 	list.AddItem("➕ Create New Environment", "", 0, onCreateNew)
 
 	// Add all existing environments
-	for i, env := range environments {
+	for _, env := range environments {
 		env := env // Capture loop variable
 
 		var itemText string
@@ -119,7 +120,7 @@ func createEnvironmentListPanel(
 		}
 
 		list.AddItem(itemText, "", 0, func() {
-			onEnvironmentSelected(&environments[i])
+			onEnvironmentChosen(env.Name)
 		})
 	}
 
