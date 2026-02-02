@@ -153,8 +153,7 @@ func NewKeyBindingManager() *KeyBindingManager {
 		// 	Context:     "global",
 		// },
 		{
-			Rune:        'w',
-			Modifiers:   tcell.ModCtrl,
+			Key:         tcell.KeyCtrlW,
 			Action:      showWorkspaceMenu,
 			Description: "Show workspace menu",
 			Context:     "global",
@@ -379,36 +378,31 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "body_edit",
 		},
 		{
-			Rune:        'h',
-			Modifiers:   tcell.ModCtrl,
+			Key:         tcell.KeyCtrlH,
 			Action:      moveCursorLeft,
 			Description: "Move cursor left",
 			Context:     "body_edit",
 		},
 		{
-			Rune:        'j',
-			Modifiers:   tcell.ModCtrl,
+			Key:         tcell.KeyCtrlJ,
 			Action:      moveCursorDown,
 			Description: "Move cursor down",
 			Context:     "body_edit",
 		},
 		{
-			Rune:        'k',
-			Modifiers:   tcell.ModCtrl,
+			Key:         tcell.KeyCtrlK,
 			Action:      moveCursorUp,
 			Description: "Move cursor up",
 			Context:     "body_edit",
 		},
 		{
-			Rune:        'l',
-			Modifiers:   tcell.ModCtrl,
+			Key:         tcell.KeyCtrlL,
 			Action:      moveCursorRight,
 			Description: "Move cursor right",
 			Context:     "body_edit",
 		},
 		{
-			Rune:        's',
-			Modifiers:   tcell.ModCtrl,
+			Key:         tcell.KeyCtrlS,
 			Action:      saveBodyContent,
 			Description: "Save body content",
 			Context:     "body_edit",
@@ -451,6 +445,11 @@ func (kbm *KeyBindingManager) HandleKeyEvent(ui *UIOrchestrator, event *tcell.Ev
 // Matches checks if a keybinding matches the given event
 func (kb *KeyBinding) Matches(event *tcell.EventKey) bool {
 	if kb.Key != 0 && event.Key() == kb.Key {
+		// For special keys, we allow ModCtrl to be either present or absent if not explicitly specified
+		// because some terminals include it for KeyCtrl* keys and others don't.
+		if kb.Modifiers == 0 && event.Modifiers() == tcell.ModCtrl {
+			return true
+		}
 		return event.Modifiers() == kb.Modifiers
 	}
 	if kb.Rune != 0 && event.Rune() == kb.Rune {
@@ -1396,7 +1395,27 @@ func openResponseInFx(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 }
 
 func showWorkspaceMenu(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// Show workspace configuration modal
+	// 1. Move navigation coordinates to Workspace Panel
+	previousContainer := ui.NavCurrentContainer
+	ui.NavCurrentContainer = 0
+	ui.NavCurrentChild = 0 // Focus selector by default
+
+	// 2. Update borders
+	if previousContainer != ui.NavCurrentContainer {
+		if previousContainer < len(ui.MainCycle.panels) {
+			ui.SetInactiveBorder(ui.MainCycle.panels[previousContainer])
+		}
+		if ui.NavCurrentContainer < len(ui.MainCycle.panels) {
+			ui.SetActiveBorder(ui.MainCycle.panels[ui.NavCurrentContainer])
+		}
+	}
+
+	// 3. Update state
+	syncMainCycleWithExperimental(ui)
+	// We don't call setFocusForCoordinates here because we are about to show a modal
+	// that will take its own focus. But we want the background to look correct.
+
+	// 4. Show workspace configuration modal
 	showWorkspaceModal(ui)
 	return nil
 }

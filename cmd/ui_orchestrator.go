@@ -131,6 +131,7 @@ type UIOrchestrator struct {
 	ProgrammaticallyUpdatingURL         bool
 	ProgrammaticallyUpdatingContentType bool
 	ProgrammaticallyUpdatingEnv         bool
+	ProgrammaticallyUpdatingWorkspace   bool
 	RequestInProgress                   bool
 	TabPages                            *tview.Pages
 	TabHeader                           *tview.Flex
@@ -170,6 +171,7 @@ type UIOrchestrator struct {
 	SetInactiveBorder                   func(element tview.Primitive)
 	SyncBodyContent                     func(content string)
 	SwitchBodyMode                      func()
+	SwitchWorkspace                     func(string)
 	RefreshMultipartFieldsUI            func()
 	UpdateFooter                        func()
 	CopyResponse                        func()

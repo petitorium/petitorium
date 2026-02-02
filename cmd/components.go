@@ -96,6 +96,14 @@ func createEnvironmentListPanel(
 	list.SetSelectedTextColor(foregroundColor)
 	list.SetBorder(true).SetTitle(" Environments ")
 
+	// Add focus/blur handlers to highlight border
+	list.SetFocusFunc(func() {
+		list.SetBorderColor(borderFocusColor)
+	})
+	list.SetBlurFunc(func() {
+		list.SetBorderColor(borderColor)
+	})
+
 	// Add "Create New Environment" option at the top
 	list.AddItem("➕ Create New Environment", "", 0, onCreateNew)
 
@@ -183,6 +191,7 @@ func createWorkspaceListPanel(
 	workspaces []workspace.WorkspaceMetadata,
 	currentWorkspace string,
 	onWorkspaceSelected func(*workspace.WorkspaceMetadata),
+	onWorkspaceChosen func(string),
 	onCreateNew func(),
 	onDelete func(*workspace.WorkspaceMetadata),
 	onRename func(*workspace.WorkspaceMetadata),
@@ -197,11 +206,19 @@ func createWorkspaceListPanel(
 	list.SetSelectedTextColor(foregroundColor)
 	list.SetBorder(true).SetTitle(" Workspaces ")
 
+	// Add focus/blur handlers to highlight border
+	list.SetFocusFunc(func() {
+		list.SetBorderColor(borderFocusColor)
+	})
+	list.SetBlurFunc(func() {
+		list.SetBorderColor(borderColor)
+	})
+
 	// Add "Create New Workspace" option at the top
 	list.AddItem("➕ Create New Workspace", "", 0, onCreateNew)
 
 	// Add all existing workspaces
-	for i, ws := range workspaces {
+	for _, ws := range workspaces {
 		ws := ws // Capture loop variable
 
 		var itemText string
@@ -212,7 +229,7 @@ func createWorkspaceListPanel(
 		}
 
 		list.AddItem(itemText, "", 0, func() {
-			onWorkspaceSelected(&workspaces[i])
+			onWorkspaceChosen(ws.Name)
 		})
 	}
 

@@ -365,9 +365,8 @@ func showWorkspaceModal(
 	}
 
 	// Create workspace info display (right panel)
-	workspaceInfo := createTextArea(" Workspace Information ", ui.Colors.Background, ui.Colors.Border, ui.Colors.Title, ui.Colors.Foreground)
-	workspaceInfo.SetText("Select a workspace to view its information", false)
-	workspaceInfo.SetBorder(true)
+	workspaceInfo := createPanel(" Workspace Information ", ui.Colors, nil)
+	workspaceInfo.SetText("Select a workspace to view its information")
 
 	// Create left panel (workspace list)
 	var leftPanel *tview.List
@@ -378,7 +377,7 @@ func showWorkspaceModal(
 			// Load full workspace data to show information
 			fullWorkspace, err := workspace.LoadWorkspaceByName(ws.Name)
 			if err != nil {
-				workspaceInfo.SetText(fmt.Sprintf("Error loading workspace: %v", err), false)
+				workspaceInfo.SetText(fmt.Sprintf("Error loading workspace: %v", err))
 				return
 			}
 
@@ -390,9 +389,9 @@ func showWorkspaceModal(
 				len(fullWorkspace.Environments),
 				fullWorkspace.CreatedAt.Format("2006-01-02 15:04:05"),
 				fullWorkspace.UpdatedAt.Format("2006-01-02 15:04:05"))
-			workspaceInfo.SetText(info, false)
+			workspaceInfo.SetText(info)
 		} else {
-			workspaceInfo.SetText("Select a workspace to view its information", false)
+			workspaceInfo.SetText("Select a workspace to view its information")
 		}
 	}
 
@@ -475,6 +474,11 @@ func showWorkspaceModal(
 		manager.Workspaces,
 		manager.CurrentWorkspace,
 		onWorkspaceSelected,
+		func(name string) {
+			ui.SwitchWorkspace(name)
+			ui.Pages.RemovePage("workspaceModal")
+			ui.App.SetFocus(ui.WorkspaceConfigButton)
+		},
 		onCreateNew,
 		onDelete,
 		onRename,
@@ -490,14 +494,6 @@ func showWorkspaceModal(
 			0, 1, false)
 
 	content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			if ui.App.GetFocus() == leftPanel {
-				ui.App.SetFocus(workspaceInfo)
-			} else {
-				ui.App.SetFocus(leftPanel)
-			}
-			return nil
-		}
 		if event.Key() == tcell.KeyEsc {
 			ui.Pages.RemovePage("workspaceModal")
 			ui.App.SetFocus(ui.WorkspaceConfigButton)
