@@ -82,7 +82,7 @@ A powerful Terminal API Testing Client
 ## Installation
 
 ```bash
-go install github.com/petitorium/petitorium@latest
+curl -fsSL https://petitorium.dev/install.sh | bash
 ```
 
 ## Usage
