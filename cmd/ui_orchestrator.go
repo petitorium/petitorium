@@ -912,5 +912,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Set initial tab to Body (0) to show content type dropdown
 	tabIndexSetter(0)
 
+	CheckLatestVersion(uiOrchestrator.App, uiOrchestrator.FooterRight)
+
 	return uiOrchestrator, nil
 }
