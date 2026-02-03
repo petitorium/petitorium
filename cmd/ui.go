@@ -2653,8 +2653,7 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	// File picker button
 	filePickerButton := createThemedButton("Browse", colors)
 	filePickerButton.SetSelectedFunc(func() {
-		// Open file picker modal
-		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
+		openFilePickerModal(app, pages, valueInput, colors, saveCallback, filePickerButton)
 	})
 
 	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
@@ -2813,8 +2812,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	// File picker button
 	filePickerButton := createThemedButton("Browse", colors)
 	filePickerButton.SetSelectedFunc(func() {
-		// Open file picker modal
-		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
+		openFilePickerModal(app, pages, valueInput, colors, saveCallback, filePickerButton)
 	})
 
 	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
@@ -2991,7 +2989,7 @@ func updateMultipartFieldsFromBody(body string, ui *UIOrchestrator) {
 }
 
 // openFilePickerModal opens a modal for selecting a file
-func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput *tview.InputField, colors *ColorManager, callback func()) {
+func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput *tview.InputField, colors *ColorManager, callback func(), triggerPrimitive tview.Primitive) {
 	currentPath := valueInput.GetText()
 
 	// Callback when a file is selected
@@ -3001,6 +2999,9 @@ func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput 
 			callback()
 		}
 		pages.RemovePage("filePickerModal")
+		if triggerPrimitive != nil {
+			app.SetFocus(triggerPrimitive)
+		}
 	}
 
 	fb, err := createFileBrowser(currentPath, colors, onSelect)
@@ -3023,6 +3024,9 @@ func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput 
 
 	btnBar.AddButton("Cancel", func() {
 		pages.RemovePage("filePickerModal")
+		if triggerPrimitive != nil {
+			app.SetFocus(triggerPrimitive)
+		}
 	})
 
 	flex.AddItem(btnBar, 3, 0, false)
@@ -3039,6 +3043,9 @@ func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput 
 		}
 		if event.Key() == tcell.KeyEscape {
 			pages.RemovePage("filePickerModal")
+			if triggerPrimitive != nil {
+				app.SetFocus(triggerPrimitive)
+			}
 			return nil
 		}
 		return event
