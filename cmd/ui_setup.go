@@ -74,7 +74,7 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 
 	footerFlex := tview.NewFlex().
 		AddItem(footerLeft, 0, 1, false).
-		AddItem(footerRight, 30, 0, false)
+		AddItem(footerRight, 40, 0, false)
 
 	footerFlex.SetBorder(true).
 		SetBorderColor(colors.Border).
