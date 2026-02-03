@@ -80,7 +80,9 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 						if node.IsExpanded() {
 							node.SetExpanded(false)
 							node.ClearChildren()
-							node.AddChild(tview.NewTreeNode("")) // Restore dummy
+							dummy := tview.NewTreeNode("").
+								SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
+							node.AddChild(dummy) // Restore dummy
 							// Update icon to closed folder
 							text := node.GetText()
 							node.SetText(strings.Replace(text, "📂", "📁", 1))
@@ -116,7 +118,9 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 				if node.IsExpanded() {
 					node.SetExpanded(false)
 					node.ClearChildren()
-					node.AddChild(tview.NewTreeNode(""))
+					dummy := tview.NewTreeNode("").
+						SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
+					node.AddChild(dummy)
 					text := node.GetText()
 					node.SetText(strings.Replace(text, "📂", "📁", 1))
 				} else {
@@ -221,7 +225,8 @@ func (fb *FileBrowser) setRoot(path string) {
 		SetColor(fb.colors.Title).
 		SetSelectable(true).
 		SetExpanded(true).
-		SetReference(path)
+		SetReference(path).
+		SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
 
 	fb.tree.SetRoot(fb.root)
 	fb.tree.SetCurrentNode(fb.root)
@@ -234,7 +239,9 @@ func (fb *FileBrowser) setRoot(path string) {
 		parentNode := tview.NewTreeNode("..").
 			SetReference(parentPath).
 			SetSelectable(true).
-			SetColor(fb.colors.Foreground)
+			SetColor(fb.colors.Foreground).
+			SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background)).
+			SetSelectedTextStyle(tcell.StyleDefault.Background(fb.colors.TreeSelection).Foreground(fb.colors.Foreground))
 
 		// We want ".." to be at the top. Since addNodes just finished,
 		// we can prepend it by getting children, clearing, and re-adding.
@@ -280,11 +287,14 @@ func (fb *FileBrowser) addNodes(target *tview.TreeNode, path string) {
 
 		node := tview.NewTreeNode(displayName).
 			SetReference(filepath.Join(path, file.Name())).
-			SetSelectable(true)
+			SetSelectable(true).
+			SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
 
 		if file.IsDir() {
-			node.SetColor(fb.colors.Foreground)  // Directories
-			node.AddChild(tview.NewTreeNode("")) // Add dummy child to make it expandable
+			node.SetColor(fb.colors.Foreground) // Directories
+			dummy := tview.NewTreeNode("").
+				SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
+			node.AddChild(dummy) // Add dummy child to make it expandable
 			node.SetExpanded(false)
 		} else {
 			node.SetColor(fb.colors.Foreground) // Files
