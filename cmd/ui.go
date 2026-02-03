@@ -2653,8 +2653,7 @@ func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshU
 	// File picker button
 	filePickerButton := createThemedButton("Browse", colors)
 	filePickerButton.SetSelectedFunc(func() {
-		// Open file picker modal
-		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
+		openFilePickerModal(app, pages, valueInput, colors, saveCallback, filePickerButton)
 	})
 
 	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
@@ -2813,8 +2812,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	// File picker button
 	filePickerButton := createThemedButton("Browse", colors)
 	filePickerButton.SetSelectedFunc(func() {
-		// Open file picker modal
-		openFilePickerModal(app, pages, valueInput, colors, saveCallback)
+		openFilePickerModal(app, pages, valueInput, colors, saveCallback, filePickerButton)
 	})
 
 	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
@@ -2991,47 +2989,71 @@ func updateMultipartFieldsFromBody(body string, ui *UIOrchestrator) {
 }
 
 // openFilePickerModal opens a modal for selecting a file
-func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput *tview.InputField, colors *ColorManager, callback func()) {
-	form := tview.NewForm()
-	form.SetBackgroundColor(colors.Background)
-	form.SetBorderColor(colors.BorderFocus)
-	form.SetTitleColor(colors.Title)
-	form.SetFieldBackgroundColor(colors.Background)
-	form.SetFieldTextColor(colors.Foreground)
-	form.SetLabelColor(colors.Foreground)
-	form.SetButtonBackgroundColor(colors.Background)
-	form.SetButtonTextColor(colors.Foreground)
+func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput *tview.InputField, colors *ColorManager, callback func(), triggerPrimitive tview.Primitive) {
+	currentPath := valueInput.GetText()
 
-	filePathInput := tview.NewInputField().
-		SetLabel("File Path: ").
-		SetText(valueInput.GetText()).
-		SetFieldWidth(50)
-	form.AddFormItem(filePathInput)
-
-	form.AddButton("Select", func() {
-		path := filePathInput.GetText()
-		if path != "" {
-			// Basic validation - should be absolute path
-			if !strings.HasPrefix(path, "/") {
-				// For now, just show a warning but allow relative paths
-				// In a real implementation, we'd validate this more strictly
-			}
-			valueInput.SetText(path)
-			if callback != nil {
-				callback()
-			}
+	// Callback when a file is selected
+	onSelect := func(path string) {
+		valueInput.SetText(path)
+		if callback != nil {
+			callback()
 		}
 		pages.RemovePage("filePickerModal")
-	})
+		if triggerPrimitive != nil {
+			app.SetFocus(triggerPrimitive)
+		}
+	}
 
-	form.AddButton("Cancel", func() {
+	fb, err := createFileBrowser(currentPath, colors, onSelect)
+	if err != nil {
+		// Fallback if creation fails (e.g. permission error on WD), though createFileBrowser tries to handle it.
+		// We could show an error modal here.
+		return
+	}
+
+	// Container for the browser and buttons
+	flex := tview.NewFlex().SetDirection(tview.FlexRow)
+	flex.AddItem(fb.tree, 0, 1, true)
+
+	// Button bar
+	btnBar := tview.NewForm()
+	btnBar.SetBackgroundColor(colors.Background)
+	btnBar.SetButtonBackgroundColor(colors.ButtonBackground)
+	btnBar.SetButtonTextColor(colors.Foreground)
+	btnBar.SetButtonsAlign(tview.AlignCenter)
+
+	btnBar.AddButton("Cancel", func() {
 		pages.RemovePage("filePickerModal")
+		if triggerPrimitive != nil {
+			app.SetFocus(triggerPrimitive)
+		}
 	})
 
-	form.SetBorder(true).SetTitle(" Select File ")
-	modal := createModal(form, 60, 10, tcell.ColorDefault)
+	flex.AddItem(btnBar, 3, 0, false)
+
+	// Handle focus between tree and buttons
+	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			if app.GetFocus() == fb.tree {
+				app.SetFocus(btnBar)
+			} else {
+				app.SetFocus(fb.tree)
+			}
+			return nil
+		}
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("filePickerModal")
+			if triggerPrimitive != nil {
+				app.SetFocus(triggerPrimitive)
+			}
+			return nil
+		}
+		return event
+	})
+
+	modal := createModal(flex, 70, 25, colors.Background)
 	pages.AddPage("filePickerModal", modal, true, true)
-	app.SetFocus(form)
+	app.SetFocus(fb.tree)
 }
 
 // createDeleteAllMultipartFieldsConfirm creates a confirmation dialog for deleting all multipart fields
