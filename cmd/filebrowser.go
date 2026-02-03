@@ -9,6 +9,8 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+
+	"github.com/petitorium/petitorium/config"
 )
 
 // FileBrowser manages the file selection interface
@@ -99,14 +101,14 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 							node.AddChild(dummy) // Restore dummy
 							// Update icon to closed folder
 							text := node.GetText()
-							node.SetText(strings.Replace(text, "📂", "📁", 1))
+							node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderExpandedIcon, config.C.UI.FileBrowserFolderIcon, 1))
 						} else {
 							node.SetExpanded(true)
 							node.ClearChildren() // Remove dummy
 							fb.addNodes(node, path)
 							// Update icon to open folder
 							text := node.GetText()
-							node.SetText(strings.Replace(text, "📁", "📂", 1))
+							node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderIcon, config.C.UI.FileBrowserFolderExpandedIcon, 1))
 						}
 						return nil
 					}
@@ -136,7 +138,7 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 						SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
 					node.AddChild(dummy)
 					text := node.GetText()
-					node.SetText(strings.Replace(text, "📂", "📁", 1))
+					node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderExpandedIcon, config.C.UI.FileBrowserFolderIcon, 1))
 				} else {
 					parent := fb.findParentNode(fb.tree.GetRoot(), node)
 					if parent != nil {
@@ -294,9 +296,9 @@ func (fb *FileBrowser) addNodes(target *tview.TreeNode, path string) {
 
 		displayName := file.Name()
 		if file.IsDir() {
-			displayName = "📁 " + displayName
+			displayName = config.C.UI.FileBrowserFolderIcon + " " + displayName
 		} else {
-			displayName = "📄 " + displayName
+			displayName = config.C.UI.FileBrowserFileIcon + " " + displayName
 		}
 
 		node := tview.NewTreeNode(displayName).

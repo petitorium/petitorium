@@ -53,16 +53,19 @@ type BorderConfig struct {
 }
 
 type UIConfig struct {
-	CollectionExpansion      string `mapstructure:"collectionExpansion"`      // "closed", "expanded", "remember"
-	CollectionIcon           string `mapstructure:"collectionIcon"`           // icon to display before closed collection names
-	CollectionExpandedIcon   string `mapstructure:"collectionExpandedIcon"`   // icon to display before expanded collection names
-	SelectedRequestIcon      string `mapstructure:"selectedRequestIcon"`      // icon to display before selected request names
-	SelectedRequestIconColor string `mapstructure:"selectedRequestIconColor"` // color for selected request icon
-	HeaderRemoveIcon         string `mapstructure:"headerRemoveIcon"`         // icon for removing headers
-	MultipartRemoveIcon      string `mapstructure:"multipartRemoveIcon"`      // icon for removing multipart fields
-	ConfigButtonIcon         string `mapstructure:"configButtonIcon"`         // icon for environment config button
-	DropdownIndicator        string `mapstructure:"dropdownIndicator"`        // indicator for dropdown
-	ButtonFlashDuration      int    `mapstructure:"buttonFlashDuration"`      // duration of button flash in milliseconds
+	CollectionExpansion           string `mapstructure:"collectionExpansion"`           // "closed", "expanded", "remember"
+	CollectionIcon                string `mapstructure:"collectionIcon"`                // icon to display before closed collection names
+	CollectionExpandedIcon        string `mapstructure:"collectionExpandedIcon"`        // icon to display before expanded collection names
+	SelectedRequestIcon           string `mapstructure:"selectedRequestIcon"`           // icon to display before selected request names
+	SelectedRequestIconColor      string `mapstructure:"selectedRequestIconColor"`      // color for selected request icon
+	HeaderRemoveIcon              string `mapstructure:"headerRemoveIcon"`              // icon for removing headers
+	MultipartRemoveIcon           string `mapstructure:"multipartRemoveIcon"`           // icon for removing multipart fields
+	ConfigButtonIcon              string `mapstructure:"configButtonIcon"`              // icon for environment config button
+	DropdownIndicator             string `mapstructure:"dropdownIndicator"`             // indicator for dropdown
+	ButtonFlashDuration           int    `mapstructure:"buttonFlashDuration"`           // duration of button flash in milliseconds
+	FileBrowserFolderIcon         string `mapstructure:"fileBrowserFolderIcon"`         // icon for folders in file browser
+	FileBrowserFolderExpandedIcon string `mapstructure:"fileBrowserFolderExpandedIcon"` // icon for expanded folders in file browser
+	FileBrowserFileIcon           string `mapstructure:"fileBrowserFileIcon"`           // icon for files in file browser
 }
 
 type MethodColorsConfig struct {
@@ -135,6 +138,9 @@ ui:
   configButtonIcon: "⚙"
   dropdownIndicator: "▼"
   buttonFlashDuration: 100
+  fileBrowserFolderIcon: "📁"
+  fileBrowserFolderExpandedIcon: "📂"
+  fileBrowserFileIcon: "📄"
 
 # Syntax highlighting theme (chroma themes)
 # Popular options: github-dark, dracula, monokai, solarized-dark, nord, one-dark, vim, github
