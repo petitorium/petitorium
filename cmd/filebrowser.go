@@ -36,10 +36,14 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 		return nil, err
 	}
 
-	// If startPath is a file, use its parent directory
+	// If startPath is a file, use its parent directory and keep track of the file to select
+	var targetPath string
 	info, err := os.Stat(startPath)
-	if err == nil && !info.IsDir() {
-		startPath = filepath.Dir(startPath)
+	if err == nil {
+		targetPath = startPath
+		if !info.IsDir() {
+			startPath = filepath.Dir(startPath)
+		}
 	}
 
 	fb := &FileBrowser{
@@ -57,6 +61,16 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 	fb.tree.SetGraphics(false)
 
 	fb.setRoot(startPath)
+
+	// Pre-select the target file or directory if it was provided
+	if targetPath != "" {
+		for _, child := range fb.root.GetChildren() {
+			if child.GetReference() == targetPath {
+				fb.tree.SetCurrentNode(child)
+				break
+			}
+		}
+	}
 
 	// Handle selection logic
 	fb.tree.SetSelectedFunc(fb.handleSelect)
