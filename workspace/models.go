@@ -2,8 +2,19 @@
 package workspace
 
 import (
+	"net/http"
 	"time"
 )
+
+var HTTPMethods = []string{
+	http.MethodGet,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodDelete,
+	http.MethodPatch,
+	http.MethodHead,
+	http.MethodOptions,
+}
 
 // HTTPResponse represents a stored HTTP response
 // This is a simplified version for storage purposes

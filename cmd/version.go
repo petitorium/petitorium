@@ -36,7 +36,7 @@ func CheckLatestVersion(app *tview.Application, footerRight *tview.TextView) {
 			Timeout: 5 * time.Second,
 		}
 
-		req, err := http.NewRequest("GET", VersionCheckURL, nil)
+		req, err := http.NewRequest(http.MethodGet, VersionCheckURL, nil)
 		if err != nil {
 			return
 		}

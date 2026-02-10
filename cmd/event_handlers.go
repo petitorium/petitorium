@@ -449,9 +449,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
-			methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
-			if index >= 0 && index < len(methods) {
-				newMethod := methods[index]
+			if index >= 0 && index < len(workspace.HTTPMethods) {
+				newMethod := workspace.HTTPMethods[index]
 				if newMethod != ui.CurrentRequest.Method {
 					ui.CurrentRequest.Method = newMethod
 

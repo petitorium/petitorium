@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -130,12 +131,12 @@ func createDefaultWorkspace() *Workspace {
 				Requests: []Request{
 					{
 						Name:   "Health Check",
-						Method: "GET",
+						Method: http.MethodGet,
 						URL:    "https://httpbin.org/status/200",
 					},
 					{
 						Name:   "Echo",
-						Method: "POST",
+						Method: http.MethodPost,
 						URL:    "https://httpbin.org/post",
 						Body:   `{"message": "Hello World"}`,
 					},
@@ -701,7 +702,7 @@ func CreateWorkspace(name string) (*Workspace, error) {
 				Requests: []Request{
 					{
 						Name:   "Health Check",
-						Method: "GET",
+						Method: http.MethodGet,
 						URL:    "https://httpbin.org/status/200",
 					},
 				},

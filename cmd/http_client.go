@@ -81,7 +81,7 @@ func SendRequest(method, url, body string, contentType string, headers map[strin
 	// Set default Content-Type for methods that typically have a body
 	if body != "" && req.Header.Get("Content-Type") == "" {
 		switch method {
-		case "POST", "PUT", "PATCH":
+		case http.MethodPost, http.MethodPut, http.MethodPatch:
 			// Use explicit content type if provided, otherwise auto-detect
 			if contentType != "" {
 				switch contentType {

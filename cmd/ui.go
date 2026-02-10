@@ -528,7 +528,7 @@ func createMethodURLBar(
 	// Create the components without borders
 	methodDropdown := createDropDown(
 		"",
-		[]string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
+		workspace.HTTPMethods,
 		colors,
 	)
 	methodDropdown.SetBorder(false)

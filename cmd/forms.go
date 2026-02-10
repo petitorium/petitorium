@@ -199,7 +199,7 @@ func createRequestForm(app *tview.Application,
 	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddInputField("Request Name", "", 41, nil, nil)
-	form.AddDropDown("Method", []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}, 0, nil)
+	form.AddDropDown("Method", workspace.HTTPMethods, 0, nil)
 	form.AddInputField("URL", "", 41, nil, nil)
 	bodyInput := tview.NewInputField().
 		SetLabel("Body: ").
@@ -1429,9 +1429,8 @@ func createDuplicateRequestForm(
 	duplicatedName := originalRequest.Name + " (Copy)"
 
 	// Find method index for dropdown
-	methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 	methodIndex := 0
-	for i, method := range methods {
+	for i, method := range workspace.HTTPMethods {
 		if method == originalRequest.Method {
 			methodIndex = i
 			break
@@ -1439,7 +1438,7 @@ func createDuplicateRequestForm(
 	}
 
 	form.AddInputField("Request Name", duplicatedName, 41, nil, nil)
-	form.AddDropDown("Method", methods, methodIndex, nil)
+	form.AddDropDown("Method", workspace.HTTPMethods, methodIndex, nil)
 	form.AddInputField("URL", originalRequest.URL, 41, nil, nil)
 
 	bodyInput := tview.NewInputField().

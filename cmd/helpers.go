@@ -53,8 +53,7 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 // syncMethodDropdown syncs the method dropdown with the current request's method
 func syncMethodDropdown(currentRequest *workspace.Request, methodDropdown *tview.DropDown, programmaticallyUpdatingMethod *bool) {
 	if currentRequest != nil {
-		methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
-		for i, method := range methods {
+		for i, method := range workspace.HTTPMethods {
 			if method == currentRequest.Method {
 				// Set flag to prevent the SetSelectedFunc from firing
 				*programmaticallyUpdatingMethod = true

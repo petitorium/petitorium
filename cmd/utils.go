@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -41,19 +42,19 @@ func getColoredMethod(method string) string {
 	var colorHex string
 
 	switch method {
-	case "GET":
+	case http.MethodGet:
 		colorHex = config.C.MethodColors.GET
-	case "POST":
+	case http.MethodPost:
 		colorHex = config.C.MethodColors.POST
-	case "PUT":
+	case http.MethodPut:
 		colorHex = config.C.MethodColors.PUT
-	case "PATCH":
+	case http.MethodPatch:
 		colorHex = config.C.MethodColors.PATCH
-	case "DELETE":
+	case http.MethodDelete:
 		colorHex = config.C.MethodColors.DELETE
-	case "OPTIONS":
+	case http.MethodOptions:
 		colorHex = config.C.MethodColors.OPTIONS
-	case "HEAD":
+	case http.MethodHead:
 		colorHex = config.C.MethodColors.HEAD
 	default:
 		colorHex = config.C.MethodColors.Default
@@ -66,23 +67,23 @@ func getColoredMethod(method string) string {
 // getPaddedMethodName returns a padded method name for consistent alignment
 func getPaddedMethodName(method string) string {
 	switch method {
-	case "GET":
+	case http.MethodGet:
 		return "GET  "
-	case "POST":
+	case http.MethodPost:
 		return "POST "
-	case "PUT":
+	case http.MethodPut:
 		return "PUT  "
-	case "DELETE":
+	case http.MethodDelete:
 		return "DEL  "
-	case "PATCH":
+	case http.MethodPatch:
 		return "PAT  "
-	case "HEAD":
+	case http.MethodHead:
 		return "HEAD "
-	case "OPTIONS":
+	case http.MethodOptions:
 		return "OPT  "
-	case "TRACE":
+	case http.MethodTrace:
 		return "TRC  "
-	case "CONNECT":
+	case http.MethodConnect:
 		return "CON  "
 	default:
 		// For unknown methods, take first 3 characters and pad to 5
@@ -96,23 +97,23 @@ func getPaddedMethodName(method string) string {
 // getShortMethodName returns a shortened version of the HTTP method
 func getShortMethodName(method string) string {
 	switch method {
-	case "GET":
+	case http.MethodGet:
 		return "GET "
-	case "POST":
-		return "POST"
-	case "PUT":
+	case http.MethodPost:
+		return http.MethodPost
+	case http.MethodPut:
 		return "PUT "
-	case "DELETE":
+	case http.MethodDelete:
 		return "DEL "
-	case "PATCH":
+	case http.MethodPatch:
 		return "PAT "
-	case "HEAD":
-		return "HEAD"
-	case "OPTIONS":
+	case http.MethodHead:
+		return http.MethodHead
+	case http.MethodOptions:
 		return "OPT "
-	case "TRACE":
+	case http.MethodTrace:
 		return "TRC "
-	case "CONNECT":
+	case http.MethodConnect:
 		return "CON "
 	default:
 		// For unknown methods, take first 3 characters or pad to 4
@@ -609,7 +610,7 @@ func generateCurlCommand(method, url string, headers map[string]string, body, co
 	cmd.WriteString("curl")
 
 	// Add method if not GET
-	if method != "GET" {
+	if method != http.MethodGet {
 		cmd.WriteString(" -X ")
 		cmd.WriteString(method)
 	}
