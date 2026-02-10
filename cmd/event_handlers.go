@@ -443,16 +443,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		return ui.KeyManager.HandleKeyEvent(ui, event, "body_edit")
 	})
 
-	ui.MethodDropdown.SetDoneFunc(func(key tcell.Key) {
-		if key != tcell.KeyEnter {
-			return
-		}
+	ui.MethodDropdown.SetSelectedFunc(func(text string, index int) {
 		if ui.ProgrammaticallyUpdatingMethod {
 			return
 		}
 
 		if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
-			index, _ := ui.MethodDropdown.GetCurrentOption()
 			methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 			if index >= 0 && index < len(methods) {
 				newMethod := methods[index]
