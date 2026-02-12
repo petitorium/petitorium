@@ -80,40 +80,41 @@ func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error
 	return nil
 }
 
-// LoadPlugins loads plugins from the configured directory
+// LoadPlugin loads a single plugin by name
+func (pm *PluginManager) LoadPlugin(name string) error {
+	pluginPath := filepath.Join(pm.pluginDir, name+".so")
+	p, err := plugin.Open(pluginPath)
+	if err != nil {
+		return fmt.Errorf("failed to open plugin %s: %w", name, err)
+	}
+
+	sym, err := p.Lookup("Plugin")
+	if err != nil {
+		qualifiedName := fmt.Sprintf("github.com/petitorium/petitorium/plugins/examples/%s.Plugin", name)
+		sym, err = p.Lookup(qualifiedName)
+		if err != nil {
+			return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)
+		}
+	}
+
+	plg, ok := sym.(Plugin)
+	if !ok {
+		if ptr, ok := sym.(*Plugin); ok {
+			plg = *ptr
+		} else {
+			return fmt.Errorf("plugin %s does not implement Plugin interface", name)
+		}
+	}
+
+	return pm.RegisterPlugin(plg)
+}
+
+// LoadPlugins loads all enabled plugins from the plugin directory
 func (pm *PluginManager) LoadPlugins() error {
 	for _, name := range pm.config.Enabled {
-		pluginPath := filepath.Join(pm.pluginDir, name+".so")
-		p, err := plugin.Open(pluginPath)
-		if err != nil {
-			return fmt.Errorf("failed to open plugin %s: %w", name, err)
-		}
-
-		// Try to find the plugin symbol - first try simple name, then fully qualified
-		var sym plugin.Symbol
-		sym, err = p.Lookup("Plugin")
-		if err != nil {
-			// Try fully qualified name based on plugin name
-			qualifiedName := fmt.Sprintf("github.com/petitorium/petitorium/plugins/examples/%s.Plugin", name)
-			sym, err = p.Lookup(qualifiedName)
-			if err != nil {
-				return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)
-			}
-		}
-
-		// The symbol is **PluginType, need to dereference once
-		plg, ok := sym.(Plugin)
-		if !ok {
-			// Try dereferencing once
-			if ptr, ok := sym.(*Plugin); ok {
-				plg = *ptr
-			} else {
-				return fmt.Errorf("plugin %s does not implement Plugin interface", name)
-			}
-		}
-
-		if err := pm.RegisterPlugin(plg); err != nil {
-			return fmt.Errorf("failed to register plugin %s: %w", name, err)
+		if err := pm.LoadPlugin(name); err != nil {
+			// Log error and continue
+			fmt.Printf("Warning: failed to load plugin %s: %v\n", name, err)
 		}
 	}
 	return nil
