@@ -111,10 +111,82 @@ var configCmd = &cobra.Command{
 	},
 }
 
+var searchCmd = &cobra.Command{
+	Use:   "search <query>",
+	Short: "Search for plugins in the registry",
+	Run: func(cmd *cobra.Command, args []string) {
+		query := ""
+		if len(args) > 0 {
+			query = strings.ToLower(args[0])
+		}
+
+		client := plugins.NewRegistryClient(config.C.Plugins.RegistryURL)
+		available, err := client.ListPlugins()
+		if err != nil {
+			fmt.Printf("Error fetching plugins: %v\n", err)
+			return
+		}
+
+		fmt.Println("Search results:")
+		for _, p := range available {
+			if query == "" || strings.Contains(strings.ToLower(p.Name), query) || strings.Contains(strings.ToLower(p.Description), query) {
+				fmt.Printf("  - %s (%s): %s\n", p.Name, p.Version, p.Description)
+			}
+		}
+	},
+}
+
+var installCmd = &cobra.Command{
+	Use:   "install <name>",
+	Short: "Install a plugin from the registry",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		name := args[0]
+		client := plugins.NewRegistryClient(config.C.Plugins.RegistryURL)
+		available, err := client.ListPlugins()
+		if err != nil {
+			fmt.Printf("Error fetching plugins: %v\n", err)
+			return
+		}
+
+		var target *plugins.RegistryPlugin
+		for _, p := range available {
+			if p.Name == name {
+				target = &p
+				break
+			}
+		}
+
+		if target == nil {
+			fmt.Printf("Plugin %s not found in registry\n", name)
+			return
+		}
+
+		home, _ := homedir.Dir()
+		pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
+		pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
+
+		fmt.Printf("Installing %s (%s)...\n", target.Name, target.Version)
+		if err := pm.InstallPlugin(*target); err != nil {
+			fmt.Printf("Error installing plugin: %v\n", err)
+			return
+		}
+
+		if err := config.SaveConfig(&config.C); err != nil {
+			fmt.Printf("Error saving config: %v\n", err)
+			return
+		}
+
+		fmt.Printf("Plugin %s installed successfully\n", name)
+	},
+}
+
 func init() {
 	pluginsCmd.AddCommand(listCmd)
 	pluginsCmd.AddCommand(enableCmd)
 	pluginsCmd.AddCommand(disableCmd)
 	pluginsCmd.AddCommand(configCmd)
+	pluginsCmd.AddCommand(searchCmd)
+	pluginsCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(pluginsCmd)
 }

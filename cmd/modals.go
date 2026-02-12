@@ -524,6 +524,31 @@ func showWorkspaceModal(
 	ui.App.SetFocus(leftPanel)
 }
 
+// showErrorModal displays an error message modal
+func showErrorModal(pages *tview.Pages, message string) {
+	modal := tview.NewModal().
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			pages.RemovePage("error")
+		})
+	pages.AddPage("error", modal, true, true)
+}
+
+// showProgressModal displays a progress modal
+func showProgressModal(pages *tview.Pages, title string, message string) *tview.TextView {
+	textView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter).
+		SetText(message)
+	textView.SetBorder(true).SetTitle(title)
+
+	// TODO: Make a better progress bar
+	modal := createModal(textView, 40, 7, tcell.ColorDefault)
+	pages.AddPage("progress", modal, true, true)
+	return textView
+}
+
 // Helper function to find workspace index in dropdown
 func findWorkspaceIndex(workspaces []workspace.WorkspaceMetadata, name string) int {
 	for i, ws := range workspaces {

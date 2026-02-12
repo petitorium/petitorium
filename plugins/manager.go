@@ -136,6 +136,24 @@ func (pm *PluginManager) EnablePlugin(name string) error {
 	return nil
 }
 
+// IsPluginInstalled checks if a plugin is installed
+func (pm *PluginManager) IsPluginInstalled(name string) bool {
+	if pm.config.Installed == nil {
+		return false
+	}
+	_, installed := pm.config.Installed[name]
+	return installed
+}
+
+// GetInstalledInfo returns the installation info for a plugin
+func (pm *PluginManager) GetInstalledInfo(name string) (InstalledInfo, bool) {
+	if pm.config.Installed == nil {
+		return InstalledInfo{}, false
+	}
+	info, installed := pm.config.Installed[name]
+	return info, installed
+}
+
 // DisablePlugin disables a plugin by name
 func (pm *PluginManager) DisablePlugin(name string) error {
 	for i, enabled := range pm.config.Enabled {

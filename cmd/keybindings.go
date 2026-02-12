@@ -170,6 +170,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Enter insert mode (edit body)",
 			Context:     "global",
 		},
+		{
+			Key:         tcell.KeyCtrlP,
+			Action:      showMarketplaceAction,
+			Description: "Show plugin marketplace",
+			Context:     "global",
+		},
 	}
 
 	// Body view panel keybindings (vim-style navigation)
@@ -1417,5 +1423,10 @@ func showWorkspaceMenu(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKe
 
 	// 4. Show workspace configuration modal
 	showWorkspaceModal(ui)
+	return nil
+}
+
+func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ShowMarketplace()
 	return nil
 }
