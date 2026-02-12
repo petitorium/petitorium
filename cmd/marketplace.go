@@ -156,10 +156,11 @@ func (m *MarketplacePanel) handlePluginAction(p plugins.RegistryPlugin) {
 		m.ui.App.QueueUpdateDraw(func() {
 			m.ui.Pages.RemovePage("progress")
 			if err != nil {
-				showErrorModal(m.ui.Pages, fmt.Sprintf("Failed to install plugin: %v", err))
+				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to install plugin: %v", err), m.list)
 				return
 			}
 			m.filterPlugins(m.searchField.GetText())
+			m.ui.App.SetFocus(m.list)
 		})
 	}()
 }
@@ -182,7 +183,7 @@ func (ui *UIOrchestrator) ShowMarketplace() {
 		pluginsList, err := m.client.ListPlugins()
 		ui.App.QueueUpdateDraw(func() {
 			if err != nil {
-				showErrorModal(ui.Pages, fmt.Sprintf("Failed to fetch plugins: %v", err))
+				showErrorModalWithFocus(ui.App, ui.Pages, fmt.Sprintf("Failed to fetch plugins: %v", err), m.searchField)
 				return
 			}
 			m.plugins = pluginsList

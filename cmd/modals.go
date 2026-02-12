@@ -535,6 +535,20 @@ func showErrorModal(pages *tview.Pages, message string) {
 	pages.AddPage("error", modal, true, true)
 }
 
+// showErrorModalWithFocus displays an error message modal and returns focus to a specific primitive
+func showErrorModalWithFocus(app *tview.Application, pages *tview.Pages, message string, returnFocus tview.Primitive) {
+	modal := tview.NewModal().
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			pages.RemovePage("error")
+			if returnFocus != nil {
+				app.SetFocus(returnFocus)
+			}
+		})
+	pages.AddPage("error", modal, true, true)
+}
+
 // showProgressModal displays a progress modal
 func showProgressModal(pages *tview.Pages, title string, message string) *tview.TextView {
 	textView := tview.NewTextView().
