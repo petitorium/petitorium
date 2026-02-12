@@ -550,15 +550,16 @@ func showErrorModalWithFocus(app *tview.Application, pages *tview.Pages, message
 }
 
 // showProgressModal displays a progress modal
-func showProgressModal(pages *tview.Pages, title string, message string) *tview.TextView {
+func showProgressModal(pages *tview.Pages, title string, message string, bgColor tcell.Color) *tview.TextView {
 	textView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter).
 		SetText(message)
+	textView.SetBackgroundColor(bgColor)
 	textView.SetBorder(true).SetTitle(title)
 
 	// TODO: Make a better progress bar
-	modal := createModal(textView, 40, 7, tcell.ColorDefault)
+	modal := createModal(textView, 40, 7, bgColor)
 	pages.AddPage("progress", modal, true, true)
 	return textView
 }

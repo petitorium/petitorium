@@ -35,18 +35,23 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 		ui:      ui,
 	}
 
+	m.Flex.SetBackgroundColor(ui.Colors.Background)
+
 	m.list.SetSelectedFocusOnly(true)
 	m.list.SetMainTextColor(ui.Colors.Foreground)
 	m.list.SetSelectedBackgroundColor(ui.Colors.Selection)
+	m.list.SetBackgroundColor(ui.Colors.Background)
 
 	m.details.SetBorder(true).SetTitle(" Plugin Details ")
 	m.details.SetBorderColor(ui.Colors.Border)
+	m.details.SetBackgroundColor(ui.Colors.Background)
 
 	m.searchField = tview.NewInputField().
 		SetLabel(" Search Plugins: ").
 		SetLabelColor(ui.Colors.LabelColor).
 		SetFieldBackgroundColor(ui.Colors.Selection).
 		SetFieldTextColor(ui.Colors.Foreground)
+	m.searchField.SetBackgroundColor(ui.Colors.Background)
 
 	m.searchField.SetChangedFunc(func(text string) {
 		m.filterPlugins(text)
@@ -85,12 +90,17 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 	})
 
 	m.AddItem(m.searchField, 1, 0, true)
-	m.AddItem(tview.NewFlex().
+
+	innerFlex := tview.NewFlex().
 		AddItem(m.list, 0, 1, true).
-		AddItem(m.details, 0, 1, false), 0, 1, false)
+		AddItem(m.details, 0, 1, false)
+	innerFlex.SetBackgroundColor(ui.Colors.Background)
+
+	m.AddItem(innerFlex, 0, 1, false)
 
 	m.SetBorder(true).SetTitle(" Plugin Marketplace (petitorium.dev) ")
 	m.SetBorderColor(ui.Colors.Border)
+	m.SetTitleColor(ui.Colors.Title)
 
 	m.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
@@ -143,7 +153,7 @@ func (m *MarketplacePanel) handlePluginAction(p plugins.RegistryPlugin) {
 	}
 
 	// Install/Update
-	_ = showProgressModal(m.ui.Pages, " Installing Plugin ", fmt.Sprintf("Downloading %s...", p.Name))
+	_ = showProgressModal(m.ui.Pages, " Installing Plugin ", fmt.Sprintf("Downloading %s...", p.Name), m.ui.Colors.Background)
 
 	go func() {
 		err := m.manager.InstallPlugin(p)
