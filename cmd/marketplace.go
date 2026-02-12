@@ -14,7 +14,7 @@ import (
 // MarketplacePanel represents the plugin marketplace UI
 type MarketplacePanel struct {
 	*tview.Flex
-	list            *tview.List
+	table           *tview.Table
 	details         *tview.TextView
 	plugins         []plugins.RegistryPlugin
 	filteredPlugins []plugins.RegistryPlugin
@@ -28,7 +28,7 @@ type MarketplacePanel struct {
 func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 	m := &MarketplacePanel{
 		Flex:    tview.NewFlex().SetDirection(tview.FlexRow),
-		list:    tview.NewList(),
+		table:   tview.NewTable().SetSelectable(true, false).SetFixed(1, 0),
 		details: tview.NewTextView().SetDynamicColors(true).SetWrap(true),
 		manager: ui.PluginManager,
 		client:  plugins.NewRegistryClient(config.C.Plugins.RegistryURL),
@@ -37,10 +37,8 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 
 	m.Flex.SetBackgroundColor(ui.Colors.Background)
 
-	m.list.SetSelectedFocusOnly(true)
-	m.list.SetMainTextColor(ui.Colors.Foreground)
-	m.list.SetSelectedBackgroundColor(ui.Colors.Selection)
-	m.list.SetBackgroundColor(ui.Colors.Background)
+	m.table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.ActiveTab))
+	m.table.SetBackgroundColor(ui.Colors.Background)
 
 	m.details.SetBorder(true).SetTitle(" Plugin Details ")
 	m.details.SetBorderColor(ui.Colors.Border)
@@ -59,14 +57,15 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 
 	m.searchField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyDown || event.Key() == tcell.KeyTab {
-			m.ui.App.SetFocus(m.list)
+			m.ui.App.SetFocus(m.table)
 			return nil
 		}
 		return event
 	})
 
-	m.list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyUp && m.list.GetCurrentItem() == 0 {
+	m.table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := m.table.GetSelection()
+		if event.Key() == tcell.KeyUp && row == 1 {
 			m.ui.App.SetFocus(m.searchField)
 			return nil
 		}
@@ -77,22 +76,22 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 		return event
 	})
 
-	m.list.SetChangedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
-		if index >= 0 && index < len(m.filteredPlugins) {
-			m.updateDetails(m.filteredPlugins[index])
+	m.table.SetSelectionChangedFunc(func(row, column int) {
+		if row > 0 && row-1 < len(m.filteredPlugins) {
+			m.updateDetails(m.filteredPlugins[row-1])
 		}
 	})
 
-	m.list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
-		if index >= 0 && index < len(m.filteredPlugins) {
-			m.handlePluginAction(m.filteredPlugins[index])
+	m.table.SetSelectedFunc(func(row, column int) {
+		if row > 0 && row-1 < len(m.filteredPlugins) {
+			m.handlePluginAction(m.filteredPlugins[row-1])
 		}
 	})
 
 	m.AddItem(m.searchField, 1, 0, true)
 
 	innerFlex := tview.NewFlex().
-		AddItem(m.list, 0, 1, true).
+		AddItem(m.table, 0, 1, true).
 		AddItem(m.details, 0, 1, false)
 	innerFlex.SetBackgroundColor(ui.Colors.Background)
 
@@ -119,27 +118,55 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 }
 
 func (m *MarketplacePanel) filterPlugins(query string) {
-	m.list.Clear()
+	m.table.Clear()
 	m.filteredPlugins = []plugins.RegistryPlugin{}
 	query = strings.ToLower(query)
+
+	// Set headers
+	headers := []string{"Name", "Version", "Official", "Status"}
+	for i, h := range headers {
+		m.table.SetCell(0, i, tview.NewTableCell(" "+h+" ").
+			SetTextColor(m.ui.Colors.Title).
+			SetSelectable(false).
+			SetExpansion(1).
+			SetAlign(tview.AlignCenter))
+	}
+	m.table.GetCell(0, 0).SetAlign(tview.AlignLeft)
+
+	row := 1
 	for _, p := range m.plugins {
 		if query == "" || strings.Contains(strings.ToLower(p.Name), query) || strings.Contains(strings.ToLower(p.Description), query) {
 			m.filteredPlugins = append(m.filteredPlugins, p)
-			status := m.getPluginStatus(p)
-			m.list.AddItem(p.Name, fmt.Sprintf("%s - %s", p.Version, status), 0, nil)
+			statusText, statusColor := m.getPluginStatusInfo(p)
+			official := ""
+			officialColor := m.ui.Colors.Foreground
+			if p.Official {
+				official = "✔"
+				officialColor = tcell.ColorGreen
+			}
+
+			m.table.SetCell(row, 0, tview.NewTableCell(p.Name).SetTextColor(m.ui.Colors.Foreground).SetExpansion(2))
+			m.table.SetCell(row, 1, tview.NewTableCell(p.Version).SetTextColor(m.ui.Colors.Foreground).SetAlign(tview.AlignCenter))
+			m.table.SetCell(row, 2, tview.NewTableCell(official).SetAlign(tview.AlignCenter).SetTextColor(officialColor))
+			m.table.SetCell(row, 3, tview.NewTableCell(statusText).SetAlign(tview.AlignCenter).SetTextColor(statusColor))
+			row++
 		}
+	}
+
+	if len(m.filteredPlugins) > 0 {
+		m.updateDetails(m.filteredPlugins[0])
 	}
 }
 
-func (m *MarketplacePanel) getPluginStatus(p plugins.RegistryPlugin) string {
+func (m *MarketplacePanel) getPluginStatusInfo(p plugins.RegistryPlugin) (string, tcell.Color) {
 	if m.manager.IsPluginInstalled(p.Name) {
 		info, _ := m.manager.GetInstalledInfo(p.Name)
 		if info.Version != p.Version {
-			return "[yellow]Update Available[-]"
+			return "Update", tcell.ColorYellow
 		}
-		return "[green]Installed[-]"
+		return "Installed", tcell.ColorGreen
 	}
-	return "Available"
+	return "Available", m.ui.Colors.Foreground
 }
 
 func (m *MarketplacePanel) handlePluginAction(p plugins.RegistryPlugin) {
@@ -166,18 +193,22 @@ func (m *MarketplacePanel) handlePluginAction(p plugins.RegistryPlugin) {
 		m.ui.App.QueueUpdateDraw(func() {
 			m.ui.Pages.RemovePage("progress")
 			if err != nil {
-				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to install plugin: %v", err), m.list)
+				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to install plugin: %v", err), m.table)
 				return
 			}
 			m.filterPlugins(m.searchField.GetText())
-			m.ui.App.SetFocus(m.list)
+			m.ui.App.SetFocus(m.table)
 		})
 	}()
 }
 
 func (m *MarketplacePanel) updateDetails(p plugins.RegistryPlugin) {
 	m.details.Clear()
-	fmt.Fprintf(m.details, "[yellow]%s[-]\n", p.Name)
+	official := ""
+	if p.Official {
+		official = " [green](Official Plugin)[-]"
+	}
+	fmt.Fprintf(m.details, "[yellow]%s[-]%s\n", p.Name, official)
 	fmt.Fprintf(m.details, "[green]Version:[-] %s\n", p.Version)
 	fmt.Fprintf(m.details, "[green]Author:[-] %s\n", p.Author)
 	fmt.Fprintf(m.details, "[blue]Repo:[-] %s\n\n", p.Repo)

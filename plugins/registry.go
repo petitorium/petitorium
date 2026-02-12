@@ -19,6 +19,7 @@ type RegistryPlugin struct {
 	Description string            `json:"description"`
 	Author      string            `json:"author"`
 	Repo        string            `json:"repo"`
+	Official    bool              `json:"official"`
 	Downloads   map[string]string `json:"downloads"` // os-arch -> url
 	Checksums   map[string]string `json:"checksums"` // os-arch -> sha256
 }
