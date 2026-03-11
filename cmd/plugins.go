@@ -10,6 +10,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
+	"github.com/petitorium/petitorium-plugin-sdk/types"
 	"github.com/petitorium/petitorium/config"
 	"github.com/petitorium/petitorium/plugins"
 )
@@ -149,7 +150,7 @@ var installCmd = &cobra.Command{
 			return
 		}
 
-		var target *plugins.RegistryPlugin
+		var target *types.RegistryPlugin
 		for _, p := range available {
 			if p.Name == name {
 				target = &p

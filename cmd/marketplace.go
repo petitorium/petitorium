@@ -7,6 +7,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
+	"github.com/petitorium/petitorium-plugin-sdk/types"
 	"github.com/petitorium/petitorium/config"
 	"github.com/petitorium/petitorium/plugins"
 )
@@ -16,8 +17,8 @@ type MarketplacePanel struct {
 	*tview.Flex
 	table           *tview.Table
 	details         *tview.TextView
-	plugins         []plugins.RegistryPlugin
-	filteredPlugins []plugins.RegistryPlugin
+	plugins         []types.RegistryPlugin
+	filteredPlugins []types.RegistryPlugin
 	manager         *plugins.PluginManager
 	client          *plugins.RegistryClient
 	ui              *UIOrchestrator
@@ -91,7 +92,7 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 	m.AddItem(m.searchField, 1, 0, true)
 
 	innerFlex := tview.NewFlex().
-		AddItem(m.table, 0, 1, true).
+		AddItem(m.table, 0, 2, true).
 		AddItem(m.details, 0, 1, false)
 	innerFlex.SetBackgroundColor(ui.Colors.Background)
 
@@ -119,7 +120,7 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 
 func (m *MarketplacePanel) filterPlugins(query string) {
 	m.table.Clear()
-	m.filteredPlugins = []plugins.RegistryPlugin{}
+	m.filteredPlugins = []types.RegistryPlugin{}
 	query = strings.ToLower(query)
 
 	// Set headers
@@ -158,7 +159,7 @@ func (m *MarketplacePanel) filterPlugins(query string) {
 	}
 }
 
-func (m *MarketplacePanel) getPluginStatusInfo(p plugins.RegistryPlugin) (string, tcell.Color) {
+func (m *MarketplacePanel) getPluginStatusInfo(p types.RegistryPlugin) (string, tcell.Color) {
 	if m.manager.IsPluginInstalled(p.Name) {
 		info, _ := m.manager.GetInstalledInfo(p.Name)
 		if info.Version != p.Version {
@@ -169,7 +170,7 @@ func (m *MarketplacePanel) getPluginStatusInfo(p plugins.RegistryPlugin) (string
 	return "Available", m.ui.Colors.Foreground
 }
 
-func (m *MarketplacePanel) handlePluginAction(p plugins.RegistryPlugin) {
+func (m *MarketplacePanel) handlePluginAction(p types.RegistryPlugin) {
 	if m.manager.IsPluginInstalled(p.Name) {
 		info, _ := m.manager.GetInstalledInfo(p.Name)
 		if info.Version == p.Version {
@@ -202,7 +203,7 @@ func (m *MarketplacePanel) handlePluginAction(p plugins.RegistryPlugin) {
 	}()
 }
 
-func (m *MarketplacePanel) updateDetails(p plugins.RegistryPlugin) {
+func (m *MarketplacePanel) updateDetails(p types.RegistryPlugin) {
 	m.details.Clear()
 	official := ""
 	if p.Official {
@@ -211,7 +212,9 @@ func (m *MarketplacePanel) updateDetails(p plugins.RegistryPlugin) {
 	fmt.Fprintf(m.details, "[yellow]%s[-]%s\n", p.Name, official)
 	fmt.Fprintf(m.details, "[green]Version:[-] %s\n", p.Version)
 	fmt.Fprintf(m.details, "[green]Author:[-] %s\n", p.Author)
-	fmt.Fprintf(m.details, "[blue]Repo:[-] %s\n\n", p.Repo)
+	// fmt.Fprintf(m.details, "[red]Go version:[-] %s\n", p.Releases[0].GoVersion)
+	fmt.Fprintf(m.details, "[red]Go version:[-] %s\n", p.Releases)
+	fmt.Fprintf(m.details, "[blue]Repository:[-] %s\n\n", p.Repository)
 	fmt.Fprintf(m.details, "%s\n", p.Description)
 }
 
@@ -232,6 +235,6 @@ func (ui *UIOrchestrator) ShowMarketplace() {
 		})
 	}()
 
-	ui.Pages.AddPage("marketplace", createModal(m, 100, 30, ui.Colors.Background), true, true)
+	ui.Pages.AddPage("marketplace", createModal(m, 130, 30, ui.Colors.Background), true, true)
 	ui.App.SetFocus(m.searchField)
 }

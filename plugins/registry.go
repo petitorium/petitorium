@@ -10,19 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-)
 
-// RegistryPlugin represents plugin metadata from the registry
-type RegistryPlugin struct {
-	Name        string            `json:"name"`
-	Version     string            `json:"version"`
-	Description string            `json:"description"`
-	Author      string            `json:"author"`
-	Repo        string            `json:"repo"`
-	Official    bool              `json:"official"`
-	Downloads   map[string]string `json:"downloads"` // os-arch -> url
-	Checksums   map[string]string `json:"checksums"` // os-arch -> sha256
-}
+	"github.com/petitorium/petitorium-plugin-sdk/types"
+)
 
 // RegistryClient handles communication with the plugin registry
 type RegistryClient struct {
@@ -33,13 +23,13 @@ type RegistryClient struct {
 func NewRegistryClient(baseURL string) *RegistryClient {
 	if baseURL == "" {
 		// Default to mock registry during development if config is empty
-		baseURL = "http://localhost:8080"
+		baseURL = "http://localhost:8080/api/v1"
 	}
 	return &RegistryClient{BaseURL: baseURL}
 }
 
 // ListPlugins fetches the list of available plugins from the registry
-func (rc *RegistryClient) ListPlugins() ([]RegistryPlugin, error) {
+func (rc *RegistryClient) ListPlugins() ([]types.RegistryPlugin, error) {
 	resp, err := http.Get(fmt.Sprintf("%s/plugins", rc.BaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch plugins: %w", err)
@@ -50,7 +40,7 @@ func (rc *RegistryClient) ListPlugins() ([]RegistryPlugin, error) {
 		return nil, fmt.Errorf("registry returned status: %s", resp.Status)
 	}
 
-	var plugins []RegistryPlugin
+	var plugins []types.RegistryPlugin
 	if err := json.NewDecoder(resp.Body).Decode(&plugins); err != nil {
 		return nil, fmt.Errorf("failed to decode plugins: %w", err)
 	}
@@ -59,15 +49,24 @@ func (rc *RegistryClient) ListPlugins() ([]RegistryPlugin, error) {
 }
 
 // InstallPlugin downloads and installs a plugin
-func (pm *PluginManager) InstallPlugin(p RegistryPlugin) error {
+func (pm *PluginManager) InstallPlugin(p types.RegistryPlugin) error {
 	platform := fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH)
-	downloadURL, ok := p.Downloads[platform]
-	if !ok {
+	downloadURL := ""
+	expectedChecksum := ""
+
+	for _, r := range p.Releases {
+		if r.Platform == platform {
+			downloadURL = r.URL
+			expectedChecksum = r.Checksum
+			break
+		}
+	}
+
+	if downloadURL == "" {
 		return fmt.Errorf("plugin %s not available for platform %s", p.Name, platform)
 	}
 
-	expectedChecksum, ok := p.Checksums[platform]
-	if !ok {
+	if expectedChecksum == "" {
 		return fmt.Errorf("checksum not available for plugin %s on platform %s", p.Name, platform)
 	}
 

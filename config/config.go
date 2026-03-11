@@ -222,7 +222,7 @@ func LoadConfig() error {
 
 	// Last resort fallback
 	if C.Plugins.RegistryURL == "" {
-		C.Plugins.RegistryURL = "http://localhost:8080" // Use local for now to help user
+		C.Plugins.RegistryURL = "http://localhost:8080/api/v1" // Use local for now to help user
 	}
 
 	return nil
