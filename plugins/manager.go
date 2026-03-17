@@ -4,26 +4,40 @@ package plugins
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"plugin"
 	"time"
+
+	"github.com/hashicorp/go-plugin"
+
+	"github.com/petitorium/petitorium-plugin-sdk/shared"
+	"github.com/petitorium/petitorium-plugin-sdk/types"
 )
 
 // PluginManager manages the loading and execution of plugins
 type PluginManager struct {
 	plugins   map[string]Plugin
-	hooks     map[HookType][]PluginHook
+	hooks     map[HookType][]Plugin
 	config    *PluginConfig
 	pluginDir string
+	clients   []*plugin.Client
 }
 
 // NewPluginManager creates a new PluginManager instance
 func NewPluginManager(config *PluginConfig, pluginDir string) *PluginManager {
 	return &PluginManager{
 		plugins:   make(map[string]Plugin),
-		hooks:     make(map[HookType][]PluginHook),
+		hooks:     make(map[HookType][]Plugin),
 		config:    config,
 		pluginDir: pluginDir,
+		clients:   make([]*plugin.Client, 0),
+	}
+}
+
+// Close kills all running plugin processes
+func (pm *PluginManager) Close() {
+	for _, client := range pm.clients {
+		client.Kill()
 	}
 }
 
@@ -36,14 +50,11 @@ func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 	pm.plugins[name] = p
 
 	// Register hooks
-	hookFuncs := p.HookFuncs()
 	for _, hookType := range p.Hooks() {
 		if pm.hooks[hookType] == nil {
-			pm.hooks[hookType] = []PluginHook{}
+			pm.hooks[hookType] = []Plugin{}
 		}
-		if hookFunc, exists := hookFuncs[hookType]; exists {
-			pm.hooks[hookType] = append(pm.hooks[hookType], hookFunc)
-		}
+		pm.hooks[hookType] = append(pm.hooks[hookType], p)
 	}
 
 	return nil
@@ -51,27 +62,30 @@ func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 
 // ExecuteHooks executes all hooks of the given type with timeout and error isolation
 func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error {
-	hooks, exists := pm.hooks[hookType]
+	plugins, exists := pm.hooks[hookType]
 	if !exists {
 		return nil // No hooks for this type
 	}
 
-	for _, hook := range hooks {
+	for _, p := range plugins {
 		done := make(chan error, 1)
-		go func(h PluginHook) {
+		var updatedCtx *types.HookContext
+		go func(plg Plugin) {
 			defer func() {
 				if r := recover(); r != nil {
 					done <- fmt.Errorf("hook panicked: %v", r)
 				}
 			}()
-			done <- h(ctx)
-		}(hook)
+			var err error
+			updatedCtx, err = plg.ExecuteHook(hookType, ctx)
+			done <- err
+		}(p)
 
 		select {
 		case err := <-done:
-			if err != nil {
-				// Log error but continue for graceful degradation
-				// For now, just continue
+			if err == nil && updatedCtx != nil {
+				// Update context for next plugin in chain
+				*ctx = *updatedCtx
 			}
 		case <-time.After(5 * time.Second):
 			// Timeout, continue
@@ -82,28 +96,40 @@ func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error
 
 // LoadPlugin loads a single plugin by name
 func (pm *PluginManager) LoadPlugin(name string) error {
-	pluginPath := filepath.Join(pm.pluginDir, name+".so")
-	p, err := plugin.Open(pluginPath)
-	if err != nil {
-		return fmt.Errorf("failed to open plugin %s: %w", name, err)
-	}
-
-	sym, err := p.Lookup("Plugin")
-	if err != nil {
-		qualifiedName := fmt.Sprintf("github.com/petitorium/petitorium/plugins/examples/%s.Plugin", name)
-		sym, err = p.Lookup(qualifiedName)
-		if err != nil {
-			return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)
+	// Look for executable. We still check for .so if we haven't renamed them yet,
+	// but go-plugin needs a real executable.
+	pluginPath := filepath.Join(pm.pluginDir, name)
+	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+		// Fallback to .so extension if it's there but it must be an executable
+		pluginPath = pluginPath + ".so"
+		if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+			return fmt.Errorf("plugin %s not found in %s", name, pm.pluginDir)
 		}
 	}
 
-	plg, ok := sym.(Plugin)
+	client := plugin.NewClient(&plugin.ClientConfig{
+		HandshakeConfig: shared.Handshake,
+		Plugins: map[string]plugin.Plugin{
+			name: &shared.PetitoriumPlugin{},
+		},
+		Cmd:              exec.Command(pluginPath),
+		AllowedProtocols: []plugin.Protocol{plugin.ProtocolNetRPC, plugin.ProtocolGRPC},
+	})
+	pm.clients = append(pm.clients, client)
+
+	rpcClient, err := client.Client()
+	if err != nil {
+		return fmt.Errorf("failed to connect to plugin %s: %w", name, err)
+	}
+
+	raw, err := rpcClient.Dispense(name)
+	if err != nil {
+		return fmt.Errorf("failed to dispense plugin %s: %w", name, err)
+	}
+
+	plg, ok := raw.(Plugin)
 	if !ok {
-		if ptr, ok := sym.(*Plugin); ok {
-			plg = *ptr
-		} else {
-			return fmt.Errorf("plugin %s does not implement Plugin interface", name)
-		}
+		return fmt.Errorf("plugin %s does not implement Plugin interface", name)
 	}
 
 	return pm.RegisterPlugin(plg)

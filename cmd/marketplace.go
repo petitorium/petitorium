@@ -212,8 +212,7 @@ func (m *MarketplacePanel) updateDetails(p types.RegistryPlugin) {
 	fmt.Fprintf(m.details, "[yellow]%s[-]%s\n", p.Name, official)
 	fmt.Fprintf(m.details, "[green]Version:[-] %s\n", p.Version)
 	fmt.Fprintf(m.details, "[green]Author:[-] %s\n", p.Author)
-	// fmt.Fprintf(m.details, "[red]Go version:[-] %s\n", p.Releases[0].GoVersion)
-	fmt.Fprintf(m.details, "[red]Go version:[-] %s\n", p.Releases)
+	fmt.Fprintf(m.details, "[red]Go version:[-] %s\n", p.Releases[0].GoVersion)
 	fmt.Fprintf(m.details, "[blue]Repository:[-] %s\n\n", p.Repository)
 	fmt.Fprintf(m.details, "%s\n", p.Description)
 }

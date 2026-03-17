@@ -1055,7 +1055,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					return
 				}
 
-				context.Response = resp
+				context.Response = &plugins.ResponseData{
+					StatusCode: resp.StatusCode,
+					Status:     resp.Status,
+					Headers:    resp.Headers,
+					Body:       resp.Body,
+					Duration:   resp.Duration.Milliseconds(),
+				}
 
 				// Ensure config is available for PostReceive hook
 				if context.Config == nil {
