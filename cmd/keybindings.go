@@ -784,6 +784,50 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 			})
 			return nil
+		} else if ui.CurrentTabIndex == ui.RPQueryTabIndex {
+			// Bulk edit query params
+			ui.App.Suspend(func() {
+				queryParams := getQueryParamsFromUI()
+
+				var paramLines []string
+				for key, value := range queryParams {
+					paramLines = append(paramLines, fmt.Sprintf("%s: %s", key, value))
+				}
+				paramContent := strings.Join(paramLines, "\n")
+
+				modifiedContent, err := openInExternalEditor(paramContent)
+				if err != nil {
+					return
+				}
+
+				lines := strings.Split(strings.TrimSpace(modifiedContent), "\n")
+				newParams := make(map[string]string)
+				for _, line := range lines {
+					line = strings.TrimSpace(line)
+					if line == "" {
+						continue
+					}
+					parts := strings.SplitN(line, ":", 2)
+					if len(parts) == 2 {
+						key := strings.TrimSpace(parts[0])
+						value := strings.TrimSpace(parts[1])
+						if key != "" {
+							newParams[key] = value
+						}
+					}
+				}
+
+				setQueryParamsInUI(ui.Colors, newParams, func() {
+					if ui.CurrentRequest != nil {
+						ui.CurrentRequest.QueryParams = newParams
+						if ui.CurrentSelectedNode != nil {
+							ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
+							saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+						}
+					}
+				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
+			})
+			return nil
 		}
 	}
 	return event
@@ -869,6 +913,12 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 				break
 			}
 		}
+		for _, row := range currentQueryRows {
+			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
+				isOnInputField = true
+				break
+			}
+		}
 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("query")
@@ -891,6 +941,12 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 			isOnInputField = true
 		}
 		for _, row := range currentHeaderRows {
+			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
+				isOnInputField = true
+				break
+			}
+		}
+		for _, row := range currentQueryRows {
 			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
 				isOnInputField = true
 				break

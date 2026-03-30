@@ -31,6 +31,7 @@ type Request struct {
 	Name            string            `yaml:"name"`
 	Method          string            `yaml:"method"`
 	URL             string            `yaml:"url"`
+	QueryParams     map[string]string `yaml:"query_params,omitempty"`
 	Headers         map[string]string `yaml:"headers,omitempty"`
 	ContentType     string            `yaml:"content_type,omitempty"`
 	Body            string            `yaml:"body,omitempty"`

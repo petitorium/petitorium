@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,21 @@ type HTTPResponse struct {
 }
 
 // SendRequest sends an HTTP request with the given parameters
-func SendRequest(method, url, body string, contentType string, headers map[string]string) (*HTTPResponse, error) {
+func SendRequest(method, urlStr, body string, contentType string, headers map[string]string, queryParams map[string]string) (*HTTPResponse, error) {
+	// Append query parameters to URL
+	if len(queryParams) > 0 {
+		u, err := url.Parse(urlStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse URL: %v", err)
+		}
+		q := u.Query()
+		for key, value := range queryParams {
+			q.Set(key, value)
+		}
+		u.RawQuery = q.Encode()
+		urlStr = u.String()
+	}
+
 	// Create HTTP client with configurable timeout
 	timeoutVal := config.C.RequestTimeout
 	if timeoutVal <= 0 {
@@ -68,7 +83,7 @@ func SendRequest(method, url, body string, contentType string, headers map[strin
 	}
 
 	// Create HTTP request with context
-	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, urlStr, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
@@ -274,7 +289,7 @@ func FormatResponse(response *HTTPResponse) string {
 }
 
 // GetCurrentRequestData extracts the current request data from UI state
-func GetCurrentRequestData(methodDropdown *tview.DropDown, urlInput *URLVariableInput, currentRequest *workspace.Request) (string, string, string, map[string]string) {
+func GetCurrentRequestData(methodDropdown *tview.DropDown, urlInput *URLVariableInput, currentRequest *workspace.Request) (string, string, string, map[string]string, map[string]string) {
 	// Get method from dropdown
 	_, method := methodDropdown.GetCurrentOption()
 
@@ -290,5 +305,8 @@ func GetCurrentRequestData(methodDropdown *tview.DropDown, urlInput *URLVariable
 	// Get headers from UI
 	headers := getHeadersFromUI()
 
-	return method, url, body, headers
+	// Get query params from UI
+	queryParams := getQueryParamsFromUI()
+
+	return method, url, body, headers, queryParams
 }

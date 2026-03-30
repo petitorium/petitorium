@@ -6,6 +6,9 @@ import (
 
 // findInnermostCycle finds the most specific cycle containing the given primitive
 func findInnermostCycle(p tview.Primitive) Cycle {
+	if queryParamsCycle != nil && queryParamsCycle.Contains(p) {
+		return queryParamsCycle
+	}
 	if headersCycle != nil && headersCycle.Contains(p) {
 		return headersCycle
 	}
@@ -30,6 +33,8 @@ var mainCycle *MainCycle
 var urlBarCycle *URLBarCycle
 
 var headersCycle *HeadersCycle
+
+var queryParamsCycle *QueryParamsCycle
 
 var environmentsCycle *EnvironmentsCycle
 

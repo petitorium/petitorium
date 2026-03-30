@@ -39,8 +39,9 @@ type ThemeConfig struct {
 	ButtonBackgroundColor     string       `mapstructure:"buttonBackgroundColor"`
 	ButtonSelectedColor       string       `mapstructure:"buttonSelectedColor"`
 	DropdownFocusedBackground string       `mapstructure:"dropdownFocusedBackground"`
-	LabelColor                string       `mapstructure:"labelColor"` // Color for form labels
-	ValueColor                string       `mapstructure:"valueColor"` // Color for form values
+	InputBackgroundColor      string       `mapstructure:"inputBackgroundColor"` // Background color for input fields (slightly lighter than background for contrast)
+	LabelColor                string       `mapstructure:"labelColor"`           // Color for form labels
+	ValueColor                string       `mapstructure:"valueColor"`           // Color for form values
 	Borders                   BorderConfig `mapstructure:"borders"`
 	BordersFocus              BorderConfig `mapstructure:"bordersFocus"`
 }
@@ -110,6 +111,7 @@ const defaultConfigYAML = `theme:
   buttonBackgroundColor: "#1B4248" # background color for buttons (normal state)
   buttonSelectedColor: "#FFD700"  # color for selected buttons
   dropdownFocusedBackground: "#636DA6"  # background color for focused dropdown
+  inputBackgroundColor: "#153035" # background color for input fields (subtle contrast against app background)
   labelColor: "#95CEDA"           # color for form labels (e.g., "Name:", "Type:", "Value:")
   valueColor: "#e4e4e4"           # color for form values/input text
 

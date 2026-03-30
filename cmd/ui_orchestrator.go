@@ -75,53 +75,55 @@ type NavIndices struct {
 
 // UIOrchestrator holds all UI components and state
 type UIOrchestrator struct {
-	App                      *tview.Application
-	WorkspaceData            *workspace.Workspace
-	DataManager              *DataManager
-	EnvironmentsData         *[]workspace.Environment
-	Colors                   *ColorManager
-	PluginManager            *plugins.PluginManager
-	RootNode                 *tview.TreeNode
-	MethodURLBar             *tview.Flex
-	MethodDropdown           *tview.DropDown
-	ContentTypeDropdown      *tview.DropDown
-	URLInput                 *URLVariableInput
-	SendButton               *CustomButton
-	CurlButton               *CustomButton
-	BodyViewPanel            *tview.TextView
-	BodyEditPanel            *tview.TextArea
-	BodyContainer            *tview.Flex
-	MultipartFieldsTab       *tview.Flex
-	MultipartAddButton       *CustomButton
-	MultipartDeleteAllButton *CustomButton
-	AddHeaderButton          *CustomButton
-	DeleteAllHeadersButton   *CustomButton
-	Response                 *tview.Flex
-	Footer                   *tview.Flex
-	FooterLeft               *tview.TextView
-	FooterRight              *tview.TextView
-	CollectionsTreeView      *tview.TreeView
-	TreeSelectionHandler     func(*tview.TreeNode)
-	TreeHighlightHandler     func(*tview.TreeNode)
-	ResponsePages            *tview.Pages
-	ResponseTabHeader        *tview.Flex
-	ResponseInfoBar          *tview.Flex
-	ResponseTimeText         *tview.TextView
-	ResponsePreviewPanel     *tview.TextView
-	ResponseHeadersPanel     tview.Primitive
-	ResponseCookiesPanel     *tview.TextView
-	ResponseTimelinePanel    *tview.TextView
-	EnvironmentPanel         *tview.Flex
-	EnvDropdown              *tview.DropDown
-	EnvConfigButton          *CustomButton
-	WorkspacePanel           *tview.Flex
-	WorkspaceSelector        *tview.DropDown
-	WorkspaceConfigButton    *CustomButton
-	Pages                    *tview.Pages
-	Grid                     *tview.Grid
-	KeyManager               *KeyBindingManager
-	LastResponse             *HTTPResponse
-	LastResponseTime         *time.Time
+	App                        *tview.Application
+	WorkspaceData              *workspace.Workspace
+	DataManager                *DataManager
+	EnvironmentsData           *[]workspace.Environment
+	Colors                     *ColorManager
+	PluginManager              *plugins.PluginManager
+	RootNode                   *tview.TreeNode
+	MethodURLBar               *tview.Flex
+	MethodDropdown             *tview.DropDown
+	ContentTypeDropdown        *tview.DropDown
+	URLInput                   *URLVariableInput
+	SendButton                 *CustomButton
+	CurlButton                 *CustomButton
+	BodyViewPanel              *tview.TextView
+	BodyEditPanel              *tview.TextArea
+	BodyContainer              *tview.Flex
+	MultipartFieldsTab         *tview.Flex
+	MultipartAddButton         *CustomButton
+	MultipartDeleteAllButton   *CustomButton
+	AddHeaderButton            *CustomButton
+	DeleteAllHeadersButton     *CustomButton
+	AddQueryParamButton        *CustomButton
+	DeleteAllQueryParamsButton *CustomButton
+	Response                   *tview.Flex
+	Footer                     *tview.Flex
+	FooterLeft                 *tview.TextView
+	FooterRight                *tview.TextView
+	CollectionsTreeView        *tview.TreeView
+	TreeSelectionHandler       func(*tview.TreeNode)
+	TreeHighlightHandler       func(*tview.TreeNode)
+	ResponsePages              *tview.Pages
+	ResponseTabHeader          *tview.Flex
+	ResponseInfoBar            *tview.Flex
+	ResponseTimeText           *tview.TextView
+	ResponsePreviewPanel       *tview.TextView
+	ResponseHeadersPanel       tview.Primitive
+	ResponseCookiesPanel       *tview.TextView
+	ResponseTimelinePanel      *tview.TextView
+	EnvironmentPanel           *tview.Flex
+	EnvDropdown                *tview.DropDown
+	EnvConfigButton            *CustomButton
+	WorkspacePanel             *tview.Flex
+	WorkspaceSelector          *tview.DropDown
+	WorkspaceConfigButton      *CustomButton
+	Pages                      *tview.Pages
+	Grid                       *tview.Grid
+	KeyManager                 *KeyBindingManager
+	LastResponse               *HTTPResponse
+	LastResponseTime           *time.Time
 
 	// State variables
 	CurrentSelectedNode                 *tview.TreeNode
@@ -147,12 +149,15 @@ type UIOrchestrator struct {
 	NavCurrentFieldRowElement           int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: X)
 	NavCurrentHeaderRowElement          int // For navigation within headers (0: Add Header, 1: Delete All, 2+: header rows)
 	NavCurrentHeaderElement             int // For navigation within a header row (0: Key input, 1: Value input, 2: Delete button)
+	NavCurrentQueryParamRowElement      int // For navigation within query params (0: Add Param, 1: Delete All, 2+: param rows)
+	NavCurrentQueryParamElement         int // For navigation within a query param row (0: Key input, 1: Value input, 2: Delete button)
 	NavPreviousContainer                int
 	NavRequestInTabHeaders              bool // True when in Request panel tab headers
 	NavResponseInTabHeaders             bool // True when in Response panel tab headers
 	RequestDataTabs                     *tview.Flex
 	MainCycle                           *MainCycle
 	HeadersCycle                        *HeadersCycle
+	QueryParamsCycle                    *QueryParamsCycle
 	URLBarCycle                         *URLBarCycle
 	EnvironmentsCycle                   *EnvironmentsCycle
 	WorkspaceCycle                      *WorkspaceCycle
@@ -507,6 +512,13 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		children: nil,
 	}
 
+	queryParamsCycle = &QueryParamsCycle{
+		inputs:   []tview.Primitive{},
+		current:  0,
+		parent:   mainCycle,
+		children: nil,
+	}
+
 	environmentsCycle = &EnvironmentsCycle{
 		inputs: []tview.Primitive{
 			envDropdown,
@@ -693,31 +705,33 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		SetInactiveBorder:              setInactiveBorder,
 		EnterModal: func() {
 			// Will be overridden below
-		},
-		SyncBodyContent:              syncBodyContent,
-		SwitchBodyMode:               switchBodyMode,
-		UpdateFooter:                 func() {}, // Will be set below
-		KeyManager:                   NewKeyBindingManager(),
-		LastResponse:                 nil,
-		LastResponseTime:             nil,
-		WorkspaceSelectorIndex:       workspaceSelectorIndex,
-		WorkspaceConfigButtonIndex:   workspaceConfigButtonIndex,
-		EnvironmentSelectorIndex:     environmentSelectorIndex,
-		EnvironmentConfigButtonIndex: environmentConfigButtonIndex,
-		URLBarSelectorIndex:          urlBarSelectorIndex,
-		URLBarInputIndex:             urlBarInputIndex,
-		URLBarSendButtonIndex:        urlBarSendButtonIndex,
-		URLBarCurlButtonIndex:        urlBarCurlButtonIndex,
-		RPBodyTabIndex:               RPBodyTabIndex,
-		RPAuthTabIndex:               RPAuthTabIndex,
-		RPQueryTabIndex:              RPQueryTabIndex,
-		RPHeadersTabIndex:            RPHeadersTabIndex,
-		RefreshMultipartFieldsUI:     refreshMultipartFieldsUI,
-		AddHeaderButton:              currentAddHeaderButton,
-		DeleteAllHeadersButton:       currentDeleteAllHeadersButton,
-		MultipartAddButton:           currentMultipartAddButton,
-		MultipartDeleteAllButton:     currentMultipartDeleteAllButton,
-		Suspend:                      app.Suspend,
+		},		
+		SyncBodyContent:                syncBodyContent,
+		SwitchBodyMode:                 switchBodyMode,
+		UpdateFooter:                   func() {}, // Will be set below
+		KeyManager:                     NewKeyBindingManager(),
+		LastResponse:                   nil,
+		LastResponseTime:               nil,
+		WorkspaceSelectorIndex:         workspaceSelectorIndex,
+		WorkspaceConfigButtonIndex:     workspaceConfigButtonIndex,
+		EnvironmentSelectorIndex:       environmentSelectorIndex,
+		EnvironmentConfigButtonIndex:   environmentConfigButtonIndex,
+		URLBarSelectorIndex:            urlBarSelectorIndex,
+		URLBarInputIndex:               urlBarInputIndex,
+		URLBarSendButtonIndex:          urlBarSendButtonIndex,
+		URLBarCurlButtonIndex:          urlBarCurlButtonIndex,
+		RPBodyTabIndex:                 RPBodyTabIndex,
+		RPAuthTabIndex:                 RPAuthTabIndex,
+		RPQueryTabIndex:                RPQueryTabIndex,
+		RPHeadersTabIndex:              RPHeadersTabIndex,
+		RefreshMultipartFieldsUI:       refreshMultipartFieldsUI,
+		AddHeaderButton:                currentAddHeaderButton,
+		DeleteAllHeadersButton:         currentDeleteAllHeadersButton,
+		AddQueryParamButton:            currentAddQueryParamButton,		
+		DeleteAllQueryParamsButton:     currentDeleteAllQueryParamsButton,		
+		MultipartAddButton:             currentMultipartAddButton,
+		MultipartDeleteAllButton:       currentMultipartDeleteAllButton,
+		Suspend:                        app.Suspend,
 	}
 
 	// Define tabIndexSetter now that we have all the variables
@@ -848,7 +862,21 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			case uiOrchestrator.RPAuthTabIndex:
 				uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Auth
 			case uiOrchestrator.RPQueryTabIndex:
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Query
+				// Check if any query param is in edit mode
+				queryInEditMode := false
+				for _, row := range currentQueryRows {
+					if (row.KeyInput != nil && row.KeyInput.IsEditMode()) ||
+						(row.ValueInput != nil && row.ValueInput.IsEditMode()) {
+						queryInEditMode = true
+						break
+					}
+				}
+
+				if queryInEditMode {
+					uiOrchestrator.FooterLeft.SetText(expPrefix + "(Esc) Exit Edit | (Tab) Next Panel | (q) Quit") // Request Query (Edit)
+				} else {
+					uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit Key/Value | (n) New Param | (d) Delete Param | (D) Delete All | (F4) Bulk Edit | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Query
+				}
 			case uiOrchestrator.RPHeadersTabIndex:
 				// Check if any header is in edit mode
 				headerInEditMode := false

@@ -86,6 +86,24 @@ func isFocusOnHeaderInputField(currentFocusedElement tview.Primitive, headerRows
 	return false
 }
 
+// isFocusOnQueryParamInputField checks if focus is on any query param input field
+func isFocusOnQueryParamInputField(currentFocusedElement tview.Primitive, queryParamRows []*QueryParamRow) bool {
+	for _, row := range queryParamRows {
+		if currentFocusedElement == row.KeyInput {
+			return true
+		}
+		if row.ValueInput != nil && row.ValueInput.HasFocus() && row.ValueInput.IsEditMode() {
+			return true
+		}
+		if hvi, ok := currentFocusedElement.(*HeaderValueInput); ok && currentFocusedElement == row.ValueInput {
+			if hvi.IsEditMode() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // handleTabSwitch handles tab switching for both number keys (1-4) and arrow keys
 // Returns true if the event was handled (tab was switched), false otherwise
 func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*HeaderRow) bool {
@@ -117,9 +135,12 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 	}
 
 	// Check if focus is on an input field (don't switch tabs if typing)
-	// Both number keys and arrow keys should respect this for header input fields
+	// Both number keys and arrow keys should respect this for header and query param input fields
 	currentFocusedElement := ui.App.GetFocus()
 	if isFocusOnHeaderInputField(currentFocusedElement, headerRows) {
+		return false
+	}
+	if isFocusOnQueryParamInputField(currentFocusedElement, currentQueryRows) {
 		return false
 	}
 
@@ -192,6 +213,12 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 					ui.App.SetFocus(ui.BodyEditPanel)
 				} else {
 					ui.App.SetFocus(ui.BodyViewPanel)
+				}
+			case 2: // Query tab
+				if len(currentQueryRows) > 0 && currentQueryRows[0].KeyInput != nil {
+					ui.App.SetFocus(currentQueryRows[0].KeyInput)
+				} else {
+					ui.App.SetFocus(ui.RequestDataTabs)
 				}
 			case 3: // Headers tab
 				if len(headerRows) > 0 && headerRows[0].KeyInput != nil {
@@ -349,6 +376,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		ui.SyncBodyContent("")
 		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
+		setQueryParamsInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
 		ui.LastResponse = nil
 		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
@@ -610,6 +638,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				ui.MultipartBodyContent = req.Body
 			}
 			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
+			setQueryParamsInUI(ui.Colors, req.QueryParams, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
 			// Set current request for persistence
 			ui.CurrentSelectedNode = node
@@ -850,6 +879,28 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.DeleteAllHeadersButton.Flash()
 		})
 	}
+	if ui.AddQueryParamButton != nil {
+		ui.AddQueryParamButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 2
+			ui.NavCurrentQueryParamRowElement = 0
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+			ui.AddQueryParamButton.Flash()
+		})
+	}
+	if ui.DeleteAllQueryParamsButton != nil {
+		ui.DeleteAllQueryParamsButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 2
+			ui.NavCurrentQueryParamRowElement = 1
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+			ui.DeleteAllQueryParamsButton.Flash()
+		})
+	}
 	if ui.ResponseHeadersPanel != nil {
 		// ResponseHeadersPanel is tview.Primitive, which has SetFocusFunc
 		// But we need to use a type assertion to a concrete type if we want to call SetFocusFunc?
@@ -954,6 +1005,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			contentType = ui.CurrentRequest.ContentType
 		}
 		headers := getHeadersFromUI()
+		queryParams := getQueryParamsFromUI()
 
 		// For multipart requests, collect the current UI state
 		if contentType == "Multipart" {
@@ -995,10 +1047,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Substitute environment variables in URL, body, and headers
+		// Substitute environment variables in URL, body, headers, and query params
 		url = substituteVariables(url, envVars)
 		body = substituteVariables(body, envVars)
 		headers = substituteVariablesInHeaders(headers, envVars)
+		queryParams = substituteVariablesInHeaders(queryParams, envVars)
 
 		requestData := &plugins.RequestData{
 			Method:      method,
@@ -1042,7 +1095,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Send the request in a goroutine
 		go func() {
-			resp, err := SendRequest(method, url, body, contentType, headers)
+			resp, err := SendRequest(method, url, body, contentType, headers, queryParams)
 
 			// Use QueueUpdateDraw to handle the response on the main thread
 			ui.App.QueueUpdateDraw(func() {
@@ -1149,6 +1202,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			contentType = ui.CurrentRequest.ContentType
 		}
 		headers := getHeadersFromUI()
+		queryParams := getQueryParamsFromUI()
 
 		// Get current environment variables
 		var envVars map[string]string
@@ -1169,13 +1223,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Substitute environment variables in URL, body, and headers
+		// Substitute environment variables in URL, body, headers, and query params
 		url = substituteVariables(url, envVars)
 		body = substituteVariables(body, envVars)
 		headers = substituteVariablesInHeaders(headers, envVars)
+		queryParams = substituteVariablesInHeaders(queryParams, envVars)
 
 		// Generate curl command
-		curlCommand := generateCurlCommand(method, url, headers, body, contentType)
+		curlCommand := generateCurlCommand(method, url, headers, body, contentType, queryParams)
 
 		// Copy to clipboard
 		copyToClipboard(curlCommand)
@@ -1284,6 +1339,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			"deleteCollection",
 			"deleteRequest",
 			"deleteAllHeaders",
+			"deleteAllQueryParams",
 			"duplicateRequest",
 			"cloneEnvironment",
 			"createWorkspace",
@@ -1633,6 +1689,9 @@ func getMaxSubchildForChild(container, child int, ui *UIOrchestrator) int {
 		case 3: // Headers Tab
 			// Headers Tab uses complex internal navigation, but we define 0 as the entry point
 			return 0
+		case 2: // Query Tab
+			// Query Tab uses complex internal navigation like Headers
+			return 0
 		default: // Auth (1), Query (2)
 			// Assuming single content area for now
 			return 0
@@ -1658,6 +1717,15 @@ func getMaxHeaderRowElement(headerRow *HeaderRow) int {
 	}
 
 	// Header rows have: Key input (0), Value input (1), Delete button (2)
+	return 2
+}
+
+func getMaxQueryParamRowElement(queryParamRow *QueryParamRow) int {
+	if queryParamRow == nil {
+		return 0
+	}
+
+	// Query param rows have: Key input (0), Value input (1), Delete button (2)
 	return 2
 }
 
@@ -2007,7 +2075,101 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 
 			case 2: // QueryTab
 				// Focus query tab content
-				ui.App.SetFocus(ui.RequestDataTabs)
+				// Use NavCurrentQueryParamRowElement to determine which element to focus on:
+				// 0: Add Param button
+				// 1: Delete All button
+				// 2+: Query param rows
+				if currentQueryParamsTab != nil {
+					// Get the button row (first child of query params container)
+					buttonRow := currentQueryParamsTab.GetItem(0)
+					if buttonRow != nil {
+						buttonRowFlex, ok := buttonRow.(*tview.Flex)
+						if ok && buttonRowFlex != nil && buttonRowFlex.GetItemCount() > 1 {
+							// Determine which element to focus based on NavCurrentQueryParamRowElement
+							if ui.NavCurrentQueryParamRowElement < 2 {
+								// We're on a button (Add Param or Delete All)
+								switch ui.NavCurrentQueryParamRowElement {
+								case 0: // Add Param button
+									addButton := buttonRowFlex.GetItem(0)
+									if addButton != nil {
+										ui.App.SetFocus(addButton)
+									} else {
+										ui.App.SetFocus(currentQueryParamsTab)
+									}
+								case 1: // Delete All button
+									deleteAllButton := buttonRowFlex.GetItem(1)
+									if deleteAllButton != nil {
+										ui.App.SetFocus(deleteAllButton)
+									} else {
+										addButton := buttonRowFlex.GetItem(0)
+										if addButton != nil {
+											ui.App.SetFocus(addButton)
+										} else {
+											ui.App.SetFocus(currentQueryParamsTab)
+										}
+									}
+								}
+							} else {
+								// We're on a query param row (NavCurrentQueryParamRowElement >= 2)
+								queryParamRowIndex := ui.NavCurrentQueryParamRowElement - 2
+								if queryParamRowIndex >= 0 && queryParamRowIndex < len(currentQueryRows) {
+									queryParamRow := currentQueryRows[queryParamRowIndex]
+									if queryParamRow != nil {
+										switch ui.NavCurrentQueryParamElement {
+										case 0: // Key input
+											if queryParamRow.KeyInput != nil {
+												ui.App.SetFocus(queryParamRow.KeyInput)
+											} else {
+												if queryParamRow.ValueInput != nil {
+													ui.App.SetFocus(queryParamRow.ValueInput)
+												} else {
+													ui.App.SetFocus(currentQueryParamsTab)
+												}
+											}
+										case 1: // Value input
+											if queryParamRow.ValueInput != nil {
+												ui.App.SetFocus(queryParamRow.ValueInput)
+											} else {
+												if queryParamRow.DeleteButton != nil {
+													ui.App.SetFocus(queryParamRow.DeleteButton)
+												} else {
+													ui.App.SetFocus(currentQueryParamsTab)
+												}
+											}
+										case 2: // Delete button
+											if queryParamRow.DeleteButton != nil {
+												ui.App.SetFocus(queryParamRow.DeleteButton)
+											} else {
+												if queryParamRow.KeyInput != nil {
+													ui.App.SetFocus(queryParamRow.KeyInput)
+												} else {
+													ui.App.SetFocus(currentQueryParamsTab)
+												}
+											}
+										default:
+											ui.NavCurrentQueryParamElement = 0
+											if queryParamRow.KeyInput != nil {
+												ui.App.SetFocus(queryParamRow.KeyInput)
+											} else {
+												ui.App.SetFocus(currentQueryParamsTab)
+											}
+										}
+									} else {
+										ui.App.SetFocus(currentQueryParamsTab)
+									}
+								} else {
+									ui.App.SetFocus(currentQueryParamsTab)
+								}
+							}
+						} else {
+							ui.App.SetFocus(currentQueryParamsTab)
+						}
+					} else {
+						ui.App.SetFocus(currentQueryParamsTab)
+					}
+				} else {
+					ui.App.SetFocus(ui.RequestDataTabs)
+				}
 
 			case 3: // HeadersTab
 				// Focus headers tab content
@@ -2347,7 +2509,60 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					}
 				}
 
-			default: // Auth (1) or Query (2) or others
+			case 2: // Query Tab
+				// Query params internal navigation ...
+				// 0: Add, 1: Delete All, 2+: Rows
+				// Check if we're in a query param row
+				if ui.NavCurrentQueryParamRowElement >= 2 {
+					queryParamRowIndex := ui.NavCurrentQueryParamRowElement - 2
+					queryParamRowValid := false
+					if queryParamRowIndex >= 0 && queryParamRowIndex < len(currentQueryRows) {
+						if currentQueryRows[queryParamRowIndex] != nil {
+							queryParamRowValid = true
+						}
+					}
+
+					maxQueryParamElement := 0
+					if queryParamRowValid {
+						maxQueryParamElement = getMaxQueryParamRowElement(currentQueryRows[queryParamRowIndex])
+					}
+
+					if queryParamRowValid && ui.NavCurrentQueryParamElement < maxQueryParamElement {
+						ui.NavCurrentQueryParamElement++
+					} else {
+						// Next row
+						ui.NavCurrentQueryParamElement = 0
+						ui.NavCurrentQueryParamRowElement++
+
+						// Check exit
+						maxQueryParamRowElement := 2
+						if currentQueryRows != nil {
+							maxQueryParamRowElement = 2 + len(currentQueryRows)
+						}
+						if ui.NavCurrentQueryParamRowElement >= maxQueryParamRowElement {
+							// Exit to Response Panel
+							ui.NavCurrentContainer = 5
+							ui.NavResponseInTabHeaders = false
+							ui.NavRequestInTabHeaders = true // Reset for next entry
+						}
+					}
+				} else {
+					// Buttons
+					ui.NavCurrentQueryParamRowElement++ // 0 -> 1 or 1 -> 2
+					ui.NavCurrentQueryParamElement = 0
+
+					// Check exit (if no query params)
+					if ui.NavCurrentQueryParamRowElement == 2 {
+						if currentQueryRows == nil || len(currentQueryRows) == 0 {
+							// Exit to Response Panel
+							ui.NavCurrentContainer = 5
+							ui.NavResponseInTabHeaders = false
+							ui.NavRequestInTabHeaders = true // Reset for next entry
+						}
+					}
+				}
+
+			default: // Auth (1) or others
 				// Simple navigation: if in content, Tab goes to Response Panel
 				ui.NavCurrentContainer = 5
 				ui.NavResponseInTabHeaders = false
@@ -2532,6 +2747,34 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// At start of content -> Go to Tab Headers
 					ui.NavRequestInTabHeaders = true
 				}
+			case 2: // Query
+				// Query params back navigation
+				if ui.NavCurrentQueryParamRowElement > 0 {
+					if ui.NavCurrentQueryParamRowElement >= 2 {
+						// In row
+						if ui.NavCurrentQueryParamElement > 0 {
+							ui.NavCurrentQueryParamElement--
+						} else {
+							ui.NavCurrentQueryParamRowElement--
+							// Check if prev is row
+							if ui.NavCurrentQueryParamRowElement >= 2 {
+								idx := ui.NavCurrentQueryParamRowElement - 2
+								if idx >= 0 && idx < len(currentQueryRows) {
+									ui.NavCurrentQueryParamElement = getMaxQueryParamRowElement(currentQueryRows[idx])
+								}
+							} else {
+								ui.NavCurrentQueryParamElement = 0
+							}
+						}
+					} else {
+						// Buttons
+						ui.NavCurrentQueryParamRowElement--
+						ui.NavCurrentQueryParamElement = 0
+					}
+				} else {
+					// At start of Query -> Go to Tab Headers
+					ui.NavRequestInTabHeaders = true
+				}
 			case 3: // Headers
 				// ... Headers back navigation ...
 				if ui.NavCurrentHeaderRowElement > 0 {
@@ -2603,6 +2846,26 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 				} else {
 					ui.NavCurrentFieldRowElement = 0
 				}
+			}
+		case 2: // Query
+			// Set to last element
+			maxQueryParamRowElement := 2
+			if currentQueryRows != nil {
+				maxQueryParamRowElement = 2 + len(currentQueryRows)
+			}
+			if maxQueryParamRowElement > 0 {
+				ui.NavCurrentQueryParamRowElement = maxQueryParamRowElement - 1
+			} else {
+				ui.NavCurrentQueryParamRowElement = 0
+			}
+
+			if ui.NavCurrentQueryParamRowElement >= 2 {
+				idx := ui.NavCurrentQueryParamRowElement - 2
+				if idx >= 0 && idx < len(currentQueryRows) {
+					ui.NavCurrentQueryParamElement = getMaxQueryParamRowElement(currentQueryRows[idx])
+				}
+			} else {
+				ui.NavCurrentQueryParamElement = 0
 			}
 		case 3: // Headers
 			// Set to last element

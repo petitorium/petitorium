@@ -26,6 +26,9 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 		// Sync headers from UI before saving
 		currentRequest.Headers = getHeadersFromUI()
 
+		// Sync query params from UI before saving
+		currentRequest.QueryParams = getQueryParamsFromUI()
+
 		// Sync body content based on content type
 		if currentRequest.ContentType == "Multipart" {
 			multipartBody := collectMultipartFieldsFromUI()

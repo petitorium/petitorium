@@ -153,6 +153,58 @@ func (c *HeadersCycle) UpdateInputs() {
 	}
 }
 
+// QueryParamsCycle handles cycling through query parameter inputs
+type QueryParamsCycle struct {
+	inputs   []tview.Primitive
+	current  int
+	parent   Cycle
+	children []tview.Primitive
+}
+
+func (c *QueryParamsCycle) Next() tview.Primitive {
+	if c.current < len(c.inputs)-1 {
+		c.current++
+		return c.inputs[c.current]
+	} else {
+		c.current = 0
+		return nil
+	}
+}
+
+func (c *QueryParamsCycle) Prev() tview.Primitive {
+	if c.current > 0 {
+		c.current--
+		return c.inputs[c.current]
+	} else {
+		c.current = len(c.inputs) - 1
+		return nil
+	}
+}
+
+func (c *QueryParamsCycle) GetCurrent() tview.Primitive {
+	return c.inputs[c.current]
+}
+
+func (c *QueryParamsCycle) Contains(p tview.Primitive) bool {
+	for _, input := range c.inputs {
+		if input == p {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *QueryParamsCycle) GetParent() Cycle {
+	return c.parent
+}
+
+func (c *QueryParamsCycle) UpdateInputs() {
+	c.inputs = []tview.Primitive{}
+	for _, row := range currentQueryRows {
+		c.inputs = append(c.inputs, row.KeyInput, row.ValueInput)
+	}
+}
+
 // EnvironmentsCycle handles cycling through header inputs
 type EnvironmentsCycle struct {
 	inputs   []tview.Primitive

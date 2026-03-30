@@ -1611,6 +1611,45 @@ func createDeleteAllHeadersConfirm(
 	return form
 }
 
+func createDeleteAllQueryParamsConfirm(
+	app *tview.Application,
+	pages *tview.Pages,
+	colors *ColorManager,
+	deleteCallback func(),
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("", "Are you sure you want to delete all query parameters?", 0, 1, false, false)
+
+	form.AddButton("Delete", func() {
+		deleteCallback()
+		pages.RemovePage("deleteAllQueryParams")
+	})
+
+	cancelFunc := func() {
+		pages.RemovePage("deleteAllQueryParams")
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancelFunc()
+			return nil
+		}
+		return event
+	})
+
+	form.SetBorder(true).SetTitle(" Delete All Query Parameters ")
+	return form
+}
+
 // collectMultipartFields collects all multipart fields from the UI and formats them as a string
 func collectMultipartFields(fieldsList *tview.Flex) string {
 	var fields []string

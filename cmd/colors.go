@@ -21,6 +21,7 @@ type ColorManager struct {
 	ButtonBackground tcell.Color // Button background color (normal state)
 	ButtonSelect     tcell.Color
 	DropdownFocus    tcell.Color
+	InputBackground  tcell.Color // Input field background color (subtle contrast)
 
 	// Semantic colors for consistent usage across the app
 	Placeholder tcell.Color // Placeholder text color
@@ -51,6 +52,12 @@ func NewColorManager() *ColorManager {
 	// Set up tview borders from theme configuration
 	setupBorders(theme)
 
+	// Set input background color with fallback
+	inputBackground := theme.InputBackgroundColor
+	if inputBackground == "" {
+		inputBackground = theme.BackgroundColor // Default to background (no contrast)
+	}
+
 	// Set label and value colors with fallbacks
 	labelColor := theme.LabelColor
 	if labelColor == "" {
@@ -73,6 +80,7 @@ func NewColorManager() *ColorManager {
 		ButtonBackground:    hexToColor(theme.ButtonBackgroundColor),
 		ButtonSelect:        hexToColor(theme.ButtonSelectedColor),
 		DropdownFocus:       hexToColor(theme.DropdownFocusedBackground),
+		InputBackground:     hexToColor(inputBackground),
 		Placeholder:         hexToColor("#4A5053"),
 		Success:             hexToColor(status.Success),
 		Error:               hexToColor(status.ClientError),

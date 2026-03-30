@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	netURL "net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -605,7 +606,7 @@ func openInFx(content string) error {
 }
 
 // generateCurlCommand generates a curl command string from HTTP request components
-func generateCurlCommand(method, url string, headers map[string]string, body, contentType string) string {
+func generateCurlCommand(method, urlStr string, headers map[string]string, body, contentType string, queryParams map[string]string) string {
 	var cmd strings.Builder
 	cmd.WriteString("curl")
 
@@ -667,9 +668,23 @@ func generateCurlCommand(method, url string, headers map[string]string, body, co
 		}
 	}
 
+	// Build final URL with query params
+	finalURL := urlStr
+	if len(queryParams) > 0 {
+		u, err := netURL.Parse(urlStr)
+		if err == nil {
+			q := u.Query()
+			for key, value := range queryParams {
+				q.Set(key, value)
+			}
+			u.RawQuery = q.Encode()
+			finalURL = u.String()
+		}
+	}
+
 	// Add URL (must be last)
 	cmd.WriteString(" '")
-	cmd.WriteString(url)
+	cmd.WriteString(finalURL)
 	cmd.WriteString("'")
 
 	return cmd.String()

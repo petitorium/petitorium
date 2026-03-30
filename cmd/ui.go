@@ -685,12 +685,268 @@ func createAuthTab(colors *ColorManager) *tview.TextView {
 	return authPanel
 }
 
-// createQueryTab creates placeholder query parameters tab content
-func createQueryTab(colors *ColorManager) *tview.TextView {
-	// Query Parameters panel
-	queryPanel := createPanel("", colors, &PanelOptions{HasBorder: &[]bool{true}[0], BorderColor: &colors.Background})
-	queryPanel.SetText("URL Query Parameters editor will go here.\n\n• Key-Value pairs\n• Add/Remove parameters\n• Bulk import\n• Templates (future)")
-	return queryPanel
+// createQueryParamsTabWithData creates query parameters tab with initial data
+func createQueryParamsTabWithData(colors *ColorManager,
+	initialParams map[string]string,
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+	app *tview.Application,
+	pages *tview.Pages,
+	footerUpdater func(),
+) *tview.Flex {
+	queryContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	queryContainer.SetBackgroundColor(colors.Background)
+	queryContainer.SetBorder(true)
+	queryContainer.SetBorderColor(colors.Background)
+	queryContainer.SetTitleColor(colors.Title)
+	queryContainer.SetBackgroundColor(colors.Background)
+
+	// Scrollable area for query param entries
+	queryList := tview.NewFlex().SetDirection(tview.FlexRow)
+	queryList.SetBackgroundColor(colors.Background)
+
+	// Store references for global access
+	currentQueryParamsTab = queryContainer
+	currentQueryParamsList = queryList
+
+	// Initialize global query param rows
+	currentQueryRows = []*QueryParamRow{}
+
+	// Function to refresh the UI
+	var refreshQueryParamsUI func()
+	refreshQueryParamsUI = func() {
+		queryList.Clear()
+		for _, row := range currentQueryRows {
+			queryList.AddItem(row.Row, rowHeight, 0, false)
+		}
+	}
+
+	// Add initial rows based on data
+	if initialParams != nil && len(initialParams) > 0 {
+		for key, value := range initialParams {
+			addQueryParamRowWithData(queryList, colors, key, value, refreshQueryParamsUI, saveCallback, focusSetter, footerUpdater)
+		}
+	}
+
+	// Add button row at the top
+	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonRow.SetBackgroundColor(colors.Background)
+
+	addButton := createThemedButton(" Add Param ", colors)
+	currentAddQueryParamButton = addButton
+	addButton.SetSelectedFunc(func() {
+		addQueryParamRow(queryList, colors, refreshQueryParamsUI, saveCallback, focusSetter, footerUpdater)
+	})
+
+	// Delete all button
+	deleteAllButton := createThemedButton(" Delete All ", colors)
+	currentDeleteAllQueryParamsButton = deleteAllButton
+	deleteAllButton.SetSelectedFunc(func() {
+		deleteCallback := func() {
+			currentQueryRows = []*QueryParamRow{}
+			refreshQueryParamsUI()
+			if saveCallback != nil {
+				saveCallback()
+			}
+		}
+		form := createDeleteAllQueryParamsConfirm(app, pages, colors, deleteCallback)
+		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		pages.AddPage("deleteAllQueryParams", modal, true, true)
+		app.SetFocus(form)
+	})
+
+	buttonRow.AddItem(addButton, 15, 0, false)
+	buttonRow.AddItem(deleteAllButton, 15, 0, false)
+	buttonRow.AddItem(nil, 0, 1, false)
+
+	queryContainer.AddItem(buttonRow, 1, 0, false)
+
+	// Add visual spacing between buttons and params
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	queryContainer.AddItem(spacer, 1, 0, false)
+
+	queryContainer.AddItem(queryList, 0, 1, false)
+
+	return queryContainer
+}
+
+// addQueryParamRow adds a new key-value query parameter input row
+func addQueryParamRow(queryList *tview.Flex,
+	colors *ColorManager,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+	footerUpdater func(),
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+
+	keyInput := NewHeaderKeyInput(colors)
+	keyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	keyInput.onModeChange = footerUpdater
+
+	valueInput := NewHeaderValueInput(colors)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.onModeChange = footerUpdater
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+
+	queryParamRow := &QueryParamRow{
+		KeyInput:     keyInput,
+		ValueInput:   valueInput,
+		DeleteButton: removeButton,
+		Row:          row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		for i, r := range currentQueryRows {
+			if r == queryParamRow {
+				currentQueryRows = append(currentQueryRows[:i], currentQueryRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonContainer.SetBackgroundColor(colors.Background)
+	buttonContainer.AddItem(nil, 0, 1, false)
+	buttonContainer.AddItem(removeButton, 1, 0, false)
+	buttonContainer.AddItem(nil, 0, 1, false)
+
+	row.AddItem(keyInput, 0, 1, false)
+	row.AddItem(valueInput, 0, 1, false)
+	row.AddItem(buttonContainer, 4, 0, false)
+
+	currentQueryRows = append(currentQueryRows, queryParamRow)
+	queryList.AddItem(row, rowHeight, 0, false)
+
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
+	separator.SetBorder(false)
+	queryList.AddItem(separator, 1, 0, false)
+
+	if queryParamsCycle != nil {
+		queryParamsCycle.UpdateInputs()
+	}
+}
+
+// addQueryParamRowWithData adds a query parameter row with pre-filled data
+func addQueryParamRowWithData(queryList *tview.Flex,
+	colors *ColorManager,
+	key string,
+	value string,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+	footerUpdater func(),
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+
+	keyInput := NewHeaderKeyInput(colors)
+	keyInput.SetText(key)
+	keyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	keyInput.onModeChange = footerUpdater
+
+	valueInput := NewHeaderValueInput(colors)
+	valueInput.SetText(value)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.onModeChange = footerUpdater
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+
+	queryParamRow := &QueryParamRow{
+		KeyInput:     keyInput,
+		ValueInput:   valueInput,
+		DeleteButton: removeButton,
+		Row:          row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		for i, r := range currentQueryRows {
+			if r == queryParamRow {
+				currentQueryRows = append(currentQueryRows[:i], currentQueryRows[i+1:]...)
+				refreshUI()
+				if saveCallback != nil {
+					saveCallback()
+				}
+				break
+			}
+		}
+	})
+
+	// Handle Tab navigation for delete button
+	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			if len(currentQueryRows) > 0 {
+				firstRow := currentQueryRows[0]
+				focusSetter(firstRow.KeyInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Handle Tab to add new param row when on the last value input
+	valueInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			if len(currentQueryRows) > 0 && currentQueryRows[len(currentQueryRows)-1] == queryParamRow {
+				if currentAddQueryParamButton != nil {
+					focusSetter(currentAddQueryParamButton)
+				}
+				return nil
+			}
+		}
+		return event
+	})
+
+	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonContainer.SetBackgroundColor(colors.Background)
+	buttonContainer.AddItem(nil, 0, 1, false)
+	buttonContainer.AddItem(removeButton, 1, 0, false)
+	buttonContainer.AddItem(nil, 0, 1, false)
+
+	row.AddItem(keyInput, 0, 1, false)
+	row.AddItem(valueInput, 0, 1, false)
+	row.AddItem(buttonContainer, 4, 0, false)
+
+	currentQueryRows = append(currentQueryRows, queryParamRow)
+	queryList.AddItem(row, rowHeight, 0, false)
+
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
+	separator.SetBorder(false)
+	queryList.AddItem(separator, 1, 0, false)
+
+	if queryParamsCycle != nil {
+		queryParamsCycle.UpdateInputs()
+	}
 }
 
 // Global variables for headers management
@@ -703,6 +959,17 @@ var currentHeadersList *tview.Flex
 var currentAddHeaderButton *CustomButton
 
 var currentDeleteAllHeadersButton *CustomButton
+
+// Global variables for query parameters management
+var currentQueryRows []*QueryParamRow
+
+var currentQueryParamsList *tview.Flex
+
+var currentQueryParamsTab *tview.Flex
+
+var currentAddQueryParamButton *CustomButton
+
+var currentDeleteAllQueryParamsButton *CustomButton
 
 // Global variables for environment variables management
 var currentEnvRows []*EnvVarRow
@@ -718,6 +985,14 @@ type HeaderRow struct {
 	DeleteButton  *tview.Button
 	Row           *tview.Flex
 	FooterUpdater func()
+}
+
+// QueryParamRow represents a single query parameter key-value pair in the UI
+type QueryParamRow struct {
+	KeyInput     *HeaderKeyInput
+	ValueInput   *HeaderValueInput
+	DeleteButton *tview.Button
+	Row          *tview.Flex
 }
 
 // EnvVarRow represents a single environment variable key-value pair in the UI
@@ -1369,6 +1644,56 @@ func getEnvVarsFromUI() map[string]string {
 	return variables
 }
 
+// getQueryParamsFromUI extracts query parameters from the current UI state
+func getQueryParamsFromUI() map[string]string {
+	params := make(map[string]string)
+	for _, row := range currentQueryRows {
+		key := strings.TrimSpace(row.KeyInput.GetText())
+		value := strings.TrimSpace(row.ValueInput.GetText())
+		if key != "" {
+			params[key] = value
+		}
+	}
+	return params
+}
+
+// setQueryParamsInUI populates the UI with the given query parameters
+func setQueryParamsInUI(colors *ColorManager, params map[string]string, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
+	currentQueryRows = []*QueryParamRow{}
+
+	if currentQueryParamsList != nil {
+		currentQueryParamsList.Clear()
+
+		var keys []string
+		for key := range params {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			value := params[key]
+			addQueryParamRowWithData(currentQueryParamsList, colors, key, value, func() {
+				setQueryParamsInUI(colors, getQueryParamsFromUI(), saveCallback, focusSetter, footerUpdater)
+			}, saveCallback, focusSetter, footerUpdater)
+		}
+	}
+
+	if currentAddQueryParamButton != nil && currentQueryParamsList != nil {
+		refreshQueryParamsUI := func() {
+			if currentQueryParamsList != nil {
+				currentQueryParamsList.Clear()
+				for _, row := range currentQueryRows {
+					currentQueryParamsList.AddItem(row.Row, rowHeight, 0, false)
+				}
+			}
+		}
+
+		currentAddQueryParamButton.SetSelectedFunc(func() {
+			addQueryParamRow(currentQueryParamsList, colors, refreshQueryParamsUI, saveCallback, focusSetter, footerUpdater)
+		})
+	}
+}
+
 // setEnvVarsInUI populates the UI with the given environment variables
 func setEnvVarsInUI(colors *ColorManager, variables map[string]string, saveCallback func(), focusSetter func(tview.Primitive)) {
 	// Clear existing rows
@@ -1515,7 +1840,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.TextView, *tview.Flex, *tview.DropDown, *tview.Flex, func()) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.Flex, *tview.Flex, *tview.DropDown, *tview.Flex, func()) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -1552,7 +1877,11 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	authTab := createAuthTab(colors)
 
 	// Create query tab
-	queryTab := createQueryTab(colors)
+	var initialQueryParams map[string]string
+	if currentRequest != nil {
+		initialQueryParams = currentRequest.QueryParams
+	}
+	queryTab := createQueryParamsTabWithData(colors, initialQueryParams, saveCallback, focusSetter, app, pages, footerUpdater)
 
 	// Create headers tab
 	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages, footerUpdater)
@@ -1968,14 +2297,14 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 		SetWordWrap(false).
 		SetScrollable(false)
 
-	viewMode.SetBackgroundColor(colors.Background)
+	viewMode.SetBackgroundColor(colors.InputBackground)
 	viewMode.SetTextColor(colors.Foreground)
 	viewMode.SetBorderPadding(0, 0, 0, 0)
 
 	// Create edit mode component (InputField)
 	editMode := tview.NewInputField()
 	editMode.SetBackgroundColor(colors.Background)
-	editMode.SetFieldBackgroundColor(colors.Background)
+	editMode.SetFieldBackgroundColor(colors.InputBackground)
 	editMode.SetFieldTextColor(colors.Foreground)
 	editMode.SetBorder(false)
 
@@ -1985,7 +2314,7 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 	})
 
 	editMode.SetBlurFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.Background)
+		editMode.SetFieldBackgroundColor(colors.InputBackground)
 	})
 
 	// Create Pages container
@@ -2036,7 +2365,7 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 
 	viewMode.SetBlurFunc(func() {
 		// When view mode loses focus, reset background
-		viewMode.SetBackgroundColor(colors.Background)
+		viewMode.SetBackgroundColor(colors.InputBackground)
 	})
 
 	return input
@@ -2045,7 +2374,7 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 // switchToViewMode switches to view mode, showing rendered variables
 func (h *HeaderValueInput) switchToViewMode() {
 	h.currentMode = "view"
-	h.viewMode.SetBackgroundColor(h.colors.Background)
+	h.viewMode.SetBackgroundColor(h.colors.InputBackground)
 	h.Pages.SwitchToPage("view")
 	h.updateViewMode()
 	if h.onModeChange != nil {
@@ -2057,7 +2386,7 @@ func (h *HeaderValueInput) switchToViewMode() {
 func (h *HeaderValueInput) switchToEditMode() {
 	h.currentMode = "edit"
 	h.editMode.SetBackgroundColor(h.colors.Background)
-	h.editMode.SetFieldBackgroundColor(h.colors.Background)
+	h.editMode.SetFieldBackgroundColor(h.colors.InputBackground)
 	h.editMode.SetText(h.rawText)
 	h.Pages.SwitchToPage("edit")
 	if h.onModeChange != nil {
@@ -2246,14 +2575,14 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 		SetWordWrap(false).
 		SetScrollable(false)
 
-	viewMode.SetBackgroundColor(colors.Background)
+	viewMode.SetBackgroundColor(colors.InputBackground)
 	viewMode.SetTextColor(colors.Foreground)
 	viewMode.SetBorderPadding(0, 0, 0, 0)
 
 	// Create edit mode component (InputField)
 	editMode := tview.NewInputField()
 	editMode.SetBackgroundColor(colors.Background)
-	editMode.SetFieldBackgroundColor(colors.Background)
+	editMode.SetFieldBackgroundColor(colors.InputBackground)
 	editMode.SetFieldTextColor(colors.Foreground)
 	editMode.SetBorder(false)
 
@@ -2263,7 +2592,7 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 	})
 
 	editMode.SetBlurFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.Background)
+		editMode.SetFieldBackgroundColor(colors.InputBackground)
 	})
 
 	// Create Pages container
@@ -2314,7 +2643,7 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 
 	viewMode.SetBlurFunc(func() {
 		// When view mode loses focus, reset background
-		viewMode.SetBackgroundColor(colors.Background)
+		viewMode.SetBackgroundColor(colors.InputBackground)
 	})
 
 	return input
@@ -2323,7 +2652,7 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 // switchToViewMode switches to view mode, showing the text
 func (h *HeaderKeyInput) switchToViewMode() {
 	h.currentMode = "view"
-	h.viewMode.SetBackgroundColor(h.colors.Background)
+	h.viewMode.SetBackgroundColor(h.colors.InputBackground)
 	h.Pages.SwitchToPage("view")
 	h.updateViewMode()
 	if h.onModeChange != nil {
@@ -2335,7 +2664,7 @@ func (h *HeaderKeyInput) switchToViewMode() {
 func (h *HeaderKeyInput) switchToEditMode() {
 	h.currentMode = "edit"
 	h.editMode.SetBackgroundColor(h.colors.Background)
-	h.editMode.SetFieldBackgroundColor(h.colors.Background)
+	h.editMode.SetFieldBackgroundColor(h.colors.InputBackground)
 	h.editMode.SetText(h.rawText)
 	h.Pages.SwitchToPage("edit")
 	if h.onModeChange != nil {
