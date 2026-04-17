@@ -21,16 +21,22 @@ type PluginManager struct {
 	config    *PluginConfig
 	pluginDir string
 	clients   []*plugin.Client
+	baseURL   string
 }
 
 // NewPluginManager creates a new PluginManager instance
 func NewPluginManager(config *PluginConfig, pluginDir string) *PluginManager {
+	baseURL := config.RegistryURL
+	if baseURL == "" {
+		baseURL = "https://hub.petitorium.dev/api/v1"
+	}
 	return &PluginManager{
 		plugins:   make(map[string]Plugin),
 		hooks:     make(map[HookType][]Plugin),
 		config:    config,
 		pluginDir: pluginDir,
 		clients:   make([]*plugin.Client, 0),
+		baseURL:   baseURL,
 	}
 }
 
@@ -96,15 +102,9 @@ func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error
 
 // LoadPlugin loads a single plugin by name
 func (pm *PluginManager) LoadPlugin(name string) error {
-	// Look for executable. We still check for .so if we haven't renamed them yet,
-	// but go-plugin needs a real executable.
 	pluginPath := filepath.Join(pm.pluginDir, name)
 	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
-		// Fallback to .so extension if it's there but it must be an executable
-		pluginPath = pluginPath + ".so"
-		if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
-			return fmt.Errorf("plugin %s not found in %s", name, pm.pluginDir)
-		}
+		return fmt.Errorf("plugin %s not found in %s", name, pm.pluginDir)
 	}
 
 	client := plugin.NewClient(&plugin.ClientConfig{
@@ -148,8 +148,7 @@ func (pm *PluginManager) LoadPlugins() error {
 
 // EnablePlugin enables a plugin by name
 func (pm *PluginManager) EnablePlugin(name string) error {
-	// Check if plugin file exists
-	pluginPath := filepath.Join(pm.pluginDir, name+".so")
+	pluginPath := filepath.Join(pm.pluginDir, name)
 	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
 		return fmt.Errorf("plugin %s not found", name)
 	}

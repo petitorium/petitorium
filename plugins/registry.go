@@ -51,32 +51,43 @@ func (rc *RegistryClient) ListPlugins() ([]types.RegistryPlugin, error) {
 // InstallPlugin downloads and installs a plugin
 func (pm *PluginManager) InstallPlugin(p types.RegistryPlugin) error {
 	platform := fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH)
-	downloadURL := ""
 	expectedChecksum := ""
 
 	for _, r := range p.Releases {
 		if r.Platform == platform {
-			downloadURL = r.URL
 			expectedChecksum = r.Checksum
 			break
 		}
-	}
-
-	if downloadURL == "" {
-		return fmt.Errorf("plugin %s not available for platform %s", p.Name, platform)
 	}
 
 	if expectedChecksum == "" {
 		return fmt.Errorf("checksum not available for plugin %s on platform %s", p.Name, platform)
 	}
 
-	// Create download path
-	pluginFile := p.Name + ".so"
+	// Construct download URL using the new format
+	// /plugins/{pluginID}/{plugin_name}/download/{version}/{platform}
+	downloadURL := fmt.Sprintf("%s/plugins/%s/%s/download/%s/%s",
+		pm.baseURL,
+		p.ID,
+		p.Name,
+		p.Version,
+		platform,
+	)
+
+	// Create download path - use name as-is
+	pluginFile := p.Name
 	destPath := filepath.Join(pm.pluginDir, pluginFile)
 
 	// Download file
 	if err := downloadFile(downloadURL, destPath, expectedChecksum); err != nil {
 		return fmt.Errorf("failed to download plugin: %w", err)
+	}
+
+	// Make the plugin executable on Unix systems (not needed on Windows)
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(destPath, 0755); err != nil {
+			return fmt.Errorf("failed to make plugin executable: %w", err)
+		}
 	}
 
 	// Update configuration

@@ -35,17 +35,18 @@ var listCmd = &cobra.Command{
 
 		fmt.Println("Available plugins:")
 		for _, entry := range entries {
-			if strings.HasSuffix(entry.Name(), ".so") {
-				name := strings.TrimSuffix(entry.Name(), ".so")
-				status := "disabled"
-				for _, enabled := range config.C.Plugins.Enabled {
-					if enabled == name {
-						status = "enabled"
-						break
-					}
-				}
-				fmt.Printf("  - %s (%s)\n", name, status)
+			if entry.IsDir() {
+				continue
 			}
+			name := entry.Name()
+			status := "disabled"
+			for _, enabled := range config.C.Plugins.Enabled {
+				if enabled == name {
+					status = "enabled"
+					break
+				}
+			}
+			fmt.Printf("  - %s (%s)\n", name, status)
 		}
 	},
 }
