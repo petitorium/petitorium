@@ -9,6 +9,8 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
+
+	"github.com/petitorium/petitorium/config"
 )
 
 func getWorkspaceFilePath() (string, error) {
@@ -199,6 +201,7 @@ func LoadWorkspace() (*Workspace, error) {
 // migrateWorkspaceContentTypes sets default content types for requests that don't have them
 func migrateWorkspaceContentTypes(workspace *Workspace) {
 	migrateCollectionsContentTypes(workspace.Collections)
+	trimResponseHistory(workspace.Collections)
 }
 
 // migrateCollectionsContentTypes recursively migrates content types for all collections
@@ -214,6 +217,29 @@ func migrateCollectionsContentTypes(collections []Collection) {
 		// Recursively migrate nested collections
 		migrateCollectionsContentTypes(collections[i].Collections)
 	}
+}
+
+// trimResponseHistory trims response history to the configured limit
+func trimResponseHistory(collections []Collection) {
+	maxHistory := config.C.MaxResponseHistory
+	if maxHistory <= 0 {
+		return
+	}
+
+	var trimCollection func(cols []Collection)
+	trimCollection = func(cols []Collection) {
+		for i := range cols {
+			for j := range cols[i].Requests {
+				req := &cols[i].Requests[j]
+				if len(req.ResponseHistory) > maxHistory {
+					req.ResponseHistory = req.ResponseHistory[len(req.ResponseHistory)-maxHistory:]
+				}
+			}
+			trimCollection(cols[i].Collections)
+		}
+	}
+
+	trimCollection(collections)
 }
 
 // LoadWorkspaceByName loads a specific workspace by name

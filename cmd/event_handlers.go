@@ -1056,6 +1056,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						Duration:   resp.Duration,
 						Timestamp:  resp.Timestamp,
 					}
+
+					maxHistory := config.C.MaxResponseHistory
+					if maxHistory > 0 && len((*ui.CurrentRequest).ResponseHistory) >= maxHistory {
+						(*ui.CurrentRequest).ResponseHistory = (*ui.CurrentRequest).ResponseHistory[1:]
+					}
 					(*ui.CurrentRequest).ResponseHistory = append((*ui.CurrentRequest).ResponseHistory, workspaceResp)
 
 					// Update the node's reference with the new response history

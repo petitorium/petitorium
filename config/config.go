@@ -21,6 +21,7 @@ type AppConfig struct {
 	SyntaxTheme         string               `mapstructure:"syntaxTheme"`
 	SelectedEnvironment string               `mapstructure:"selectedEnvironment"`
 	RequestTimeout      int                  `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
+	MaxResponseHistory  int                  `mapstructure:"maxResponseHistory"`
 	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
 	UnifiedTheming      bool                 `mapstructure:"unifiedTheming"`      // Enable unified theming system
 	DisableVersionCheck bool                 `mapstructure:"disableVersionCheck"` // Disable latest version check
@@ -153,6 +154,9 @@ selectedEnvironment: "Base"
 
 # HTTP request timeout in seconds (default: 60)
 requestTimeout: 60
+
+# Maximum number of response history entries per request (default: 25, 0 = no limit)
+maxResponseHistory: 25
 
 # Enable unified theming system (applies syntax theme colors to entire UI)
 unifiedTheming: true
