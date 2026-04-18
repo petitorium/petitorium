@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/petitorium/petitorium-plugin-sdk/types"
 )
@@ -90,6 +91,11 @@ func (pm *PluginManager) InstallPlugin(p types.RegistryPlugin) error {
 		}
 	}
 
+	// Save checksum file for external verification
+	if err := saveChecksumFile(destPath, expectedChecksum); err != nil {
+		return fmt.Errorf("failed to save checksum file: %w", err)
+	}
+
 	// Update configuration
 	if pm.config.Installed == nil {
 		pm.config.Installed = make(map[string]InstalledInfo)
@@ -157,8 +163,10 @@ func downloadFile(url string, destPath string, expectedChecksum string) error {
 	return verifyChecksum(destPath, expectedChecksum)
 }
 
-// verifyChecksum checks if the file at path matches the expected SHA256 checksum
+// verifyChecksum checks if the file at path matches the expected checksum
 func verifyChecksum(path string, expected string) error {
+	expected, _ = stripChecksumPrefix(expected)
+
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -176,4 +184,24 @@ func verifyChecksum(path string, expected string) error {
 	}
 
 	return nil
+}
+
+// stripChecksumPrefix removes any algorithm prefix from checksum string
+// e.g., "sha256:abc123..." -> "abc123...", "sha512:def456..." -> "def456..."
+// Also returns the algorithm if present
+func stripChecksumPrefix(checksum string) (string, string) {
+	checksum = strings.TrimSpace(checksum)
+	algorithm := "sha256" // default
+	if idx := strings.Index(checksum, ":"); idx > 0 {
+		algorithm = checksum[:idx]
+		return checksum[idx+1:], algorithm
+	}
+	return checksum, algorithm
+}
+
+// saveChecksumFile saves the checksum to a file alongside the plugin for external verification
+func saveChecksumFile(pluginPath string, checksum string) error {
+	checksum, algorithm := stripChecksumPrefix(checksum)
+	checksumPath := pluginPath + "." + algorithm
+	return os.WriteFile(checksumPath, []byte(checksum+"\n"), 0644)
 }
