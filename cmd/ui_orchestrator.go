@@ -188,6 +188,8 @@ type UIOrchestrator struct {
 	RPAuthTabIndex                      int
 	RPQueryTabIndex                     int
 	RPHeadersTabIndex                   int
+	EnterModal                          func()
+	ExitModal                           func()
 }
 
 // switchBodyContent switches the body container content based on content type
@@ -689,30 +691,40 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		SetPanelFocus:                  setPanelFocus,
 		SetActiveBorder:                setActiveBorder,
 		SetInactiveBorder:              setInactiveBorder,
-		SyncBodyContent:                syncBodyContent,
-		SwitchBodyMode:                 switchBodyMode,
-		UpdateFooter:                   func() {}, // Will be set below
-		KeyManager:                     NewKeyBindingManager(),
-		LastResponse:                   nil,
-		LastResponseTime:               nil,
-		WorkspaceSelectorIndex:         workspaceSelectorIndex,
-		WorkspaceConfigButtonIndex:     workspaceConfigButtonIndex,
-		EnvironmentSelectorIndex:       environmentSelectorIndex,
-		EnvironmentConfigButtonIndex:   environmentConfigButtonIndex,
-		URLBarSelectorIndex:            urlBarSelectorIndex,
-		URLBarInputIndex:               urlBarInputIndex,
-		URLBarSendButtonIndex:          urlBarSendButtonIndex,
-		URLBarCurlButtonIndex:          urlBarCurlButtonIndex,
-		RPBodyTabIndex:                 RPBodyTabIndex,
-		RPAuthTabIndex:                 RPAuthTabIndex,
-		RPQueryTabIndex:                RPQueryTabIndex,
-		RPHeadersTabIndex:              RPHeadersTabIndex,
-		RefreshMultipartFieldsUI:       refreshMultipartFieldsUI,
-		AddHeaderButton:                currentAddHeaderButton,
-		DeleteAllHeadersButton:         currentDeleteAllHeadersButton,
-		MultipartAddButton:             currentMultipartAddButton,
-		MultipartDeleteAllButton:       currentMultipartDeleteAllButton,
-		Suspend:                        app.Suspend,
+		EnterModal: func() {
+			if currentFocus < len(mainPanels) {
+				setInactiveBorder(mainPanels[currentFocus])
+			}
+		},
+		ExitModal: func() {
+			if currentFocus < len(mainPanels) {
+				setActiveBorder(mainPanels[currentFocus])
+			}
+		},
+		SyncBodyContent:              syncBodyContent,
+		SwitchBodyMode:               switchBodyMode,
+		UpdateFooter:                 func() {}, // Will be set below
+		KeyManager:                   NewKeyBindingManager(),
+		LastResponse:                 nil,
+		LastResponseTime:             nil,
+		WorkspaceSelectorIndex:       workspaceSelectorIndex,
+		WorkspaceConfigButtonIndex:   workspaceConfigButtonIndex,
+		EnvironmentSelectorIndex:     environmentSelectorIndex,
+		EnvironmentConfigButtonIndex: environmentConfigButtonIndex,
+		URLBarSelectorIndex:          urlBarSelectorIndex,
+		URLBarInputIndex:             urlBarInputIndex,
+		URLBarSendButtonIndex:        urlBarSendButtonIndex,
+		URLBarCurlButtonIndex:        urlBarCurlButtonIndex,
+		RPBodyTabIndex:               RPBodyTabIndex,
+		RPAuthTabIndex:               RPAuthTabIndex,
+		RPQueryTabIndex:              RPQueryTabIndex,
+		RPHeadersTabIndex:            RPHeadersTabIndex,
+		RefreshMultipartFieldsUI:     refreshMultipartFieldsUI,
+		AddHeaderButton:              currentAddHeaderButton,
+		DeleteAllHeadersButton:       currentDeleteAllHeadersButton,
+		MultipartAddButton:           currentMultipartAddButton,
+		MultipartDeleteAllButton:     currentMultipartDeleteAllButton,
+		Suspend:                      app.Suspend,
 	}
 
 	// Define tabIndexSetter now that we have all the variables
@@ -788,6 +800,11 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
 		if currentPage == "envVariables" {
 			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (N) New Environment | (c) Clone Environment | (r) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
+			return
+		}
+
+		if currentPage == "marketplace" {
+			uiOrchestrator.FooterLeft.SetText("(Enter) Install  (u) Uninstall  (Esc/q) Close")
 			return
 		}
 

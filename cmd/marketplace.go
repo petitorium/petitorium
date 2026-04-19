@@ -100,11 +100,12 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 	m.AddItem(innerFlex, 0, 1, false)
 
 	m.SetBorder(true).SetTitle(" Plugin Marketplace (petitorium.dev) ")
-	m.SetBorderColor(ui.Colors.Border)
+	m.SetBorderColor(ui.Colors.BorderFocus)
 	m.SetTitleColor(ui.Colors.Title)
 
 	m.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
+			m.ui.ExitModal()
 			m.ui.Pages.RemovePage("marketplace")
 			if m.returnFocus != nil {
 				m.ui.App.SetFocus(m.returnFocus)
@@ -115,11 +116,20 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 		}
 		// Only close with 'q' if NOT in search field
 		if event.Rune() == 'q' && m.ui.App.GetFocus() != m.searchField {
+			m.ui.ExitModal()
 			m.ui.Pages.RemovePage("marketplace")
 			if m.returnFocus != nil {
 				m.ui.App.SetFocus(m.returnFocus)
 			} else {
 				m.ui.App.SetFocus(m.ui.CollectionsTreeView)
+			}
+			return nil
+		}
+		// Uninstall with 'u' key
+		if event.Rune() == 'u' {
+			row, _ := m.table.GetSelection()
+			if row > 0 && row-1 < len(m.filteredPlugins) {
+				m.handlePluginUninstall(m.filteredPlugins[row-1])
 			}
 			return nil
 		}
@@ -215,6 +225,47 @@ func (m *MarketplacePanel) handlePluginAction(p types.RegistryPlugin) {
 	}()
 }
 
+func (m *MarketplacePanel) handlePluginUninstall(p types.RegistryPlugin) {
+	if !m.manager.IsPluginInstalled(p.Name) {
+		return
+	}
+
+	showConfirmModal(
+		m.ui.Pages,
+		fmt.Sprintf("Uninstall Plugin"),
+		fmt.Sprintf("Uninstall [yellow]%s[-]? This will remove the plugin file.", p.Name),
+		[]string{"Cancel", "Uninstall"},
+		m.ui.Colors.Background,
+		func(buttonIndex int) {
+			if buttonIndex == 1 {
+				m.performUninstall(p.Name)
+			} else {
+				m.ui.App.SetFocus(m.table)
+			}
+		},
+	)
+}
+
+func (m *MarketplacePanel) performUninstall(name string) {
+	_ = showProgressModal(m.ui.Pages, " Uninstalling Plugin ", fmt.Sprintf("Removing %s...", name), m.ui.Colors.Background)
+
+	go func() {
+		err := m.manager.UninstallPlugin(name)
+		if err == nil {
+			config.SaveConfig(&config.C)
+		}
+		m.ui.App.QueueUpdateDraw(func() {
+			m.ui.Pages.RemovePage("progress")
+			if err != nil {
+				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to uninstall plugin: %v", err), m.table)
+				return
+			}
+			m.filterPlugins(m.searchField.GetText())
+			m.ui.App.SetFocus(m.table)
+		})
+	}()
+}
+
 func (m *MarketplacePanel) updateDetails(p types.RegistryPlugin) {
 	m.details.Clear()
 	// official := ""
@@ -234,6 +285,7 @@ func (ui *UIOrchestrator) ShowMarketplace() {
 	currentFocus := ui.App.GetFocus()
 	m := NewMarketplacePanel(ui)
 	m.returnFocus = currentFocus
+	ui.EnterModal()
 
 	// Fetch plugins in background
 	go func() {

@@ -564,6 +564,54 @@ func showProgressModal(pages *tview.Pages, title string, message string, bgColor
 	return textView
 }
 
+// showConfirmModal displays a confirmation modal with buttons
+func showConfirmModal(
+	pages *tview.Pages,
+	title string,
+	message string,
+	buttons []string,
+	bgColor tcell.Color,
+	onButton func(buttonIndex int),
+) {
+	textView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter).
+		SetText(message)
+	textView.SetBackgroundColor(bgColor)
+
+	form := tview.NewForm()
+	form.SetBackgroundColor(bgColor)
+	form.SetBorderColor(tcell.ColorGray)
+	form.SetTitleColor(tcell.ColorWhite)
+	form.SetLabelColor(tcell.ColorWhite)
+	form.SetButtonBackgroundColor(tcell.ColorGray)
+	form.SetButtonTextColor(tcell.ColorWhite)
+
+	for i, btn := range buttons {
+		btn := btn
+		i := i
+		form.AddButton(btn, func() {
+			pages.RemovePage("confirm")
+			onButton(i)
+		})
+	}
+
+	form.SetCancelFunc(func() {
+		pages.RemovePage("confirm")
+		onButton(0)
+	})
+
+	flex := tview.NewFlex().SetDirection(tview.FlexRow)
+	flex.SetBackgroundColor(bgColor)
+	flex.AddItem(textView, 0, 1, false)
+	flex.AddItem(form, 0, 1, false)
+
+	flex.SetBorder(true).SetTitle(title)
+
+	modal := createModal(flex, 50, 10, bgColor)
+	pages.AddPage("confirm", modal, true, true)
+}
+
 // Helper function to find workspace index in dropdown
 func findWorkspaceIndex(workspaces []workspace.WorkspaceMetadata, name string) int {
 	for i, ws := range workspaces {

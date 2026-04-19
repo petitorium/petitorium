@@ -116,9 +116,14 @@ func (pm *PluginManager) UninstallPlugin(name string) error {
 		return fmt.Errorf("plugin %s is not installed", name)
 	}
 
-	// Remove file
+	// Remove plugin file
 	if err := os.Remove(info.Path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove plugin file: %w", err)
+	}
+
+	// Remove checksum file (supported algorithms)
+	for _, ext := range []string{"sha256", "sha512", "blake3", "md5"} {
+		_ = os.Remove(info.Path + "." + ext)
 	}
 
 	// Update config
