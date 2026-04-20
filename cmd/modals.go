@@ -572,7 +572,7 @@ func showConfirmModal(
 	buttons []string,
 	bgColor tcell.Color,
 	onButton func(buttonIndex int),
-) {
+) *tview.Form {
 	textView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter).
@@ -610,6 +610,8 @@ func showConfirmModal(
 
 	modal := createModal(flex, 50, 10, bgColor)
 	pages.AddPage("confirm", modal, true, true)
+
+	return form
 }
 
 // Helper function to find workspace index in dropdown

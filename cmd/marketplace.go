@@ -230,7 +230,7 @@ func (m *MarketplacePanel) handlePluginUninstall(p types.RegistryPlugin) {
 		return
 	}
 
-	showConfirmModal(
+	form := showConfirmModal(
 		m.ui.Pages,
 		fmt.Sprintf("Uninstall Plugin"),
 		fmt.Sprintf("Uninstall [yellow]%s[-]? This will remove the plugin file.", p.Name),
@@ -244,6 +244,19 @@ func (m *MarketplacePanel) handlePluginUninstall(p types.RegistryPlugin) {
 			}
 		},
 	)
+
+	// Attach input capture to handle Esc key and restore focus to the table
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			m.ui.Pages.RemovePage("confirm")
+			m.ui.App.SetFocus(m.table)
+			return nil
+		}
+		return event
+	})
+
+	// Explicitly set focus to the form so it captures key events
+	m.ui.App.SetFocus(form)
 }
 
 func (m *MarketplacePanel) performUninstall(name string) {
