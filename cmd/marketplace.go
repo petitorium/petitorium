@@ -42,9 +42,10 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 	m.table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.ActiveTab))
 	m.table.SetBackgroundColor(ui.Colors.Background)
 
-	m.details.SetBorder(true).SetTitle(" Plugin Details ")
+	m.details.SetBorder(true).SetTitle(" Plugin Details ").SetTitleColor(ui.Colors.Foreground)
 	m.details.SetBorderColor(ui.Colors.Border)
 	m.details.SetBackgroundColor(ui.Colors.Background)
+	m.details.SetTextColor(ui.Colors.Foreground)
 
 	m.searchField = tview.NewInputField().
 		SetLabel(" Search Plugins: ").

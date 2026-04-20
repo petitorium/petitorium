@@ -578,6 +578,7 @@ func showConfirmModal(
 		SetTextAlign(tview.AlignCenter).
 		SetText(message)
 	textView.SetBackgroundColor(colors.Background)
+	textView.SetTextColor(colors.Foreground)
 
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
