@@ -570,22 +570,24 @@ func showConfirmModal(
 	title string,
 	message string,
 	buttons []string,
-	bgColor tcell.Color,
+	colors *ColorManager,
 	onButton func(buttonIndex int),
 ) *tview.Form {
 	textView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter).
 		SetText(message)
-	textView.SetBackgroundColor(bgColor)
+	textView.SetBackgroundColor(colors.Background)
 
 	form := tview.NewForm()
-	form.SetBackgroundColor(bgColor)
-	form.SetBorderColor(tcell.ColorGray)
-	form.SetTitleColor(tcell.ColorWhite)
-	form.SetLabelColor(tcell.ColorWhite)
-	form.SetButtonBackgroundColor(tcell.ColorGray)
-	form.SetButtonTextColor(tcell.ColorWhite)
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
 
 	for i, btn := range buttons {
 		btn := btn
@@ -602,13 +604,15 @@ func showConfirmModal(
 	})
 
 	flex := tview.NewFlex().SetDirection(tview.FlexRow)
-	flex.SetBackgroundColor(bgColor)
+	flex.SetBackgroundColor(colors.Background)
 	flex.AddItem(textView, 0, 1, false)
 	flex.AddItem(form, 0, 1, false)
 
 	flex.SetBorder(true).SetTitle(title)
+	flex.SetBorderColor(colors.BorderFocus)
+	flex.SetTitleColor(colors.Title)
 
-	modal := createModal(flex, 50, 10, bgColor)
+	modal := createModal(flex, 50, 10, colors.Background)
 	pages.AddPage("confirm", modal, true, true)
 
 	return form

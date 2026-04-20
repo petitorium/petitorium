@@ -232,10 +232,10 @@ func (m *MarketplacePanel) handlePluginUninstall(p types.RegistryPlugin) {
 
 	form := showConfirmModal(
 		m.ui.Pages,
-		fmt.Sprintf("Uninstall Plugin"),
+		fmt.Sprintf(" Uninstall Plugin "),
 		fmt.Sprintf("Uninstall [yellow]%s[-]? This will remove the plugin file.", p.Name),
 		[]string{"Cancel", "Uninstall"},
-		m.ui.Colors.Background,
+		m.ui.Colors,
 		func(buttonIndex int) {
 			if buttonIndex == 1 {
 				m.performUninstall(p.Name)
