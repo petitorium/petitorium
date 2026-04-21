@@ -3,11 +3,13 @@ package plugins
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/petitorium/petitorium-plugin-sdk/shared"
@@ -114,6 +116,13 @@ func (pm *PluginManager) LoadPlugin(name string) error {
 		},
 		Cmd:              exec.Command(pluginPath),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolNetRPC, plugin.ProtocolGRPC},
+		Logger: hclog.New(&hclog.LoggerOptions{
+			Name:   "plugin",
+			Output: io.Discard,
+			Level:  hclog.Error,
+		}),
+		SyncStdout: io.Discard,
+		SyncStderr: io.Discard,
 	})
 	pm.clients = append(pm.clients, client)
 
