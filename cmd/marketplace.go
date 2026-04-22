@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -100,7 +101,13 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 
 	m.AddItem(innerFlex, 0, 1, false)
 
-	m.SetBorder(true).SetTitle(" Plugin Marketplace (petitorium.dev) ")
+	marketplaceHost := "petitorium.dev"
+	if config.C.Plugins.RegistryURL != "" {
+		if u, err := url.Parse(config.C.Plugins.RegistryURL); err == nil && u.Host != "" {
+			marketplaceHost = u.Host
+		}
+	}
+	m.SetBorder(true).SetTitle(fmt.Sprintf(" Plugin Marketplace (%s) ", marketplaceHost))
 	m.SetBorderColor(ui.Colors.BorderFocus)
 	m.SetTitleColor(ui.Colors.Title)
 
