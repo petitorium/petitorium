@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -153,7 +154,7 @@ func (m *MarketplacePanel) filterPlugins(query string) {
 	query = strings.ToLower(query)
 
 	// Set headers
-	headers := []string{"Name", "Version", "Author", "Status"}
+	headers := []string{"Name", "Version", "Author", "Status", "Downloads"}
 	for i, h := range headers {
 		m.table.SetCell(0, i, tview.NewTableCell(" "+h+" ").
 			SetTextColor(m.ui.Colors.Title).
@@ -167,19 +168,14 @@ func (m *MarketplacePanel) filterPlugins(query string) {
 	for _, p := range m.plugins {
 		if query == "" || strings.Contains(strings.ToLower(p.Name), query) || strings.Contains(strings.ToLower(p.Description), query) {
 			m.filteredPlugins = append(m.filteredPlugins, p)
-			statusText, statusColor := m.getPluginStatusInfo(p)
-			// official := ""
-			// officialColor := m.ui.Colors.Foreground
-			// if p.Official {
-			// 	official = "✔"
-			// 	officialColor = tcell.ColorGreen
-			// }
+			statusText, _ := m.getPluginStatusInfo(p)
+			downloadCount := strconv.Itoa(p.Downloads)
 
-			m.table.SetCell(row, 0, tview.NewTableCell(p.Name).SetTextColor(m.ui.Colors.Foreground).SetExpansion(2))
-			m.table.SetCell(row, 1, tview.NewTableCell(p.Version).SetTextColor(m.ui.Colors.Foreground).SetAlign(tview.AlignCenter))
-			// m.table.SetCell(row, 2, tview.NewTableCell(official).SetAlign(tview.AlignCenter).SetTextColor(officialColor))
-			m.table.SetCell(row, 2, tview.NewTableCell(p.Author).SetTextColor(m.ui.Colors.Foreground).SetAlign(tview.AlignCenter))
-			m.table.SetCell(row, 3, tview.NewTableCell(statusText).SetAlign(tview.AlignCenter).SetTextColor(statusColor))
+			m.table.SetCell(row, 0, tview.NewTableCell(p.Name).SetExpansion(2).SetTextColor(m.ui.Colors.Foreground))
+			m.table.SetCell(row, 1, tview.NewTableCell(p.Version).SetAlign(tview.AlignCenter).SetTextColor(m.ui.Colors.Foreground))
+			m.table.SetCell(row, 2, tview.NewTableCell(p.Author).SetAlign(tview.AlignCenter).SetTextColor(m.ui.Colors.Foreground))
+			m.table.SetCell(row, 3, tview.NewTableCell(statusText).SetAlign(tview.AlignCenter).SetTextColor(m.ui.Colors.Foreground))
+			m.table.SetCell(row, 4, tview.NewTableCell(downloadCount).SetAlign(tview.AlignCenter).SetTextColor(m.ui.Colors.Foreground))
 			row++
 		}
 	}
@@ -289,15 +285,14 @@ func (m *MarketplacePanel) performUninstall(name string) {
 
 func (m *MarketplacePanel) updateDetails(p types.RegistryPlugin) {
 	m.details.Clear()
-	// official := ""
-	// if p.Official {
-	// 	official = " [green](Official Plugin)[-]"
-	// }
-	// fmt.Fprintf(m.details, "[yellow]%s[-]%s\n", p.Name, official)
-	fmt.Fprintf(m.details, "[green]Version:[-] %s\n", p.Version)
-	fmt.Fprintf(m.details, "[green]Author:[-] %s\n", p.Author)
-	// fmt.Fprintf(m.details, "[red]Go version:[-] %s\n", p.Releases[0].GoVersion)
-	fmt.Fprintf(m.details, "[blue]Repository:[-] %s\n\n", p.Repository)
+
+	versionR, versionG, versionB := m.ui.Colors.Error.RGB()
+	authorR, authorG, authorB := m.ui.Colors.Success.RGB()
+	repoR, repoG, repoB := m.ui.Colors.LabelColor.RGB()
+
+	fmt.Fprintf(m.details, "[#%02x%02x%02x]Version:[-] %s\n", versionR, versionG, versionB, p.Version)
+	fmt.Fprintf(m.details, "[#%02x%02x%02x]Author:[-] %s\n", authorR, authorG, authorB, p.Author)
+	fmt.Fprintf(m.details, "[#%02x%02x%02x]Repository:[-] %s\n\n", repoR, repoG, repoB, p.Repository)
 	fmt.Fprintf(m.details, "%s\n", p.Description)
 }
 
