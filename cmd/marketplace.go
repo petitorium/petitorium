@@ -135,7 +135,7 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 			return nil
 		}
 		// Uninstall with 'u' key
-		if event.Rune() == 'u' {
+		if event.Rune() == 'u' && m.ui.App.GetFocus() != m.searchField {
 			row, _ := m.table.GetSelection()
 			if row > 0 && row-1 < len(m.filteredPlugins) {
 				m.handlePluginUninstall(m.filteredPlugins[row-1])
