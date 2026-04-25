@@ -169,7 +169,7 @@ func (m *MarketplacePanel) filterPlugins(query string) {
 		if query == "" || strings.Contains(strings.ToLower(p.Name), query) || strings.Contains(strings.ToLower(p.Description), query) {
 			m.filteredPlugins = append(m.filteredPlugins, p)
 			statusText, _ := m.getPluginStatusInfo(p)
-			downloadCount := strconv.Itoa(p.Downloads)
+			downloadCount := strconv.FormatInt(p.DownloadCount, 10)
 
 			m.table.SetCell(row, 0, tview.NewTableCell(p.Name).SetExpansion(2).SetTextColor(m.ui.Colors.Foreground))
 			m.table.SetCell(row, 1, tview.NewTableCell(p.Version).SetAlign(tview.AlignCenter).SetTextColor(m.ui.Colors.Foreground))
