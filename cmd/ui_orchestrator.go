@@ -692,14 +692,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		SetActiveBorder:                setActiveBorder,
 		SetInactiveBorder:              setInactiveBorder,
 		EnterModal: func() {
-			if currentFocus < len(mainPanels) {
-				setInactiveBorder(mainPanels[currentFocus])
-			}
-		},
-		ExitModal: func() {
-			if currentFocus < len(mainPanels) {
-				setActiveBorder(mainPanels[currentFocus])
-			}
+			// Will be overridden below
 		},
 		SyncBodyContent:              syncBodyContent,
 		SwitchBodyMode:               switchBodyMode,
@@ -728,6 +721,17 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	}
 
 	// Define tabIndexSetter now that we have all the variables
+	uiOrchestrator.EnterModal = func() {
+		if uiOrchestrator.NavCurrentContainer < len(mainPanels) {
+			setInactiveBorder(mainPanels[uiOrchestrator.NavCurrentContainer])
+		}
+	}
+	uiOrchestrator.ExitModal = func() {
+		if uiOrchestrator.NavCurrentContainer < len(mainPanels) {
+			setActiveBorder(mainPanels[uiOrchestrator.NavCurrentContainer])
+		}
+	}
+
 	tabIndexSetter = func(tabIndex int) {
 		// Update content type dropdown visibility
 		if tabIndex == 0 {

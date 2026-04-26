@@ -114,23 +114,27 @@ func NewMarketplacePanel(ui *UIOrchestrator) *MarketplacePanel {
 
 	m.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			m.ui.ExitModal()
 			m.ui.Pages.RemovePage("marketplace")
 			if m.returnFocus != nil {
 				m.ui.App.SetFocus(m.returnFocus)
 			} else {
 				m.ui.App.SetFocus(m.ui.CollectionsTreeView)
 			}
+			if m.ui.ExitModal != nil {
+				m.ui.ExitModal()
+			}
 			return nil
 		}
 		// Only close with 'q' if NOT in search field
 		if event.Rune() == 'q' && m.ui.App.GetFocus() != m.searchField {
-			m.ui.ExitModal()
 			m.ui.Pages.RemovePage("marketplace")
 			if m.returnFocus != nil {
 				m.ui.App.SetFocus(m.returnFocus)
 			} else {
 				m.ui.App.SetFocus(m.ui.CollectionsTreeView)
+			}
+			if m.ui.ExitModal != nil {
+				m.ui.ExitModal()
 			}
 			return nil
 		}
