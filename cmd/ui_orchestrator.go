@@ -804,7 +804,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		}
 
 		if currentPage == "marketplace" {
-			uiOrchestrator.FooterLeft.SetText("(Enter) Install  (u) Uninstall  (↑/↓) Move  (Tab) Next  (Shift+Tab) Prev  (Esc/q) Close")
+			uiOrchestrator.FooterLeft.SetText("(Enter) Install  (u) Uninstall  (↑/↓/j/k) Move  (Tab) Next  (Shift+Tab) Prev  (Esc/q) Close")
 			return
 		}
 
