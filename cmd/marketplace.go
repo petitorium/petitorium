@@ -234,10 +234,13 @@ func (m *MarketplacePanel) getPluginStatusInfo(p types.RegistryPlugin) (string, 
 	if m.manager.IsPluginInstalled(p.Name) {
 		info, _ := m.manager.GetInstalledInfo(p.Name)
 		cmp := compareVersions(info.Version, p.Version)
+		if cmp == 0 {
+			return "Installed", tcell.ColorGreen
+		}
 		if cmp < 0 {
 			return "Update", tcell.ColorYellow
 		}
-		return "Installed", tcell.ColorGreen
+		return "Outdated", m.ui.Colors.Foreground
 	}
 	return "Available", m.ui.Colors.Foreground
 }
