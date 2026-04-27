@@ -243,23 +243,36 @@ func (m *MarketplacePanel) getPluginStatusInfo(p types.RegistryPlugin) (string, 
 }
 
 func (m *MarketplacePanel) handlePluginAction(p types.RegistryPlugin) {
+	needsReload := false
 	if m.manager.IsPluginInstalled(p.Name) {
 		info, _ := m.manager.GetInstalledInfo(p.Name)
 		if compareVersions(info.Version, p.Version) >= 0 {
 			return
 		}
+		needsReload = true
 	}
 
 	// Install/Update
 	_ = showProgressModal(m.ui.Pages, " Installing Plugin ", fmt.Sprintf("Downloading %s...", p.Name), m.ui.Colors.Background)
 
 	go func() {
+		// Unload the plugin if it's currently loaded to avoid "text file busy" error
+		if needsReload {
+			m.manager.UnloadPlugin(p.Name)
+		}
+
 		err := m.manager.InstallPlugin(p)
 		if err == nil {
 			m.manager.EnablePlugin(p.Name)
 			config.SaveConfig(&config.C)
-			// Try to load it immediately
+			// Reload the updated plugin
 			_ = m.manager.LoadPlugin(p.Name)
+			// Also reload other plugins that may have been unloaded by UnloadPlugin
+			for _, name := range m.manager.GetEnabledPlugins() {
+				if name != p.Name {
+					_ = m.manager.LoadPlugin(name)
+				}
+			}
 		}
 		m.ui.App.QueueUpdateDraw(func() {
 			m.ui.Pages.RemovePage("progress")

@@ -49,6 +49,31 @@ func (pm *PluginManager) Close() {
 	}
 }
 
+// UnloadPlugin unloads a specific plugin by killing its client and removing it from the registry
+func (pm *PluginManager) UnloadPlugin(name string) {
+	// Remove from plugins map
+	delete(pm.plugins, name)
+
+	// Remove from hooks map
+	for hookType, hookList := range pm.hooks {
+		newList := []Plugin{}
+		for _, p := range hookList {
+			if p.Name() != name {
+				newList = append(newList, p)
+			}
+		}
+		pm.hooks[hookType] = newList
+	}
+
+	// Kill all clients - this is the safest approach since we can't identify
+	// which client belongs to which plugin without additional tracking.
+	// After killing, the plugin will be reloaded by LoadPlugins if still enabled.
+	for _, client := range pm.clients {
+		client.Kill()
+	}
+	pm.clients = []*plugin.Client{}
+}
+
 // RegisterPlugin registers a plugin with the manager
 func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 	name := p.Name()
@@ -198,4 +223,9 @@ func (pm *PluginManager) DisablePlugin(name string) error {
 		}
 	}
 	return fmt.Errorf("plugin %s not enabled", name)
+}
+
+// GetEnabledPlugins returns the list of enabled plugin names
+func (pm *PluginManager) GetEnabledPlugins() []string {
+	return pm.config.Enabled
 }
