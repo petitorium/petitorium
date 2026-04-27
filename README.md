@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="petitorium.png" alt="Petitorium Logo" width="400">
+  <img src="petitorium.svg" alt="Petitorium Logo" width="500">
 </p>
 
 # Petitorium
