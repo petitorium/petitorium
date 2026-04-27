@@ -1009,10 +1009,16 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			RequestName: requestName,
 		}
 
+		workspaceName := "Default"
+		if ui.WorkspaceData != nil {
+			workspaceName = ui.WorkspaceData.Name
+		}
+
 		context := &plugins.HookContext{
 			Request:     requestData,
 			Environment: envVars,
 			Config:      config.C.Plugins.Config,
+			Workspace:   workspaceName,
 		}
 
 		// Ensure config is available for all hooks
