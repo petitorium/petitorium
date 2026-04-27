@@ -17,6 +17,7 @@ A powerful Terminal API Testing Client
 - `Tab` - Cycle focus forward through main panels and elements
 - `Shift+Tab` - Cycle focus backward
 - `Ctrl+w` - Show workspace menu
+- `Ctrl+p` - Open plugin marketplace
 - `q` / `Q` - Quit application
 
 ### Collections Panel
