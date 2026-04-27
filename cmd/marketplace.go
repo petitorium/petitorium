@@ -14,6 +14,47 @@ import (
 	"github.com/petitorium/petitorium/plugins"
 )
 
+// compareVersions compares two semantic versions (e.g., "1.2.3").
+// Returns -1 if a < b, 0 if a == b, 1 if a > b.
+func compareVersions(a, b string) int {
+	parseV := func(v string) (major, minor, patch int) {
+		parts := strings.Split(v, ".")
+		if len(parts) >= 1 {
+			major, _ = strconv.Atoi(parts[0])
+		}
+		if len(parts) >= 2 {
+			minor, _ = strconv.Atoi(parts[1])
+		}
+		if len(parts) >= 3 {
+			patch, _ = strconv.Atoi(parts[2])
+		}
+		return
+	}
+
+	ma, mi, pa := parseV(a)
+	mb, mib, pb := parseV(b)
+
+	if ma != mb {
+		if ma < mb {
+			return -1
+		}
+		return 1
+	}
+	if mi != mib {
+		if mi < mib {
+			return -1
+		}
+		return 1
+	}
+	if pa != pb {
+		if pa < pb {
+			return -1
+		}
+		return 1
+	}
+	return 0
+}
+
 // MarketplacePanel represents the plugin marketplace UI
 type MarketplacePanel struct {
 	*tview.Flex
@@ -192,7 +233,8 @@ func (m *MarketplacePanel) filterPlugins(query string) {
 func (m *MarketplacePanel) getPluginStatusInfo(p types.RegistryPlugin) (string, tcell.Color) {
 	if m.manager.IsPluginInstalled(p.Name) {
 		info, _ := m.manager.GetInstalledInfo(p.Name)
-		if info.Version != p.Version {
+		cmp := compareVersions(info.Version, p.Version)
+		if cmp < 0 {
 			return "Update", tcell.ColorYellow
 		}
 		return "Installed", tcell.ColorGreen
@@ -203,9 +245,7 @@ func (m *MarketplacePanel) getPluginStatusInfo(p types.RegistryPlugin) (string, 
 func (m *MarketplacePanel) handlePluginAction(p types.RegistryPlugin) {
 	if m.manager.IsPluginInstalled(p.Name) {
 		info, _ := m.manager.GetInstalledInfo(p.Name)
-		if info.Version == p.Version {
-			// Already up to date, maybe uninstall?
-			// For now, just return
+		if compareVersions(info.Version, p.Version) >= 0 {
 			return
 		}
 	}
