@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -549,12 +550,12 @@ func showErrorModalWithFocus(app *tview.Application, pages *tview.Pages, message
 	pages.AddPage("error", modal, true, true)
 }
 
-// showProgressModal displays a progress modal
-func showProgressModal(pages *tview.Pages, title string, message string, colors *ColorManager) *tview.TextView {
+// showProgressModal displays a progress modal with an animated progress bar.
+// Returns the text view and a stop function that should be called when the operation completes.
+func showProgressModal(app *tview.Application, pages *tview.Pages, title string, message string, colors *ColorManager) (*tview.TextView, func()) {
 	textView := tview.NewTextView().
 		SetDynamicColors(true).
-		SetTextAlign(tview.AlignCenter).
-		SetText(message)
+		SetTextAlign(tview.AlignCenter)
 	textView.SetBackgroundColor(colors.Background)
 	textView.SetTextColor(colors.Foreground)
 	textView.SetBorder(true)
@@ -562,10 +563,47 @@ func showProgressModal(pages *tview.Pages, title string, message string, colors 
 	textView.SetTitleColor(colors.Title)
 	textView.SetBorderColor(colors.BorderFocus)
 
-	// TODO: Make a better progress bar
+	barFrames := []string{
+		"[#bb9af8]      ",
+		"[#bb9af8]█     ",
+		"[#bb9af8]██    ",
+		"[#bb9af8]███   ",
+		"[#bb9af8]████  ",
+		"[#bb9af8]█████ ",
+		"[#bb9af8]██████",
+		"[#bb9af8]█████ ",
+		"[#bb9af8]████  ",
+		"[#bb9af8]███   ",
+		"[#bb9af8]██    ",
+		"[#bb9af8]█     ",
+	}
+	spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+	stopBar := make(chan struct{})
+	go func() {
+		i := 0
+		for {
+			select {
+			case <-stopBar:
+				return
+			default:
+				app.QueueUpdateDraw(func() {
+					textView.SetText(fmt.Sprintf("\n  %s %s\n\n  %s",
+						spinner[i%len(spinner)], message, barFrames[i%len(barFrames)]))
+				})
+				i++
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}()
+
 	modal := createModal(textView, 40, 7, colors.Background)
 	pages.AddPage("progress", modal, true, true)
-	return textView
+
+	stop := func() {
+		close(stopBar)
+	}
+	return textView, stop
 }
 
 // showConfirmModal displays a confirmation modal with buttons
