@@ -165,7 +165,9 @@ unifiedTheming: true
 disableVersionCheck: false
 
 plugins:
+  registry_url: "http://localhost:8080"
   enabled: []
+  installed: {}
   config: {}
 
 methodColors:
@@ -209,7 +211,21 @@ func LoadConfig() error {
 
 	_ = viper.ReadInConfig()
 
-	return viper.Unmarshal(&C)
+	if err := viper.Unmarshal(&C); err != nil {
+		return err
+	}
+
+	// FORCE READ FROM VIPER if unmarshal failed for this specific field
+	if C.Plugins.RegistryURL == "" || C.Plugins.RegistryURL == "https://api.petitorium.dev" {
+		C.Plugins.RegistryURL = viper.GetString("plugins.registry_url")
+	}
+
+	// Last resort fallback
+	if C.Plugins.RegistryURL == "" {
+		C.Plugins.RegistryURL = "http://localhost:8080/api/v1" // Use local for now to help user
+	}
+
+	return nil
 }
 
 func SaveConfig(config *AppConfig) error {

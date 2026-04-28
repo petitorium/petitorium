@@ -62,6 +62,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 	pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
 	os.MkdirAll(pluginDir, 0755)
 	pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
+	defer pm.Close()
 	if err := pm.LoadPlugins(); err != nil {
 		fmt.Printf("Warning: Failed to load plugins: %v\n", err)
 		fmt.Printf("Plugin directory: %s\n", pluginDir)

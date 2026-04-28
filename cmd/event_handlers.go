@@ -1009,10 +1009,16 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			RequestName: requestName,
 		}
 
+		workspaceName := "Default"
+		if ui.WorkspaceData != nil {
+			workspaceName = ui.WorkspaceData.Name
+		}
+
 		context := &plugins.HookContext{
 			Request:     requestData,
 			Environment: envVars,
 			Config:      config.C.Plugins.Config,
+			Workspace:   workspaceName,
 		}
 
 		// Ensure config is available for all hooks
@@ -1055,7 +1061,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					return
 				}
 
-				context.Response = resp
+				context.Response = &plugins.ResponseData{
+					StatusCode: resp.StatusCode,
+					Status:     resp.Status,
+					Headers:    resp.Headers,
+					Body:       resp.Body,
+					Duration:   resp.Duration.Milliseconds(),
+				}
 
 				// Ensure config is available for PostReceive hook
 				if context.Config == nil {
