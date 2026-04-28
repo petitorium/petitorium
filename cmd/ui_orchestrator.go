@@ -705,33 +705,33 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		SetInactiveBorder:              setInactiveBorder,
 		EnterModal: func() {
 			// Will be overridden below
-		},		
-		SyncBodyContent:                syncBodyContent,
-		SwitchBodyMode:                 switchBodyMode,
-		UpdateFooter:                   func() {}, // Will be set below
-		KeyManager:                     NewKeyBindingManager(),
-		LastResponse:                   nil,
-		LastResponseTime:               nil,
-		WorkspaceSelectorIndex:         workspaceSelectorIndex,
-		WorkspaceConfigButtonIndex:     workspaceConfigButtonIndex,
-		EnvironmentSelectorIndex:       environmentSelectorIndex,
-		EnvironmentConfigButtonIndex:   environmentConfigButtonIndex,
-		URLBarSelectorIndex:            urlBarSelectorIndex,
-		URLBarInputIndex:               urlBarInputIndex,
-		URLBarSendButtonIndex:          urlBarSendButtonIndex,
-		URLBarCurlButtonIndex:          urlBarCurlButtonIndex,
-		RPBodyTabIndex:                 RPBodyTabIndex,
-		RPAuthTabIndex:                 RPAuthTabIndex,
-		RPQueryTabIndex:                RPQueryTabIndex,
-		RPHeadersTabIndex:              RPHeadersTabIndex,
-		RefreshMultipartFieldsUI:       refreshMultipartFieldsUI,
-		AddHeaderButton:                currentAddHeaderButton,
-		DeleteAllHeadersButton:         currentDeleteAllHeadersButton,
-		AddQueryParamButton:            currentAddQueryParamButton,		
-		DeleteAllQueryParamsButton:     currentDeleteAllQueryParamsButton,		
-		MultipartAddButton:             currentMultipartAddButton,
-		MultipartDeleteAllButton:       currentMultipartDeleteAllButton,
-		Suspend:                        app.Suspend,
+		},
+		SyncBodyContent:              syncBodyContent,
+		SwitchBodyMode:               switchBodyMode,
+		UpdateFooter:                 func() {}, // Will be set below
+		KeyManager:                   NewKeyBindingManager(),
+		LastResponse:                 nil,
+		LastResponseTime:             nil,
+		WorkspaceSelectorIndex:       workspaceSelectorIndex,
+		WorkspaceConfigButtonIndex:   workspaceConfigButtonIndex,
+		EnvironmentSelectorIndex:     environmentSelectorIndex,
+		EnvironmentConfigButtonIndex: environmentConfigButtonIndex,
+		URLBarSelectorIndex:          urlBarSelectorIndex,
+		URLBarInputIndex:             urlBarInputIndex,
+		URLBarSendButtonIndex:        urlBarSendButtonIndex,
+		URLBarCurlButtonIndex:        urlBarCurlButtonIndex,
+		RPBodyTabIndex:               RPBodyTabIndex,
+		RPAuthTabIndex:               RPAuthTabIndex,
+		RPQueryTabIndex:              RPQueryTabIndex,
+		RPHeadersTabIndex:            RPHeadersTabIndex,
+		RefreshMultipartFieldsUI:     refreshMultipartFieldsUI,
+		AddHeaderButton:              currentAddHeaderButton,
+		DeleteAllHeadersButton:       currentDeleteAllHeadersButton,
+		AddQueryParamButton:          currentAddQueryParamButton,
+		DeleteAllQueryParamsButton:   currentDeleteAllQueryParamsButton,
+		MultipartAddButton:           currentMultipartAddButton,
+		MultipartDeleteAllButton:     currentMultipartDeleteAllButton,
+		Suspend:                      app.Suspend,
 	}
 
 	// Define tabIndexSetter now that we have all the variables
@@ -924,16 +924,48 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		defer ticker.Stop()
 
 		lastFocus := app.GetFocus()
+		lastActivePanel := uiOrchestrator.NavCurrentContainer
 
 		for {
 			select {
 			case <-ticker.C:
 				app.QueueUpdateDraw(func() {
-					// Check for focus change to update footer
+					// Check for focus change to update footer and borders
 					currentFocus := app.GetFocus()
 					if currentFocus != lastFocus {
 						lastFocus = currentFocus
 						updateFooterFunc()
+
+						// Update panel borders based on new focus
+						newPanel := findPanelIndexForPrimitive(mainPanels, currentFocus)
+						if newPanel != -1 && newPanel != lastActivePanel {
+							if lastActivePanel != -1 && lastActivePanel < len(mainPanels) {
+								setInactiveBorder(mainPanels[lastActivePanel])
+							}
+							setActiveBorder(mainPanels[newPanel])
+							lastActivePanel = newPanel
+						}
+
+						// Sync navigation state with mouse-driven focus changes
+						if newPanel != -1 && newPanel != uiOrchestrator.NavCurrentContainer {
+							uiOrchestrator.NavCurrentContainer = newPanel
+							// Sync MainCycle.current with new panel
+							switch newPanel {
+							case 0:
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Workspace
+							case 1:
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Environment
+							case 2:
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Collections
+							case 3:
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.URLBar
+							case 4:
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Request
+							case 5:
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Response
+							}
+							uiOrchestrator.CurrentFocus = uiOrchestrator.MainCycle.current
+						}
 					}
 
 					// Update time only once per second (approx)
@@ -964,4 +996,53 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	CheckLatestVersion(uiOrchestrator.App, uiOrchestrator.FooterRight)
 
 	return uiOrchestrator, nil
+}
+
+// hasDescendant recursively checks whether target is a descendant of container
+// by walking Flex and Pages tree structures.
+func hasDescendant(container, target tview.Primitive) bool {
+	if container == nil || target == nil {
+		return false
+	}
+	if container == target {
+		return true
+	}
+
+	switch c := container.(type) {
+	case *tview.Flex:
+		for i := 0; i < c.GetItemCount(); i++ {
+			if hasDescendant(c.GetItem(i), target) {
+				return true
+			}
+		}
+	case *tview.Pages:
+		if _, item := c.GetFrontPage(); item != nil {
+			return hasDescendant(item, target)
+		}
+	case *URLVariableInput:
+		return hasDescendant(c.Pages, target)
+	case *HeaderKeyInput:
+		return hasDescendant(c.Pages, target)
+	case *HeaderValueInput:
+		return hasDescendant(c.Pages, target)
+	}
+
+	return false
+}
+
+// findPanelIndexForPrimitive determines which main panel the focused primitive belongs to.
+// It iterates through mainPanels and checks if the primitive is a descendant of each panel.
+// Returns the panel index or -1 if not found.
+func findPanelIndexForPrimitive(mainPanels []tview.Primitive, focused tview.Primitive) int {
+	if focused == nil {
+		return -1
+	}
+
+	for i, panel := range mainPanels {
+		if hasDescendant(panel, focused) {
+			return i
+		}
+	}
+
+	return -1
 }
