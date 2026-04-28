@@ -256,7 +256,7 @@ func (m *MarketplacePanel) handlePluginAction(p types.RegistryPlugin) {
 	}
 
 	// Install/Update
-	_ = showProgressModal(m.ui.Pages, " Installing Plugin ", fmt.Sprintf("Downloading %s...", p.Name), m.ui.Colors.Background)
+	_ = showProgressModal(m.ui.Pages, " Installing Plugin ", fmt.Sprintf("Downloading %s...", p.Name), m.ui.Colors)
 
 	go func() {
 		// Unload the plugin if it's currently loaded to avoid "text file busy" error
@@ -324,7 +324,7 @@ func (m *MarketplacePanel) handlePluginUninstall(p types.RegistryPlugin) {
 }
 
 func (m *MarketplacePanel) performUninstall(name string) {
-	_ = showProgressModal(m.ui.Pages, " Uninstalling Plugin ", fmt.Sprintf("Removing %s...", name), m.ui.Colors.Background)
+	_ = showProgressModal(m.ui.Pages, " Uninstalling Plugin ", fmt.Sprintf("Removing %s...", name), m.ui.Colors)
 
 	go func() {
 		err := m.manager.UninstallPlugin(name)
