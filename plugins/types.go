@@ -19,6 +19,8 @@ type PluginHook = types.PluginHook
 
 type PluginConfig = types.PluginConfig
 
+type InstalledInfo = types.InstalledInfo
+
 type ResponseData = types.ResponseData
 
 // Re-export all hook type constants

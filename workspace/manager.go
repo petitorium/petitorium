@@ -5,10 +5,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
+
+	"github.com/petitorium/petitorium/config"
 )
 
 func getWorkspaceFilePath() (string, error) {
@@ -199,6 +202,7 @@ func LoadWorkspace() (*Workspace, error) {
 // migrateWorkspaceContentTypes sets default content types for requests that don't have them
 func migrateWorkspaceContentTypes(workspace *Workspace) {
 	migrateCollectionsContentTypes(workspace.Collections)
+	trimResponseHistory(workspace.Collections)
 }
 
 // migrateCollectionsContentTypes recursively migrates content types for all collections
@@ -214,6 +218,70 @@ func migrateCollectionsContentTypes(collections []Collection) {
 		// Recursively migrate nested collections
 		migrateCollectionsContentTypes(collections[i].Collections)
 	}
+}
+
+const maxResponseBodySize = 1024 * 1024
+
+func isBinaryResponse(body string, headers map[string][]string) bool {
+	if headers == nil {
+		return false
+	}
+	ct, ok := headers["Content-Type"]
+	if !ok || len(ct) == 0 {
+		return false
+	}
+	contentType := strings.ToLower(strings.TrimSpace(ct[0]))
+	binaryPrefixes := []string{
+		"image/",
+		"audio/",
+		"video/",
+		"application/pdf",
+		"application/zip",
+		"application/gzip",
+		"application/x-tar",
+		"application/x-rar-compressed",
+		"application/octet-stream",
+		"application/msword",
+		"application/vnd.ms-excel",
+		"application/vnd.ms-powerpoint",
+		"application/vnd.openxmlformats-officedocument",
+	}
+	for _, prefix := range binaryPrefixes {
+		if strings.HasPrefix(contentType, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldSkipResponseBody(body string, headers map[string][]string) bool {
+	return len(body) > maxResponseBodySize || isBinaryResponse(body, headers)
+}
+
+// trimResponseHistory trims response history to the configured limit
+func trimResponseHistory(collections []Collection) {
+	maxHistory := config.C.MaxResponseHistory
+
+	var trimCollection func(cols []Collection)
+	trimCollection = func(cols []Collection) {
+		for i := range cols {
+			for j := range cols[i].Requests {
+				req := &cols[i].Requests[j]
+				if maxHistory > 0 && len(req.ResponseHistory) > maxHistory {
+					req.ResponseHistory = req.ResponseHistory[len(req.ResponseHistory)-maxHistory:]
+				}
+				for k := range req.ResponseHistory {
+					resp := &req.ResponseHistory[k]
+					if shouldSkipResponseBody(resp.Body, resp.Headers) {
+						resp.Body = fmt.Sprintf("[Response body skipped - %d bytes]", len(resp.Body))
+					}
+				}
+			}
+			trimCollection(cols[i].Collections)
+		}
+	}
+
+	trimCollection(collections)
 }
 
 // LoadWorkspaceByName loads a specific workspace by name

@@ -13,6 +13,34 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
+func isBinaryContentType(contentType string) bool {
+	if contentType == "" {
+		return false
+	}
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+	binaryPrefixes := []string{
+		"image/",
+		"audio/",
+		"video/",
+		"application/pdf",
+		"application/zip",
+		"application/gzip",
+		"application/x-tar",
+		"application/x-rar-compressed",
+		"application/octet-stream",
+		"application/msword",
+		"application/vnd.ms-excel",
+		"application/vnd.ms-powerpoint",
+		"application/vnd.openxmlformats-officedocument",
+	}
+	for _, prefix := range binaryPrefixes {
+		if strings.HasPrefix(contentType, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func refreshCollectionsTree(ui *UIOrchestrator) {
 	ui.RootNode.ClearChildren()
 
@@ -981,10 +1009,16 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			RequestName: requestName,
 		}
 
+		workspaceName := "Default"
+		if ui.WorkspaceData != nil {
+			workspaceName = ui.WorkspaceData.Name
+		}
+
 		context := &plugins.HookContext{
 			Request:     requestData,
 			Environment: envVars,
 			Config:      config.C.Plugins.Config,
+			Workspace:   workspaceName,
 		}
 
 		// Ensure config is available for all hooks
@@ -1027,7 +1061,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					return
 				}
 
-				context.Response = resp
+				context.Response = &plugins.ResponseData{
+					StatusCode: resp.StatusCode,
+					Status:     resp.Status,
+					Headers:    resp.Headers,
+					Body:       resp.Body,
+					Duration:   resp.Duration.Milliseconds(),
+				}
 
 				// Ensure config is available for PostReceive hook
 				if context.Config == nil {
@@ -1048,13 +1088,29 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				// Store the response in the current request's history
 				if ui.CurrentRequest != nil {
+					body := resp.Body
+					contentType := ""
+					if resp.Headers != nil {
+						if ct, ok := resp.Headers["Content-Type"]; ok && len(ct) > 0 {
+							contentType = ct[0]
+						}
+					}
+					if len(body) > 1024*1024 || isBinaryContentType(contentType) {
+						body = fmt.Sprintf("[Response body skipped - %d bytes]", len(body))
+					}
+
 					workspaceResp := workspace.HTTPResponse{
 						StatusCode: resp.StatusCode,
 						Status:     resp.Status,
 						Headers:    resp.Headers,
-						Body:       resp.Body,
+						Body:       body,
 						Duration:   resp.Duration,
 						Timestamp:  resp.Timestamp,
+					}
+
+					maxHistory := config.C.MaxResponseHistory
+					if maxHistory > 0 && len((*ui.CurrentRequest).ResponseHistory) >= maxHistory {
+						(*ui.CurrentRequest).ResponseHistory = (*ui.CurrentRequest).ResponseHistory[1:]
 					}
 					(*ui.CurrentRequest).ResponseHistory = append((*ui.CurrentRequest).ResponseHistory, workspaceResp)
 

@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -522,6 +523,142 @@ func showWorkspaceModal(
 	ui.Pages.AddPage("workspaceModal", modal, true, true)
 	ui.UpdateFooter()
 	ui.App.SetFocus(leftPanel)
+}
+
+// showErrorModal displays an error message modal
+func showErrorModal(pages *tview.Pages, message string) {
+	modal := tview.NewModal().
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			pages.RemovePage("error")
+		})
+	pages.AddPage("error", modal, true, true)
+}
+
+// showErrorModalWithFocus displays an error message modal and returns focus to a specific primitive
+func showErrorModalWithFocus(app *tview.Application, pages *tview.Pages, message string, returnFocus tview.Primitive) {
+	modal := tview.NewModal().
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			pages.RemovePage("error")
+			if returnFocus != nil {
+				app.SetFocus(returnFocus)
+			}
+		})
+	pages.AddPage("error", modal, true, true)
+}
+
+// showProgressModal displays a progress modal with an animated progress bar.
+// Returns the text view and a stop function that should be called when the operation completes.
+func showProgressModal(app *tview.Application, pages *tview.Pages, title string, message string, colors *ColorManager) (*tview.TextView, func()) {
+	textView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter)
+	textView.SetBackgroundColor(colors.Background)
+	textView.SetTextColor(colors.Foreground)
+	textView.SetBorder(true)
+	textView.SetTitle(title)
+	textView.SetTitleColor(colors.Title)
+	textView.SetBorderColor(colors.BorderFocus)
+
+	barFrames := []string{
+		"[#bb9af8]      ",
+		"[#bb9af8]█     ",
+		"[#bb9af8]██    ",
+		"[#bb9af8]███   ",
+		"[#bb9af8]████  ",
+		"[#bb9af8]█████ ",
+		"[#bb9af8]██████",
+		"[#bb9af8]█████ ",
+		"[#bb9af8]████  ",
+		"[#bb9af8]███   ",
+		"[#bb9af8]██    ",
+		"[#bb9af8]█     ",
+	}
+	spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+	stopBar := make(chan struct{})
+	go func() {
+		i := 0
+		for {
+			select {
+			case <-stopBar:
+				return
+			default:
+				app.QueueUpdateDraw(func() {
+					textView.SetText(fmt.Sprintf("\n  %s %s\n\n  %s",
+						spinner[i%len(spinner)], message, barFrames[i%len(barFrames)]))
+				})
+				i++
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}()
+
+	modal := createModal(textView, 40, 7, colors.Background)
+	pages.AddPage("progress", modal, true, true)
+
+	stop := func() {
+		close(stopBar)
+	}
+	return textView, stop
+}
+
+// showConfirmModal displays a confirmation modal with buttons
+func showConfirmModal(
+	pages *tview.Pages,
+	title string,
+	message string,
+	buttons []string,
+	colors *ColorManager,
+	onButton func(buttonIndex int),
+) *tview.Form {
+	textView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter).
+		SetText(message)
+	textView.SetBackgroundColor(colors.Background)
+	textView.SetTextColor(colors.Foreground)
+
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	for i, btn := range buttons {
+		btn := btn
+		i := i
+		form.AddButton(btn, func() {
+			pages.RemovePage("confirm")
+			onButton(i)
+		})
+	}
+
+	form.SetCancelFunc(func() {
+		pages.RemovePage("confirm")
+		onButton(0)
+	})
+
+	flex := tview.NewFlex().SetDirection(tview.FlexRow)
+	flex.SetBackgroundColor(colors.Background)
+	flex.AddItem(textView, 0, 1, false)
+	flex.AddItem(form, 0, 1, false)
+
+	flex.SetBorder(true).SetTitle(title)
+	flex.SetBorderColor(colors.BorderFocus)
+	flex.SetTitleColor(colors.Title)
+
+	modal := createModal(flex, 50, 10, colors.Background)
+	pages.AddPage("confirm", modal, true, true)
+
+	return form
 }
 
 // Helper function to find workspace index in dropdown

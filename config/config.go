@@ -21,6 +21,7 @@ type AppConfig struct {
 	SyntaxTheme         string               `mapstructure:"syntaxTheme"`
 	SelectedEnvironment string               `mapstructure:"selectedEnvironment"`
 	RequestTimeout      int                  `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
+	MaxResponseHistory  int                  `mapstructure:"maxResponseHistory"`
 	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
 	UnifiedTheming      bool                 `mapstructure:"unifiedTheming"`      // Enable unified theming system
 	DisableVersionCheck bool                 `mapstructure:"disableVersionCheck"` // Disable latest version check
@@ -154,6 +155,9 @@ selectedEnvironment: "Base"
 # HTTP request timeout in seconds (default: 60)
 requestTimeout: 60
 
+# Maximum number of response history entries per request (default: 25, 0 = no limit)
+maxResponseHistory: 25
+
 # Enable unified theming system (applies syntax theme colors to entire UI)
 unifiedTheming: true
 
@@ -161,7 +165,9 @@ unifiedTheming: true
 disableVersionCheck: false
 
 plugins:
+  registry_url: "http://localhost:8080"
   enabled: []
+  installed: {}
   config: {}
 
 methodColors:
@@ -205,7 +211,21 @@ func LoadConfig() error {
 
 	_ = viper.ReadInConfig()
 
-	return viper.Unmarshal(&C)
+	if err := viper.Unmarshal(&C); err != nil {
+		return err
+	}
+
+	// FORCE READ FROM VIPER if unmarshal failed for this specific field
+	if C.Plugins.RegistryURL == "" || C.Plugins.RegistryURL == "https://api.petitorium.dev" {
+		C.Plugins.RegistryURL = viper.GetString("plugins.registry_url")
+	}
+
+	// Last resort fallback
+	if C.Plugins.RegistryURL == "" {
+		C.Plugins.RegistryURL = "http://localhost:8080/api/v1" // Use local for now to help user
+	}
+
+	return nil
 }
 
 func SaveConfig(config *AppConfig) error {

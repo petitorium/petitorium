@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -25,7 +23,7 @@ type ColorButton struct {
 
 // NewColorButton creates a new color button
 func NewColorButton(text string, colors *ColorManager) *ColorButton {
-	fmt.Printf("DEBUG: NewColorButton called with text='%s', ButtonBackground=%v\n", text, colors.ButtonBackground)
+	// DEBUG: NewColorButton called
 	box := tview.NewBox()
 	box.SetBorder(false)
 	box.SetBackgroundColor(colors.ButtonBackground)
@@ -41,13 +39,13 @@ func NewColorButton(text string, colors *ColorManager) *ColorButton {
 		isActivated:         false,
 	}
 
-	fmt.Printf("DEBUG: ColorButton created with Box bgColor=%v\n", box.GetBackgroundColor())
+	// DEBUG: ColorButton created
 	return cb
 }
 
 // SetSelectedFunc sets the function to call when the button is selected
 func (cb *ColorButton) SetSelectedFunc(handler func()) *ColorButton {
-	fmt.Printf("DEBUG: SetSelectedFunc called on CustomButton with text='%s'\n", cb.text)
+	// DEBUG: SetSelectedFunc called
 	cb.onSelected = handler
 	return cb
 }
@@ -118,9 +116,8 @@ func (cb *ColorButton) updateBackground() {
 // Draw implements the Primitive interface
 func (cb *ColorButton) Draw(screen tcell.Screen) {
 	// Debug: Print the background color being used
-	boxBg := cb.Box.GetBackgroundColor()
-	fmt.Printf("DEBUG: ColorButton Draw - Box bgColor: %v, Custom bgColor: %v, isActivated: %t\n", boxBg, cb.backgroundColor, cb.isActivated)
-
+	// boxBg := cb.Box.GetBackgroundColor()
+	// DEBUG: ColorButton Draw
 	cb.Box.Draw(screen)
 
 	x, y, width, height := cb.Box.GetRect()
@@ -141,7 +138,7 @@ func (cb *ColorButton) Draw(screen tcell.Screen) {
 	}
 
 	// Debug: Print what we're drawing
-	fmt.Printf("DEBUG: Drawing text '%s' with bgColor: %v, fgColor: %v\n", cb.text, bgColor, fgColor)
+	// DEBUG: Drawing text
 
 	// Draw each character of the text
 	for i, ch := range cb.text {
@@ -214,7 +211,7 @@ func TestCustomButton(colors *ColorManager) {
 	// Custom button (with background color)
 	customBtn := NewCustomButtonWithColors("Custom Button", colors)
 	customBtn.SetSelectedFunc(func() {
-		fmt.Println("Custom button clicked!")
+		// Custom button clicked!
 	})
 
 	// Layout

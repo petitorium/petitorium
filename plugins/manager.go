@@ -3,28 +3,75 @@ package plugins
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"plugin"
 	"time"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-plugin"
+
+	"github.com/petitorium/petitorium-plugin-sdk/shared"
+	"github.com/petitorium/petitorium-plugin-sdk/types"
 )
 
 // PluginManager manages the loading and execution of plugins
 type PluginManager struct {
 	plugins   map[string]Plugin
-	hooks     map[HookType][]PluginHook
+	hooks     map[HookType][]Plugin
 	config    *PluginConfig
 	pluginDir string
+	clients   []*plugin.Client
+	baseURL   string
 }
 
 // NewPluginManager creates a new PluginManager instance
 func NewPluginManager(config *PluginConfig, pluginDir string) *PluginManager {
+	baseURL := config.RegistryURL
+	if baseURL == "" {
+		baseURL = "https://hub.petitorium.dev/api/v1"
+	}
 	return &PluginManager{
 		plugins:   make(map[string]Plugin),
-		hooks:     make(map[HookType][]PluginHook),
+		hooks:     make(map[HookType][]Plugin),
 		config:    config,
 		pluginDir: pluginDir,
+		clients:   make([]*plugin.Client, 0),
+		baseURL:   baseURL,
 	}
+}
+
+// Close kills all running plugin processes
+func (pm *PluginManager) Close() {
+	for _, client := range pm.clients {
+		client.Kill()
+	}
+}
+
+// UnloadPlugin unloads a specific plugin by killing its client and removing it from the registry
+func (pm *PluginManager) UnloadPlugin(name string) {
+	// Remove from plugins map
+	delete(pm.plugins, name)
+
+	// Remove from hooks map
+	for hookType, hookList := range pm.hooks {
+		newList := []Plugin{}
+		for _, p := range hookList {
+			if p.Name() != name {
+				newList = append(newList, p)
+			}
+		}
+		pm.hooks[hookType] = newList
+	}
+
+	// Kill all clients - this is the safest approach since we can't identify
+	// which client belongs to which plugin without additional tracking.
+	// After killing, the plugin will be reloaded by LoadPlugins if still enabled.
+	for _, client := range pm.clients {
+		client.Kill()
+	}
+	pm.clients = []*plugin.Client{}
 }
 
 // RegisterPlugin registers a plugin with the manager
@@ -36,14 +83,11 @@ func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 	pm.plugins[name] = p
 
 	// Register hooks
-	hookFuncs := p.HookFuncs()
 	for _, hookType := range p.Hooks() {
 		if pm.hooks[hookType] == nil {
-			pm.hooks[hookType] = []PluginHook{}
+			pm.hooks[hookType] = []Plugin{}
 		}
-		if hookFunc, exists := hookFuncs[hookType]; exists {
-			pm.hooks[hookType] = append(pm.hooks[hookType], hookFunc)
-		}
+		pm.hooks[hookType] = append(pm.hooks[hookType], p)
 	}
 
 	return nil
@@ -51,27 +95,30 @@ func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 
 // ExecuteHooks executes all hooks of the given type with timeout and error isolation
 func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error {
-	hooks, exists := pm.hooks[hookType]
+	plugins, exists := pm.hooks[hookType]
 	if !exists {
 		return nil // No hooks for this type
 	}
 
-	for _, hook := range hooks {
+	for _, p := range plugins {
 		done := make(chan error, 1)
-		go func(h PluginHook) {
+		var updatedCtx *types.HookContext
+		go func(plg Plugin) {
 			defer func() {
 				if r := recover(); r != nil {
 					done <- fmt.Errorf("hook panicked: %v", r)
 				}
 			}()
-			done <- h(ctx)
-		}(hook)
+			var err error
+			updatedCtx, err = plg.ExecuteHook(hookType, ctx)
+			done <- err
+		}(p)
 
 		select {
 		case err := <-done:
-			if err != nil {
-				// Log error but continue for graceful degradation
-				// For now, just continue
+			if err == nil && updatedCtx != nil {
+				// Update context for next plugin in chain
+				*ctx = *updatedCtx
 			}
 		case <-time.After(5 * time.Second):
 			// Timeout, continue
@@ -80,40 +127,54 @@ func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error
 	return nil
 }
 
-// LoadPlugins loads plugins from the configured directory
+// LoadPlugin loads a single plugin by name
+func (pm *PluginManager) LoadPlugin(name string) error {
+	pluginPath := filepath.Join(pm.pluginDir, name)
+	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+		return fmt.Errorf("plugin %s not found in %s", name, pm.pluginDir)
+	}
+
+	client := plugin.NewClient(&plugin.ClientConfig{
+		HandshakeConfig: shared.Handshake,
+		Plugins: map[string]plugin.Plugin{
+			name: &shared.PetitoriumPlugin{},
+		},
+		Cmd:              exec.Command(pluginPath),
+		AllowedProtocols: []plugin.Protocol{plugin.ProtocolNetRPC, plugin.ProtocolGRPC},
+		Logger: hclog.New(&hclog.LoggerOptions{
+			Name:   "plugin",
+			Output: io.Discard,
+			Level:  hclog.Error,
+		}),
+		SyncStdout: io.Discard,
+		SyncStderr: io.Discard,
+	})
+	pm.clients = append(pm.clients, client)
+
+	rpcClient, err := client.Client()
+	if err != nil {
+		return fmt.Errorf("failed to connect to plugin %s: %w", name, err)
+	}
+
+	raw, err := rpcClient.Dispense(name)
+	if err != nil {
+		return fmt.Errorf("failed to dispense plugin %s: %w", name, err)
+	}
+
+	plg, ok := raw.(Plugin)
+	if !ok {
+		return fmt.Errorf("plugin %s does not implement Plugin interface", name)
+	}
+
+	return pm.RegisterPlugin(plg)
+}
+
+// LoadPlugins loads all enabled plugins from the plugin directory
 func (pm *PluginManager) LoadPlugins() error {
 	for _, name := range pm.config.Enabled {
-		pluginPath := filepath.Join(pm.pluginDir, name+".so")
-		p, err := plugin.Open(pluginPath)
-		if err != nil {
-			return fmt.Errorf("failed to open plugin %s: %w", name, err)
-		}
-
-		// Try to find the plugin symbol - first try simple name, then fully qualified
-		var sym plugin.Symbol
-		sym, err = p.Lookup("Plugin")
-		if err != nil {
-			// Try fully qualified name based on plugin name
-			qualifiedName := fmt.Sprintf("github.com/petitorium/petitorium/plugins/examples/%s.Plugin", name)
-			sym, err = p.Lookup(qualifiedName)
-			if err != nil {
-				return fmt.Errorf("failed to lookup Plugin symbol in %s: %w", name, err)
-			}
-		}
-
-		// The symbol is **PluginType, need to dereference once
-		plg, ok := sym.(Plugin)
-		if !ok {
-			// Try dereferencing once
-			if ptr, ok := sym.(*Plugin); ok {
-				plg = *ptr
-			} else {
-				return fmt.Errorf("plugin %s does not implement Plugin interface", name)
-			}
-		}
-
-		if err := pm.RegisterPlugin(plg); err != nil {
-			return fmt.Errorf("failed to register plugin %s: %w", name, err)
+		if err := pm.LoadPlugin(name); err != nil {
+			// Log error and continue
+			fmt.Printf("Warning: failed to load plugin %s: %v\n", name, err)
 		}
 	}
 	return nil
@@ -121,8 +182,7 @@ func (pm *PluginManager) LoadPlugins() error {
 
 // EnablePlugin enables a plugin by name
 func (pm *PluginManager) EnablePlugin(name string) error {
-	// Check if plugin file exists
-	pluginPath := filepath.Join(pm.pluginDir, name+".so")
+	pluginPath := filepath.Join(pm.pluginDir, name)
 	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
 		return fmt.Errorf("plugin %s not found", name)
 	}
@@ -136,6 +196,24 @@ func (pm *PluginManager) EnablePlugin(name string) error {
 	return nil
 }
 
+// IsPluginInstalled checks if a plugin is installed
+func (pm *PluginManager) IsPluginInstalled(name string) bool {
+	if pm.config.Installed == nil {
+		return false
+	}
+	_, installed := pm.config.Installed[name]
+	return installed
+}
+
+// GetInstalledInfo returns the installation info for a plugin
+func (pm *PluginManager) GetInstalledInfo(name string) (InstalledInfo, bool) {
+	if pm.config.Installed == nil {
+		return InstalledInfo{}, false
+	}
+	info, installed := pm.config.Installed[name]
+	return info, installed
+}
+
 // DisablePlugin disables a plugin by name
 func (pm *PluginManager) DisablePlugin(name string) error {
 	for i, enabled := range pm.config.Enabled {
@@ -145,4 +223,9 @@ func (pm *PluginManager) DisablePlugin(name string) error {
 		}
 	}
 	return fmt.Errorf("plugin %s not enabled", name)
+}
+
+// GetEnabledPlugins returns the list of enabled plugin names
+func (pm *PluginManager) GetEnabledPlugins() []string {
+	return pm.config.Enabled
 }

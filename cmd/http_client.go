@@ -205,8 +205,8 @@ func createMultipartBodyWithWriter(bodyDef string, writer *multipart.Writer) err
 			// Check file size (warn for large files, but don't block)
 			const maxRecommendedSize = 10 * 1024 * 1024 // 10MB
 			if fileInfo.Size() > maxRecommendedSize {
-				// Log warning but continue
-				fmt.Printf("Warning: Large file detected (%d MB): %s\n", fileInfo.Size()/(1024*1024), filePath)
+				// Log warning but continue (avoiding fmt.Printf in TUI)
+				// fmt.Printf("Warning: Large file detected (%d MB): %s\n", fileInfo.Size()/(1024*1024), filePath)
 			}
 
 			file, err := os.Open(filePath)
