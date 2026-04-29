@@ -1071,7 +1071,7 @@ func createWorkspaceManagementForm(
 	app *tview.Application,
 	pages *tview.Pages,
 	workspaceData *workspace.Workspace,
-	workspaceSelector *tview.DropDown,
+	workspaceSelector *CustomButton,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	colors *ColorManager,
@@ -1107,8 +1107,7 @@ func createWorkspaceManagementForm(
 
 	form.AddButton("Switch Workspace", func() {
 		pages.RemovePage("workspaceMenu")
-		// Focus on workspace selector
-		app.SetFocus(workspaceSelector)
+		showWorkspaceModal(&UIOrchestrator{App: app, Pages: pages, WorkspaceConfigButton: workspaceSelector, Colors: colors, WorkspaceData: workspaceData, RootNode: rootNode, CollectionsTreeView: collectionsTreeView})
 	})
 
 	form.AddButton("Rename Current Workspace", func() {
@@ -1148,7 +1147,7 @@ func createWorkspaceManagementForm(
 func createNewWorkspaceForm(
 	app *tview.Application,
 	pages *tview.Pages,
-	workspaceSelector *tview.DropDown,
+	workspaceSelector *CustomButton,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	colors *ColorManager,
@@ -1179,16 +1178,6 @@ func createNewWorkspaceForm(
 		if err != nil {
 			// Show error - for now just ignore
 			return
-		}
-
-		// Update workspace selector
-		workspaceNames, _ := workspace.ListWorkspaces()
-		workspaceSelector.SetOptions(workspaceNames, nil)
-
-		// Switch to new workspace
-		err = workspace.SwitchWorkspace(name)
-		if err == nil {
-			workspaceSelector.SetCurrentOption(len(workspaceNames) - 1)
 		}
 
 		pages.RemovePage("createWorkspace")
@@ -1222,7 +1211,7 @@ func createRenameWorkspaceForm(
 	app *tview.Application,
 	pages *tview.Pages,
 	currentName string,
-	workspaceSelector *tview.DropDown,
+	workspaceSelector *CustomButton,
 	colors *ColorManager,
 ) *tview.Form {
 	form := tview.NewForm()
@@ -1252,18 +1241,6 @@ func createRenameWorkspaceForm(
 		if err != nil {
 			// Show error - for now just ignore
 			return
-		}
-
-		// Update workspace selector
-		workspaceNames, _ := workspace.ListWorkspaces()
-		workspaceSelector.SetOptions(workspaceNames, nil)
-
-		// Update current selection
-		for i, name := range workspaceNames {
-			if name == newName {
-				workspaceSelector.SetCurrentOption(i)
-				break
-			}
 		}
 
 		pages.RemovePage("renameWorkspace")
@@ -1299,7 +1276,7 @@ func createDuplicateWorkspaceForm(
 	app *tview.Application,
 	pages *tview.Pages,
 	sourceName string,
-	workspaceSelector *tview.DropDown,
+	workspaceSelector *CustomButton,
 	colors *ColorManager,
 ) *tview.Form {
 	form := tview.NewForm()
@@ -1330,10 +1307,6 @@ func createDuplicateWorkspaceForm(
 			return
 		}
 
-		// Update workspace selector
-		workspaceNames, _ := workspace.ListWorkspaces()
-		workspaceSelector.SetOptions(workspaceNames, nil)
-
 		pages.RemovePage("duplicateWorkspace")
 		pages.SwitchToPage("main")
 		app.SetFocus(workspaceSelector)
@@ -1353,7 +1326,7 @@ func createDeleteWorkspaceForm(
 	app *tview.Application,
 	pages *tview.Pages,
 	workspaceName string,
-	workspaceSelector *tview.DropDown,
+	workspaceSelector *CustomButton,
 	colors *ColorManager,
 ) *tview.Form {
 	form := tview.NewForm()
@@ -1366,26 +1339,14 @@ func createDeleteWorkspaceForm(
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddTextView("Delete Workspace", fmt.Sprintf(" Are you sure you want to delete '%s'? ", workspaceName), 40, 2, true, false)
-	form.AddTextView("", " This action cannot be undone. ", 40, 1, true, false)
+	message := fmt.Sprintf("Are you sure you want to delete '%s'?", workspaceName) + "\n" + "This action cannot be undone."
+	form.AddTextView("", message, 40, 3, true, false)
 
 	form.AddButton("Delete", func() {
 		err := workspace.DeleteWorkspace(workspaceName)
 		if err != nil {
 			// Show error - for now just ignore
 			return
-		}
-
-		// Update workspace selector
-		workspaceNames, _ := workspace.ListWorkspaces()
-		workspaceSelector.SetOptions(workspaceNames, nil)
-
-		// Switch to first available workspace
-		if len(workspaceNames) > 0 {
-			err = workspace.SwitchWorkspace(workspaceNames[0])
-			if err == nil {
-				workspaceSelector.SetCurrentOption(0)
-			}
 		}
 
 		pages.RemovePage("deleteWorkspace")

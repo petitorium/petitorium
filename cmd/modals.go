@@ -418,7 +418,7 @@ func showWorkspaceModal(
 
 	onDelete = func(ws *workspace.WorkspaceMetadata) {
 		currentFocus := ui.App.GetFocus()
-		form := createDeleteWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceSelector, ui.Colors)
+		form := createDeleteWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceConfigButton, ui.Colors)
 		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			if event.Key() == tcell.KeyEsc {
 				ui.Pages.RemovePage("deleteWorkspace")
@@ -434,7 +434,7 @@ func showWorkspaceModal(
 
 	onRename = func(ws *workspace.WorkspaceMetadata) {
 		currentFocus := ui.App.GetFocus()
-		form := createRenameWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceSelector, ui.Colors)
+		form := createRenameWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceConfigButton, ui.Colors)
 		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			if event.Key() == tcell.KeyEsc {
 				ui.Pages.RemovePage("renameWorkspace")
@@ -450,7 +450,7 @@ func showWorkspaceModal(
 
 	onDuplicate = func(ws *workspace.WorkspaceMetadata) {
 		currentFocus := ui.App.GetFocus()
-		form := createDuplicateWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceSelector, ui.Colors)
+		form := createDuplicateWorkspaceForm(ui.App, ui.Pages, ws.Name, ui.WorkspaceConfigButton, ui.Colors)
 		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			if event.Key() == tcell.KeyEsc {
 				ui.Pages.RemovePage("duplicateWorkspace")
@@ -466,7 +466,7 @@ func showWorkspaceModal(
 
 	onCreateNew = func() {
 		currentFocus := ui.App.GetFocus()
-		form := createNewWorkspaceForm(ui.App, ui.Pages, ui.WorkspaceSelector, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+		form := createNewWorkspaceForm(ui.App, ui.Pages, ui.WorkspaceConfigButton, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			if event.Key() == tcell.KeyEsc {
 				ui.Pages.RemovePage("createWorkspace")

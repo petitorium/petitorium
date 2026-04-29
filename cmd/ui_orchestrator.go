@@ -816,6 +816,11 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Function to update footer based on current focus
 	updateFooterFunc := func() {
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
+		if currentPage == "workspaceModal" {
+			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select Workspace | (N) New Workspace | (c) Duplicate | (r) Rename | (d) Delete | (Esc/q) Close") // Workspace Config
+			return
+		}
+
 		if currentPage == "envVariables" {
 			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (N) New Environment | (c) Clone Environment | (r) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
 			return
