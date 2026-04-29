@@ -510,12 +510,6 @@ func hexToRGB(hex string) (int, int, int) {
 	return int(r), int(g), int(b)
 }
 
-// shouldUseUnifiedTheming determines if unified theming should be applied
-func shouldUseUnifiedTheming() bool {
-	// Unified theming is always enabled when using the ThemeManager
-	return config.C.SyntaxTheme != ""
-}
-
 // openInExternalEditor opens content in an external editor and returns the modified content
 func openInExternalEditor(content string) (string, error) {
 	// Get editor from environment variables, fallback to sensible defaults

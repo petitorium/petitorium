@@ -20,10 +20,10 @@ type AppConfig struct {
 	StatusColors        StatusColorsConfig   `mapstructure:"statusColors"`
 	SyntaxTheme         string               `mapstructure:"syntaxTheme"`
 	SelectedEnvironment string               `mapstructure:"selectedEnvironment"`
+	ThemeOverrides      ThemeConfig          `mapstructure:"themeOverrides"` // Explicit user overrides for theme colors
 	RequestTimeout      int                  `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
 	MaxResponseHistory  int                  `mapstructure:"maxResponseHistory"`
 	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
-	UnifiedTheming      bool                 `mapstructure:"unifiedTheming"`      // Enable unified theming system
 	DisableVersionCheck bool                 `mapstructure:"disableVersionCheck"` // Disable latest version check
 }
 
@@ -100,21 +100,6 @@ var C AppConfig
 // defaultConfigYAML is the default configuration template.
 // This is what `petitorium init` will create.
 const defaultConfigYAML = `theme:
-  backgroundColor: "#102529"
-  foregroundColor: "#e4e4e4"
-  borderColor: "#95CEDA"
-  borderFocusColor: "#FF9F77"
-  titleColor: "#EBEBEB"
-  selectionBackground: "#1B4248"  # background color for selected items
-  treeSelectionBackground: "#7AA2F7"  # background color for tree selection
-  activeTabColor: "#FF9F77"       # color for active tab indicator
-  buttonBackgroundColor: "#1B4248" # background color for buttons (normal state)
-  buttonSelectedColor: "#FFD700"  # color for selected buttons
-  dropdownFocusedBackground: "#636DA6"  # background color for focused dropdown
-  inputBackgroundColor: "#153035" # background color for input fields (subtle contrast against app background)
-  labelColor: "#95CEDA"           # color for form labels (e.g., "Name:", "Type:", "Value:")
-  valueColor: "#e4e4e4"           # color for form values/input text
-
   borders:
     topLeft: "╭"
     topRight: "╮"
@@ -130,6 +115,23 @@ const defaultConfigYAML = `theme:
     bottomRight: "╯"
     horizontal: "─"
     vertical: "│"
+
+# You can override specific theme colors here. These will take precedence over the generated theme.
+themeOverrides:
+  # backgroundColor: "#102529"
+  # foregroundColor: "#e4e4e4"
+  # borderColor: "#95CEDA"
+  # borderFocusColor: "#FF9F77"
+  # titleColor: "#EBEBEB"
+  # selectionBackground: "#1B4248"
+  # treeSelectionBackground: "#7AA2F7"
+  # activeTabColor: "#FF9F77"
+  # buttonBackgroundColor: "#1B4248"
+  # buttonSelectedColor: "#FFD700"
+  # dropdownFocusedBackground: "#636DA6"
+  # inputBackgroundColor: "#153035"
+  # labelColor: "#95CEDA"
+  # valueColor: "#e4e4e4"
 
 ui:
   collectionExpansion: "closed"       # "closed", "expanded", or "remember"
@@ -159,9 +161,6 @@ requestTimeout: 60
 
 # Maximum number of response history entries per request (default: 25, 0 = no limit)
 maxResponseHistory: 25
-
-# Enable unified theming system (applies syntax theme colors to entire UI)
-unifiedTheming: true
 
 # Disable latest version check
 disableVersionCheck: false

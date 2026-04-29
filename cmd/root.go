@@ -38,16 +38,11 @@ func init() {
 }
 
 func runTUI(cmd *cobra.Command, args []string) {
-	// Apply unified theme if enabled
-	if config.C.UnifiedTheming && config.C.SyntaxTheme != "" {
+	// Apply theme colors based on syntax theme
+	if config.C.SyntaxTheme != "" {
 		tm := GetThemeManager()
 		if err := tm.ApplyTheme(config.C.SyntaxTheme); err != nil {
-			fmt.Printf("Warning: Failed to apply unified theme '%s': %v\n", config.C.SyntaxTheme, err)
-		} else {
-			// Save the updated config
-			if err := config.SaveConfig(&config.C); err != nil {
-				fmt.Printf("Warning: Failed to save updated theme config: %v\n", err)
-			}
+			fmt.Printf("Warning: Failed to apply theme '%s': %v\n", config.C.SyntaxTheme, err)
 		}
 	}
 

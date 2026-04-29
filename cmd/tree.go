@@ -16,7 +16,7 @@ func addWorkspaceToTree(data *workspace.Workspace, root *tview.TreeNode) {
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
-	selectionBackgroundColor := hexToColor(theme.SelectionBackground)
+	selectionBackgroundColor := hexToColor(theme.TreeSelectionBackground)
 
 	// Add collections
 	for _, collection := range data.Collections {
@@ -69,7 +69,7 @@ func addChildrenToCollectionNode(node *tview.TreeNode, collection workspace.Coll
 	theme := config.C.Theme
 	backgroundColor := hexToColor(theme.BackgroundColor)
 	foregroundColor := hexToColor(theme.ForegroundColor)
-	selectionBackgroundColor := hexToColor(theme.SelectionBackground)
+	selectionBackgroundColor := hexToColor(theme.TreeSelectionBackground)
 
 	// Add requests
 	for _, req := range collection.Requests {

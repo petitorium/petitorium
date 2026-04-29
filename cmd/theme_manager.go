@@ -176,7 +176,7 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 
 	// Create a selection background color that's appropriate for highlighting
 	// This should be a subtle background color, not too bright
-	treeSelection := tm.createSelectionBackground(background, keywordColor, style)
+	treeSelection := tm.createSelectionBackground(background, keywordColor)
 
 	// Create UI color scheme based on extracted colors
 	return ThemeColors{
@@ -280,33 +280,35 @@ func (tm *ThemeManager) colorToHex(color chroma.Colour) string {
 }
 
 // createSelectionBackground creates an appropriate selection background color for tree highlighting
-func (tm *ThemeManager) createSelectionBackground(background, keywordColor string, style *chroma.Style) string {
-	// For specific themes, use known good selection colors
-	switch style.Name {
-	case "tokyonight-night":
-		return "#262837"
-	case "github-dark":
-		return "#21262d"
-	case "dracula":
-		return "#373844"
-	case "monokai":
-		return "#3e3d32"
-	case "solarized-dark":
-		return "#073642"
-	case "nord":
-		return "#3b4252"
-	case "one-dark":
-		return "#353b45"
-	case "vim":
-		return "#262626"
-	case "gruvbox":
-		return "#32302f"
-	case "catppuccin-mocha":
-		return "#2a2a37"
-	default:
-		// For unknown themes, create a selection color by slightly lightening the background
-		return tm.adjustBrightness(background, 1.15)
+func (tm *ThemeManager) createSelectionBackground(background, keywordColor string) string {
+	// Blend keyword color (accent) with background for a visible but subtle selection
+	// Use 30% keyword color + 70% background
+	return tm.blendColors(background, keywordColor, 0.30)
+}
+
+// blendColors blends two hex colors: result = (1-factor)*base + factor*overlay
+func (tm *ThemeManager) blendColors(base, overlay string, factor float64) string {
+	if base == "" {
+		return overlay
 	}
+	if overlay == "" {
+		return base
+	}
+
+	base = strings.TrimPrefix(base, "#")
+	overlay = strings.TrimPrefix(overlay, "#")
+
+	var br, bg, bb int
+	fmt.Sscanf(base, "%02x%02x%02x", &br, &bg, &bb)
+
+	var or, og, ob int
+	fmt.Sscanf(overlay, "%02x%02x%02x", &or, &og, &ob)
+
+	r := int(float64(br)*(1-factor) + float64(or)*factor)
+	g := int(float64(bg)*(1-factor) + float64(og)*factor)
+	b := int(float64(bb)*(1-factor) + float64(ob)*factor)
+
+	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
 
 // adjustBrightness adjusts the brightness of a hex color
@@ -395,8 +397,10 @@ func (tm *ThemeManager) ApplyTheme(themeName string) error {
 	// Update current theme
 	tm.currentTheme = themeName
 
-	// Update config
+	// Update config syntax theme only
 	config.C.SyntaxTheme = themeName
+
+	// Update base theme colors
 	config.C.Theme.BackgroundColor = theme.UIColors.Background
 	config.C.Theme.ForegroundColor = theme.UIColors.Foreground
 	config.C.Theme.BorderColor = theme.UIColors.Border

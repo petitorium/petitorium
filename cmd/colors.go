@@ -48,6 +48,51 @@ type ColorManager struct {
 func NewColorManager() *ColorManager {
 	theme := config.C.Theme
 	status := config.C.StatusColors
+	overrides := config.C.ThemeOverrides
+
+	// Apply explicit user overrides
+	if overrides.BackgroundColor != "" {
+		theme.BackgroundColor = overrides.BackgroundColor
+	}
+	if overrides.ForegroundColor != "" {
+		theme.ForegroundColor = overrides.ForegroundColor
+	}
+	if overrides.BorderColor != "" {
+		theme.BorderColor = overrides.BorderColor
+	}
+	if overrides.BorderFocusColor != "" {
+		theme.BorderFocusColor = overrides.BorderFocusColor
+	}
+	if overrides.TitleColor != "" {
+		theme.TitleColor = overrides.TitleColor
+	}
+	if overrides.SelectionBackground != "" {
+		theme.SelectionBackground = overrides.SelectionBackground
+	}
+	if overrides.TreeSelectionBackground != "" {
+		theme.TreeSelectionBackground = overrides.TreeSelectionBackground
+	}
+	if overrides.ActiveTabColor != "" {
+		theme.ActiveTabColor = overrides.ActiveTabColor
+	}
+	if overrides.ButtonBackgroundColor != "" {
+		theme.ButtonBackgroundColor = overrides.ButtonBackgroundColor
+	}
+	if overrides.ButtonSelectedColor != "" {
+		theme.ButtonSelectedColor = overrides.ButtonSelectedColor
+	}
+	if overrides.DropdownFocusedBackground != "" {
+		theme.DropdownFocusedBackground = overrides.DropdownFocusedBackground
+	}
+	if overrides.InputBackgroundColor != "" {
+		theme.InputBackgroundColor = overrides.InputBackgroundColor
+	}
+	if overrides.LabelColor != "" {
+		theme.LabelColor = overrides.LabelColor
+	}
+	if overrides.ValueColor != "" {
+		theme.ValueColor = overrides.ValueColor
+	}
 
 	// Set up tview borders from theme configuration
 	setupBorders(theme)
