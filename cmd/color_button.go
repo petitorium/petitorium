@@ -197,35 +197,3 @@ func (cb *ColorButton) MouseHandler() func(action tview.MouseAction, event *tcel
 func createColorButton(text string, colors *ColorManager) *ColorButton {
 	return NewColorButton(text, colors)
 }
-
-// TestCustomButton demonstrates that CustomButton works with background colors
-func TestCustomButton(colors *ColorManager) {
-	// Create a simple test layout to show the difference
-	app := tview.NewApplication()
-
-	// Regular button (no background color)
-	regularBtn := tview.NewButton("Regular Button")
-	regularBtn.SetLabelColor(colors.Foreground)
-	regularBtn.SetBackgroundColorActivated(colors.ButtonSelect)
-
-	// Custom button (with background color)
-	customBtn := NewCustomButtonWithColors("Custom Button", colors)
-	customBtn.SetSelectedFunc(func() {
-		// Custom button clicked!
-	})
-
-	// Layout
-	layout := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(tview.NewTextView().SetText("Button Background Test").SetTextAlign(tview.AlignCenter), 1, 0, false).
-		AddItem(tview.NewTextView().SetText("Regular (transparent):").SetTextAlign(tview.AlignCenter), 1, 0, false).
-		AddItem(regularBtn, 1, 0, false).
-		AddItem(tview.NewTextView().SetText("Custom (with bg color):").SetTextAlign(tview.AlignCenter), 1, 0, false).
-		AddItem(customBtn, 1, 0, true)
-
-	layout.SetBackgroundColor(colors.Background)
-
-	if err := app.SetRoot(layout, true).EnableMouse(true).Run(); err != nil {
-		panic(err)
-	}
-}

@@ -504,7 +504,7 @@ func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-		modal := createModal(form, 50, 12, tcell.ColorDefault)
+		modal := createModal(form, 30, 9, tcell.ColorDefault)
 		ui.Pages.AddPage("newCollection", modal, true, true)
 		ui.App.SetFocus(form)
 		return nil
@@ -582,14 +582,14 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 			if col, ok := reference.(workspace.Collection); ok {
 				// Rename collection
 				form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createModal(form, 25, 10, tcell.ColorDefault)
+				modal := createModal(form, 25, 7, tcell.ColorDefault)
 				ui.Pages.AddPage("renameCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req, ok := reference.(workspace.Request); ok {
 				// Rename request - need to find parent collection
 				form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createModal(form, 47, 10, tcell.ColorDefault)
+				modal := createModal(form, 25, 7, tcell.ColorDefault)
 				ui.Pages.AddPage("renameRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
@@ -666,7 +666,7 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 				// Move request - use current request data instead of stale node reference
 				if ui.CurrentRequest != nil {
 					form := createMoveRequestForm(ui.App, ui.Pages, ui.CurrentRequest, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-					modal := createModal(form, 40, 10, tcell.ColorDefault)
+					modal := createModal(form, 30, 7, tcell.ColorDefault)
 					ui.Pages.AddPage("moveRequest", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
@@ -690,14 +690,14 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 			if col, ok := reference.(workspace.Collection); ok {
 				// Delete collection with confirmation
 				form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createModal(form, 50, 8, tcell.ColorDefault)
+				modal := createModal(form, 66, 8, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req, ok := reference.(workspace.Request); ok {
 				// Delete request with confirmation
 				form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createModal(form, 50, 8, tcell.ColorDefault)
+				modal := createModal(form, 40, 8, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil

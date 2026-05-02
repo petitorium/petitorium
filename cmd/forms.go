@@ -45,8 +45,8 @@ func createCollectionFormWithLocation(
 	}
 	addCollectionsToOptions(workspaceData.Collections, "")
 
-	form.AddInputField("Collection Name", "", 30, nil, nil)
-	form.AddDropDown("Location", locationOptions, 0, nil)
+	form.AddInputField("Name: ", "", 0, nil, nil).SetFieldBackgroundColor(colors.Border)
+	form.AddDropDown("Location:", locationOptions, 0, nil)
 
 	cancelFunc := func() {
 		pages.RemovePage("newCollection")
@@ -97,7 +97,7 @@ func createCollectionFormWithLocation(
 		}
 
 		cancelFunc()
-	})
+	}).SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
 
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("newCollection")
@@ -198,12 +198,15 @@ func createRequestForm(app *tview.Application,
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddInputField("Request Name", "", 41, nil, nil)
-	form.AddDropDown("Method", workspace.HTTPMethods, 0, nil)
-	form.AddInputField("URL", "", 41, nil, nil)
+	form.AddInputField("Name: ", "", 0, nil, nil).SetFieldBackgroundColor(colors.Border)
+	form.AddDropDown("Method: ", workspace.HTTPMethods, 0, nil)
+	form.AddInputField("URL: ", "", 0, nil, nil)
+
 	bodyInput := tview.NewInputField().
 		SetLabel("Body: ").
-		SetFieldWidth(41).
+		SetFieldWidth(0).
+		SetFieldBackgroundColor(colors.Border).
+		SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.LabelColor)).
 		SetPlaceholder("Enter JSON data or edit later...")
 
 	// Multipart fields management interface
@@ -227,9 +230,9 @@ func createRequestForm(app *tview.Application,
 	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
 		switch text {
 		case "JSON":
-			bodyInput.SetPlaceholder("Enter JSON data...")
+			bodyInput.SetPlaceholder("Enter JSON data or edit later.")
 		case "Multipart":
-			bodyInput.SetPlaceholder("Multipart UI coming soon. For now: name1=value1&name2=file:/path/to/file")
+			bodyInput.SetPlaceholder("You can edit later.")
 		case "No Body":
 			bodyInput.SetPlaceholder("(No body for this request)")
 		}
@@ -294,6 +297,7 @@ func createRequestForm(app *tview.Application,
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
 	})
+
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("newRequest")
 		pages.SwitchToPage("main")
@@ -335,7 +339,9 @@ func createRequestForm(app *tview.Application,
 		return event
 	})
 
+	form.SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
 	form.SetBorder(true).SetTitle(" New Request ")
+
 	return form
 }
 
@@ -359,7 +365,7 @@ func createRenameCollectionForm(app *tview.Application,
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddInputField("Collection Name", selectedCollection.Name, 30, nil, nil)
+	form.AddInputField("Name: ", selectedCollection.Name, 0, nil, nil)
 	form.AddButton("Save", func() {
 		newName := form.GetFormItem(0).(*tview.InputField).GetText()
 		if strings.TrimSpace(newName) == "" {
@@ -406,7 +412,7 @@ func createRenameCollectionForm(app *tview.Application,
 
 	form.SetCancelFunc(cancelFunc)
 
-	form.SetBorder(true).SetTitle("Rename Collection")
+	form.SetBorder(true).SetTitle(" Rename Collection ")
 	return form
 }
 
@@ -430,7 +436,7 @@ func createRenameRequestForm(app *tview.Application,
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddInputField("Request Name", selectedRequest.Name, 30, nil, nil)
+	form.AddInputField("Name: ", selectedRequest.Name, 0, nil, nil).SetFieldBackgroundColor(colors.Border)
 
 	cancelFunc := func() {
 		pages.RemovePage("renameRequest")
@@ -473,7 +479,7 @@ func createRenameRequestForm(app *tview.Application,
 				}
 			}
 		}
-	})
+	}).SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
 
 	form.AddButton("Cancel", func() {
 		cancelFunc()
@@ -730,13 +736,21 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 		pages.RemovePage("deleteCollection")
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
-	})
+	}).SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
 
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("deleteCollection")
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
 	})
+
+	cancelFunc := func() {
+		pages.RemovePage("deleteCollection")
+		pages.SwitchToPage("main")
+		app.SetFocus(collectionsTreeView)
+	}
+
+	form.SetCancelFunc(cancelFunc)
 
 	form.SetBorder(true).SetTitle(" Delete Collection ")
 	return form
@@ -983,7 +997,7 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 		pages.RemovePage("moveRequest")
 		pages.SwitchToPage("main")
 		app.SetFocus(collectionsTreeView)
-	})
+	}).SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
 
 	cancelFunc := func() {
 		pages.RemovePage("moveRequest")
@@ -1026,7 +1040,7 @@ func createDeleteRequestConfirm(app *tview.Application,
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the request '%s'?", selectedRequest.Name), 0, 1, false, false)
+	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete\nthe request '%s'?", selectedRequest.Name), 0, 2, false, false)
 
 	form.AddButton("Delete", func() {
 		// Remove request from data
@@ -1063,7 +1077,9 @@ func createDeleteRequestConfirm(app *tview.Application,
 		return event
 	})
 
+	form.SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
 	form.SetBorder(true).SetTitle(" Delete Request ")
+
 	return form
 }
 
@@ -1398,14 +1414,15 @@ func createDuplicateRequestForm(
 		}
 	}
 
-	form.AddInputField("Request Name", duplicatedName, 41, nil, nil)
-	form.AddDropDown("Method", workspace.HTTPMethods, methodIndex, nil)
-	form.AddInputField("URL", originalRequest.URL, 41, nil, nil)
+	form.AddInputField("Name: ", duplicatedName, 41, nil, nil)
+	form.AddDropDown("Method: ", workspace.HTTPMethods, methodIndex, nil)
+	form.AddInputField("URL: ", originalRequest.URL, 41, nil, nil)
 
 	bodyInput := tview.NewInputField().
 		SetLabel("Body: ").
 		SetFieldWidth(41).
 		SetText(originalRequest.Body).
+		SetPlaceholderStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.LabelColor)).
 		SetPlaceholder("Enter JSON data...")
 
 	contentTypeDropdown := tview.NewDropDown().
@@ -1529,6 +1546,9 @@ func createDuplicateRequestForm(
 	})
 
 	form.SetBorder(true).SetTitle(" Duplicate Request ")
+	form.SetFieldBackgroundColor(colors.Border)
+	form.SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
+
 	return form
 }
 
