@@ -1924,12 +1924,14 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	responsePages.SetBackgroundColor(colors.Background)
 
 	// Create tab header
-	responseTabHeader := createTabHeader([]string{"Preview", "Headers", "Cookies", "Timeline"}, colors, func(index int) {
+	var responseTabHeader *tview.Flex
+	responseTabHeader = createTabHeader([]string{"Preview", "Headers", "Cookies", "Timeline"}, colors, func(index int) {
 		// Switch to the selected response tab
 		pageNames := []string{"preview", "headers", "cookies", "timeline"}
 		if index >= 0 && index < len(pageNames) {
 			responsePages.SwitchToPage(pageNames[index])
 		}
+		updateResponseTabHeader(responseTabHeader, index, colors)
 		if tabCallback != nil {
 			tabCallback(index)
 		}
