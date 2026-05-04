@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -40,7 +43,6 @@ type URLBar struct {
 	URLInput       int
 	SendButton     int
 	CurlButton     int
-	AnotherItem    int
 }
 
 type BodyTab struct {
@@ -180,6 +182,7 @@ type UIOrchestrator struct {
 	RefreshMultipartFieldsUI            func()
 	UpdateFooter                        func()
 	CopyResponse                        func()
+	SaveResponse                        func()
 	Suspend                             func(func()) bool
 	WorkspaceSelectorIndex              int
 	WorkspaceConfigButtonIndex          int
@@ -440,7 +443,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		URLInput:       1,
 		SendButton:     2,
 		CurlButton:     3,
-		AnotherItem:    4,
 	}
 
 	bodyTab := BodyTab{
@@ -913,6 +915,60 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		if uiOrchestrator.LastResponse != nil {
 			copyToClipboard(uiOrchestrator.LastResponse.Body)
 		}
+	}
+
+	// SaveResponse opens a file browser to save the response body to a file
+	uiOrchestrator.SaveResponse = func() {
+		if uiOrchestrator.LastResponse == nil || len(uiOrchestrator.LastResponse.BodyBytes) == 0 {
+			return
+		}
+
+		// Get suggested filename from Content-Disposition header
+		suggestedName := "response"
+		if headers, ok := uiOrchestrator.LastResponse.Headers["Content-Disposition"]; ok && len(headers) > 0 {
+			// Try to extract filename from Content-Disposition
+			parts := strings.Split(headers[0], "filename=")
+			if len(parts) > 1 {
+				suggestedName = strings.Trim(strings.Split(parts[1], ";")[0], "\" ")
+			}
+		}
+		// Fallback to Content-Type extension
+		if suggestedName == "response" {
+			if ct, ok := uiOrchestrator.LastResponse.Headers["Content-Type"]; ok && len(ct) > 0 {
+				switch {
+				case strings.HasPrefix(ct[0], "image/png"):
+					suggestedName = "response.png"
+				case strings.HasPrefix(ct[0], "image/jpeg"):
+					suggestedName = "response.jpg"
+				case strings.HasPrefix(ct[0], "image/gif"):
+					suggestedName = "response.gif"
+				case strings.HasPrefix(ct[0], "image/webp"):
+					suggestedName = "response.webp"
+				case strings.HasPrefix(ct[0], "application/pdf"):
+					suggestedName = "response.pdf"
+				case strings.HasPrefix(ct[0], "application/zip"):
+					suggestedName = "response.zip"
+				case strings.HasPrefix(ct[0], "video/"):
+					suggestedName = "response.video"
+				case strings.HasPrefix(ct[0], "audio/"):
+					suggestedName = "response.audio"
+				}
+			}
+		}
+
+		suggestedPath := filepath.Join(os.Getenv("HOME"), suggestedName)
+
+		// Callback when file should be saved
+		onSave := func(path string) {
+			err := os.WriteFile(path, uiOrchestrator.LastResponse.BodyBytes, 0644)
+			if err != nil {
+				showErrorModal(pages, fmt.Sprintf("Failed to save file: %v", err), uiOrchestrator.Colors)
+				return
+			}
+			showSuccessModal(pages, fmt.Sprintf("Saved to: %s", path), uiOrchestrator.Colors)
+		}
+
+		openSaveFileModal(app, pages, uiOrchestrator.Colors, suggestedPath, onSave, nil)
 	}
 
 	uiOrchestrator.UpdateFooter = updateFooterFunc

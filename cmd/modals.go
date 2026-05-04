@@ -526,18 +526,37 @@ func showWorkspaceModal(
 }
 
 // showErrorModal displays an error message modal
-func showErrorModal(pages *tview.Pages, message string) {
+func showErrorModal(pages *tview.Pages, message string, colors *ColorManager) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 			pages.RemovePage("error")
-		})
+		}).
+		SetBackgroundColor(colors.Background).
+		SetTextColor(colors.Foreground).
+		SetButtonBackgroundColor(colors.ButtonBackground).
+		SetButtonTextColor(colors.Foreground)
 	pages.AddPage("error", modal, true, true)
 }
 
+// showSuccessModal displays a success message modal
+func showSuccessModal(pages *tview.Pages, message string, colors *ColorManager) {
+	modal := tview.NewModal().
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			pages.RemovePage("success")
+		}).
+		SetBackgroundColor(colors.Background).
+		SetTextColor(colors.Foreground).
+		SetButtonBackgroundColor(colors.ButtonBackground).
+		SetButtonTextColor(colors.Foreground)
+	pages.AddPage("success", modal, true, true)
+}
+
 // showErrorModalWithFocus displays an error message modal and returns focus to a specific primitive
-func showErrorModalWithFocus(app *tview.Application, pages *tview.Pages, message string, returnFocus tview.Primitive) {
+func showErrorModalWithFocus(app *tview.Application, pages *tview.Pages, message string, returnFocus tview.Primitive, colors *ColorManager) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
@@ -546,7 +565,11 @@ func showErrorModalWithFocus(app *tview.Application, pages *tview.Pages, message
 			if returnFocus != nil {
 				app.SetFocus(returnFocus)
 			}
-		})
+		}).
+		SetBackgroundColor(colors.Background).
+		SetTextColor(colors.Foreground).
+		SetButtonBackgroundColor(colors.ButtonBackground).
+		SetButtonTextColor(colors.Foreground)
 	pages.AddPage("error", modal, true, true)
 }
 

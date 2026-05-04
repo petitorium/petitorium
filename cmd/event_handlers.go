@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -379,7 +381,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		setQueryParamsInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
 
 		ui.LastResponse = nil
-		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+		updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 
 		// Restore selection state for the new workspace
 		currentNode := ui.CollectionsTreeView.GetCurrentNode()
@@ -692,11 +694,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 					// For historical responses, show when that specific request was made
 					ui.LastResponse = cmdResp
-					updateResponseTabs(cmdResp, &lastResponse.Timestamp, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+					updateResponseTabs(cmdResp, &lastResponse.Timestamp, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 				} else {
 					// Clear response if no history
 					ui.LastResponse = nil
-					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 				}
 			}
 		} else if _, ok := reference.(workspace.Collection); ok {
@@ -709,7 +711,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.CurrentRequest = nil
 			ui.CurrentSelectedNode = nil
 			ui.LastResponse = nil
-			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 
 			// Track the last selected request node
 			if reference := node.GetReference(); reference != nil {
@@ -1109,7 +1111,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					if ui.PluginManager != nil {
 						ui.PluginManager.ExecuteHooks(plugins.OnError, context)
 					}
-					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, nil)
+					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 					ui.ResponsePreviewPanel.SetText(fmt.Sprintf("[red]Error: %v[-]", err))
 					return
 				}
@@ -1134,6 +1136,58 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					ui.PluginManager.ExecuteHooks(plugins.ResponseTransform, context)
 				}
 
+				// Check if response is binary and needs download
+				contentType := ""
+				if resp.Headers != nil {
+					if ct, ok := resp.Headers["Content-Type"]; ok && len(ct) > 0 {
+						contentType = ct[0]
+					}
+				}
+				if isBinaryContentType(contentType) {
+					// For binary responses, open file dialog to save the file
+					suggestedName := "response"
+					if headers, ok := resp.Headers["Content-Disposition"]; ok && len(headers) > 0 {
+						parts := strings.Split(headers[0], "filename=")
+						if len(parts) > 1 {
+							suggestedName = strings.Trim(strings.Split(parts[1], ";")[0], "\" ")
+						}
+					}
+					if suggestedName == "response" {
+						switch {
+						case strings.HasPrefix(contentType, "image/png"):
+							suggestedName = "response.png"
+						case strings.HasPrefix(contentType, "image/jpeg"):
+							suggestedName = "response.jpg"
+						case strings.HasPrefix(contentType, "image/gif"):
+							suggestedName = "response.gif"
+						case strings.HasPrefix(contentType, "image/webp"):
+							suggestedName = "response.webp"
+						case strings.HasPrefix(contentType, "application/pdf"):
+							suggestedName = "response.pdf"
+						case strings.HasPrefix(contentType, "application/zip"):
+							suggestedName = "response.zip"
+						case strings.HasPrefix(contentType, "video/"):
+							suggestedName = "response.video"
+						case strings.HasPrefix(contentType, "audio/"):
+							suggestedName = "response.audio"
+						}
+					}
+					suggestedPath := filepath.Join(os.Getenv("HOME"), suggestedName)
+
+					onSave := func(path string) {
+						err := os.WriteFile(path, resp.BodyBytes, 0644)
+						if err != nil {
+							showErrorModal(ui.Pages, fmt.Sprintf("Failed to save file: %v", err), ui.Colors)
+						} else {
+							showSuccessModal(ui.Pages, fmt.Sprintf("Downloaded to: %s", path), ui.Colors)
+						}
+					}
+					openSaveFileModal(ui.App, ui.Pages, ui.Colors, suggestedPath, onSave, nil)
+
+					// Update response with download message instead of body
+					resp.Body = fmt.Sprintf("[Binary response downloaded - %d bytes]", len(resp.BodyBytes))
+				}
+
 				// Save any plugin-modified environment variables back to the current environment
 				if context.Environment != nil && len(context.Environment) > 0 {
 					savePluginEnvironmentChanges(context.Environment, currentEnvIndex, ui.EnvironmentsData)
@@ -1142,13 +1196,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				// Store the response in the current request's history
 				if ui.CurrentRequest != nil {
 					body := resp.Body
-					contentType := ""
+					respContentType := ""
 					if resp.Headers != nil {
 						if ct, ok := resp.Headers["Content-Type"]; ok && len(ct) > 0 {
-							contentType = ct[0]
+							respContentType = ct[0]
 						}
 					}
-					if len(body) > 1024*1024 || isBinaryContentType(contentType) {
+					if len(body) > 1024*1024 || isBinaryContentType(respContentType) {
 						body = fmt.Sprintf("[Response body skipped - %d bytes]", len(body))
 					}
 
@@ -1185,7 +1239,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				// Update the response tabs with the new response
 				now := time.Now()
 				ui.LastResponse = resp
-				updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse)
+				updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 			})
 		}()
 	})

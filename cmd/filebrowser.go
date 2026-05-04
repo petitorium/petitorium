@@ -20,6 +20,7 @@ type FileBrowser struct {
 	current  string // Current path
 	colors   *ColorManager
 	onSelect func(string)
+	onEnter  func()
 }
 
 // createFileBrowser creates a new file browser component
@@ -79,7 +80,14 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 
 	// Set up keyboard navigation
 	fb.tree.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter || event.Rune() == 'l' {
+		if event.Key() == tcell.KeyEnter {
+			if fb.onEnter != nil {
+				fb.onEnter()
+			}
+			return nil
+		}
+
+		if event.Rune() == 'l' {
 			node := fb.tree.GetCurrentNode()
 			if node != nil {
 				reference := node.GetReference()
@@ -232,6 +240,25 @@ func (fb *FileBrowser) getVisibleNodes() []*tview.TreeNode {
 	}
 	collect(fb.tree.GetRoot())
 	return nodes
+}
+
+// GetCurrentPath returns the current directory path being browsed
+func (fb *FileBrowser) GetCurrentPath() string {
+	node := fb.tree.GetCurrentNode()
+	if node != nil {
+		reference := node.GetReference()
+		if reference != nil {
+			path := reference.(string)
+			info, err := os.Stat(path)
+			if err == nil {
+				if info.IsDir() {
+					return path
+				}
+				return filepath.Dir(path)
+			}
+		}
+	}
+	return fb.current
 }
 
 // setRoot updates the root of the tree to the specified path

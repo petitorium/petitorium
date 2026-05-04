@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -1730,7 +1731,7 @@ func setEnvVarsInUI(colors *ColorManager, variables map[string]string, saveCallb
 }
 
 // createResponseInfoBar creates the response information bar
-func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, copyCallback func()) (*tview.Flex, *tview.TextView, int) {
+func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, copyCallback func(), saveCallback func()) (*tview.Flex, *tview.TextView, int) {
 	infoBar := tview.NewFlex().SetDirection(tview.FlexColumn)
 	infoBar.SetBackgroundColor(colors.Background)
 
@@ -1738,6 +1739,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 
 	// Copy button - always visible
 	copyButtonSize := 3
+	saveButtonSize := 3
 
 	if resp == nil {
 		// No response yet
@@ -1752,6 +1754,11 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 			copyButton := NewCustomButtonWithColors("📋", colors)
 			copyButton.SetSelectedFunc(copyCallback)
 			infoBar.AddItem(copyButton, copyButtonSize, 0, false)
+		}
+		if saveCallback != nil {
+			saveButton := NewCustomButtonWithColors("💾", colors)
+			saveButton.SetSelectedFunc(saveCallback)
+			infoBar.AddItem(saveButton, saveButtonSize, 0, false)
 		}
 	}
 
@@ -1834,6 +1841,9 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	totalWidth := statusTextSize + sizeWidth + durationWidth + timeWidth
 	if resp != nil && copyCallback != nil {
 		totalWidth = copyButtonSize + statusTextSize + sizeWidth + durationWidth + timeWidth
+	}
+	if resp != nil && saveCallback != nil {
+		totalWidth = totalWidth + saveButtonSize
 	}
 
 	return infoBar, timeText, totalWidth
@@ -1938,7 +1948,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	})
 
 	// Create info bar
-	responseInfoBar, responseTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime, copyCallback)
+	responseInfoBar, responseTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime, copyCallback, nil)
 
 	// Create top row with tab header and info bar
 	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -1987,7 +1997,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	response.AddItem(responsePages, 0, 1, true)
 
 	// Initialize response tabs with initial data
-	updateResponseTabs(resp, lastTime, response, responseTabHeader, &responseInfoBar, &responseTimeText, &lastTime, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, colors, nil)
+	updateResponseTabs(resp, lastTime, response, responseTabHeader, &responseInfoBar, &responseTimeText, &lastTime, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, colors, nil, nil)
 
 	return response, responsePages, responseTabHeader, responseInfoBar, responseInfoBar, responsePreviewPanel, responseHeadersPanel, responseCookiesPanel, responseTimelinePanel, responseTimeText
 }
@@ -3422,4 +3432,74 @@ func createDeleteAllMultipartFieldsConfirm(app *tview.Application, pages *tview.
 
 	form.SetBorder(true).SetTitle(" Delete All Multipart Fields ")
 	return form
+}
+
+// openSaveFileModal opens a modal for saving a file with directory browser and filename input
+func openSaveFileModal(app *tview.Application, pages *tview.Pages, colors *ColorManager, suggestedPath string, onSave func(string), onCancel func()) {
+	dir := filepath.Dir(suggestedPath)
+	filename := filepath.Base(suggestedPath)
+
+	fb, err := createFileBrowser(dir, colors, nil)
+	if err != nil {
+		showErrorModal(pages, fmt.Sprintf("Failed to open file browser: %v", err), colors)
+		return
+	}
+
+	filenameInput := tview.NewInputField()
+	filenameInput.SetLabel("Filename: ")
+	filenameInput.SetText(filename)
+	filenameInput.SetBackgroundColor(colors.InputBackground)
+	filenameInput.SetLabelColor(colors.Foreground)
+	filenameInput.SetBorder(true)
+	filenameInput.SetBorderColor(colors.BorderFocus)
+
+	// cancelBtn := tview.NewButton("Cancel")
+	// cancelBtn.SetBackgroundColor(colors.ButtonBackground)
+	// cancelBtn.SetLabelColor(colors.Foreground)
+	// cancelBtn.SetSelectedFunc(func() {
+	// 	pages.RemovePage("saveResponseModal")
+	// 	if onCancel != nil {
+	// 		onCancel()
+	// 	}
+	// })
+
+	btnBar := tview.NewFlex().SetDirection(tview.FlexColumn)
+	btnBar.SetBackgroundColor(colors.Background)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	btnBar.AddItem(spacer, 1, 0, false)
+	// btnBar.AddItem(cancelBtn, 8, 0, true)
+	// btnBar.AddItem(spacer, 1, 0, false)
+
+	flex := tview.NewFlex().SetDirection(tview.FlexRow)
+	flex.AddItem(fb.tree, 0, 1, true)
+	// flex.AddItem(filenameInput, 3, 0, true)
+	// flex.AddItem(btnBar, 3, 0, false)
+
+	fb.onEnter = func() {
+		newFilename := strings.TrimSpace(filenameInput.GetText())
+		if newFilename == "" {
+			showErrorModal(pages, "Filename cannot be empty", colors)
+			return
+		}
+		savePath := filepath.Join(fb.GetCurrentPath(), newFilename)
+		pages.RemovePage("saveResponseModal")
+		if onSave != nil {
+			onSave(savePath)
+		}
+	}
+
+	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("saveResponseModal")
+			if onCancel != nil {
+				onCancel()
+			}
+			return nil
+		}
+		return event
+	})
+
+	modal := createModal(flex, 80, 30, colors.Background)
+	pages.AddPage("saveResponseModal", modal, true, true)
+	app.SetFocus(fb.tree)
 }

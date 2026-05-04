@@ -27,6 +27,7 @@ type HTTPResponse struct {
 	Headers    map[string][]string
 	Cookies    []*http.Cookie
 	Body       string
+	BodyBytes  []byte
 	Duration   time.Duration
 	Timestamp  time.Time
 	BodySize   int
@@ -153,6 +154,7 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 		Headers:    headersMap,
 		Cookies:    resp.Cookies(),
 		Body:       string(respBody),
+		BodyBytes:  respBody,
 		Duration:   duration,
 		Timestamp:  time.Now(),
 		BodySize:   len(respBody),

@@ -85,9 +85,9 @@ func syncContentTypeDropdown(currentRequest *workspace.Request, contentTypeDropd
 }
 
 // updateResponseTabs updates the response tabs with new response data
-func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager, copyCallback func()) {
+func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager, copyCallback func(), saveCallback func()) {
 	// Update the info bar - replace it in the top row
-	newInfoBar, newTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime, copyCallback)
+	newInfoBar, newTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime, copyCallback, saveCallback)
 	// The response container has: topRow (item 0), tabPages (item 1)
 	// topRow has: tabHeader, spacer, infoBar
 	if topRow, ok := response.GetItem(0).(*tview.Flex); ok {

@@ -281,7 +281,7 @@ func (m *MarketplacePanel) handlePluginAction(p types.RegistryPlugin) {
 		m.ui.App.QueueUpdateDraw(func() {
 			m.ui.Pages.RemovePage("progress")
 			if err != nil {
-				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to install plugin: %v", err), m.table)
+				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to install plugin: %v", err), m.table, m.ui.Colors)
 				return
 			}
 			m.filterPlugins(m.searchField.GetText())
@@ -336,7 +336,7 @@ func (m *MarketplacePanel) performUninstall(name string) {
 		m.ui.App.QueueUpdateDraw(func() {
 			m.ui.Pages.RemovePage("progress")
 			if err != nil {
-				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to uninstall plugin: %v", err), m.table)
+				showErrorModalWithFocus(m.ui.App, m.ui.Pages, fmt.Sprintf("Failed to uninstall plugin: %v", err), m.table, m.ui.Colors)
 				return
 			}
 			m.filterPlugins(m.searchField.GetText())
@@ -370,7 +370,7 @@ func (ui *UIOrchestrator) ShowMarketplace() {
 		pluginsList, err := m.client.ListPlugins()
 		ui.App.QueueUpdateDraw(func() {
 			if err != nil {
-				showErrorModalWithFocus(ui.App, ui.Pages, fmt.Sprintf("Failed to fetch plugins: %v", err), m.searchField)
+				showErrorModalWithFocus(ui.App, ui.Pages, fmt.Sprintf("Failed to fetch plugins: %v", err), m.searchField, ui.Colors)
 				return
 			}
 			m.plugins = pluginsList
