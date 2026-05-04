@@ -24,6 +24,7 @@ type AppConfig struct {
 	RequestTimeout      int                  `mapstructure:"requestTimeout"` // Timeout in seconds for HTTP requests
 	MaxResponseHistory  int                  `mapstructure:"maxResponseHistory"`
 	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
+	Shortcuts           ShortcutsConfig      `mapstructure:"shortcuts"`
 	DisableVersionCheck bool                 `mapstructure:"disableVersionCheck"` // Disable latest version check
 }
 
@@ -93,6 +94,15 @@ type StatusColorsConfig struct {
 	ServerErrorText string `mapstructure:"serverErrorText"` // 5xx text
 	Default         string `mapstructure:"default"`         // Unknown background
 	DefaultText     string `mapstructure:"defaultText"`     // Unknown text
+}
+
+type ShortcutsConfig struct {
+	JumpToWorkspace   string `mapstructure:"jumpToWorkspace"`
+	JumpToEnvironment string `mapstructure:"jumpToEnvironment"`
+	JumpToCollections string `mapstructure:"jumpToCollections"`
+	JumpToURLBar      string `mapstructure:"jumpToURLBar"`
+	JumpToRequest     string `mapstructure:"jumpToRequest"`
+	JumpToResponse    string `mapstructure:"jumpToResponse"`
 }
 
 var C AppConfig
@@ -192,6 +202,14 @@ statusColors:
   serverErrorText: "#ffffff"  # 5xx text - White
   default: "#636DA6"          # Unknown background - Default theme color
   defaultText: "#ffffff"      # Unknown text - White
+
+shortcuts:
+  jumpToWorkspace: "ctrl+w"
+  jumpToEnvironment: "ctrl+e"
+  jumpToCollections: "ctrl+r"
+  jumpToURLBar: "ctrl+l"
+  jumpToRequest: "ctrl+u"
+  jumpToResponse: "ctrl+p"
 `
 
 func LoadConfig() error {

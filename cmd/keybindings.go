@@ -146,18 +146,6 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Delete collection/request",
 			Context:     "global",
 		},
-		// {
-		// 	Key:         tcell.KeyDelete,
-		// 	Action:      deleteItem,
-		// 	Description: "Delete collection/request",
-		// 	Context:     "global",
-		// },
-		{
-			Key:         tcell.KeyCtrlW,
-			Action:      showWorkspaceMenu,
-			Description: "Show workspace menu",
-			Context:     "global",
-		},
 		{
 			Key:         tcell.KeyF4,
 			Action:      openExternalEditor,
@@ -413,6 +401,78 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Save body content",
 			Context:     "body_edit",
 		},
+	}
+
+	if config.C.Shortcuts.JumpToWorkspace != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToWorkspace)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      jumpToWorkspacePanelAction,
+			Description: "Jump to workspace panel",
+			Context:     "global",
+		})
+	}
+
+	if config.C.Shortcuts.JumpToEnvironment != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToEnvironment)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      jumpToEnvironmentPanelAction,
+			Description: "Jump to environment panel",
+			Context:     "global",
+		})
+	}
+
+	if config.C.Shortcuts.JumpToCollections != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToCollections)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      jumpToCollectionsPanelAction,
+			Description: "Jump to collections panel",
+			Context:     "global",
+		})
+	}
+
+	if config.C.Shortcuts.JumpToURLBar != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToURLBar)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      jumpToURLBarPanelAction,
+			Description: "Jump to URL bar panel",
+			Context:     "global",
+		})
+	}
+
+	if config.C.Shortcuts.JumpToRequest != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToRequest)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      jumpToRequestPanelAction,
+			Description: "Jump to request panel",
+			Context:     "global",
+		})
+	}
+
+	if config.C.Shortcuts.JumpToResponse != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToResponse)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      jumpToResponsePanelAction,
+			Description: "Jump to response panel",
+			Context:     "global",
+		})
 	}
 
 	return manager
@@ -1456,33 +1516,203 @@ func openResponseInFx(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 	return nil
 }
 
-func showWorkspaceMenu(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// 1. Move navigation coordinates to Workspace Panel
-	previousContainer := ui.NavCurrentContainer
-	ui.NavCurrentContainer = 0
-	ui.NavCurrentChild = 0 // Focus selector by default
-
-	// 2. Update borders
-	if previousContainer != ui.NavCurrentContainer {
-		if previousContainer < len(ui.MainCycle.panels) {
-			ui.SetInactiveBorder(ui.MainCycle.panels[previousContainer])
-		}
-		if ui.NavCurrentContainer < len(ui.MainCycle.panels) {
-			ui.SetActiveBorder(ui.MainCycle.panels[ui.NavCurrentContainer])
-		}
-	}
-
-	// 3. Update state
-	syncMainCycleWithExperimental(ui)
-	// We don't call setFocusForCoordinates here because we are about to show a modal
-	// that will take its own focus. But we want the background to look correct.
-
-	// 4. Show workspace configuration modal
-	showWorkspaceModal(ui)
+func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.ShowMarketplace()
 	return nil
 }
 
-func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	ui.ShowMarketplace()
+func parseShortcut(shortcut string) (tcell.Key, rune, tcell.ModMask) {
+	parts := strings.Split(strings.ToLower(shortcut), "+")
+	var key tcell.Key
+	var keyRune rune
+	var modifiers tcell.ModMask
+	var hasCtrlModifier bool
+
+	for i, part := range parts {
+		switch part {
+		case "ctrl":
+			modifiers |= tcell.ModCtrl
+			hasCtrlModifier = true
+		case "alt":
+			modifiers |= tcell.ModAlt
+		case "shift":
+			modifiers |= tcell.ModShift
+		default:
+			if i == len(parts)-1 && len(part) == 1 {
+				if hasCtrlModifier {
+					switch rune(part[0]) {
+					case 'a':
+						key = tcell.KeyCtrlA
+					case 'b':
+						key = tcell.KeyCtrlB
+					case 'c':
+						key = tcell.KeyCtrlC
+					case 'd':
+						key = tcell.KeyCtrlD
+					case 'e':
+						key = tcell.KeyCtrlE
+					case 'f':
+						key = tcell.KeyCtrlF
+					case 'g':
+						key = tcell.KeyCtrlG
+					case 'h':
+						key = tcell.KeyCtrlH
+					case 'i':
+						key = tcell.KeyCtrlI
+					case 'j':
+						key = tcell.KeyCtrlJ
+					case 'k':
+						key = tcell.KeyCtrlK
+					case 'l':
+						key = tcell.KeyCtrlL
+					case 'm':
+						key = tcell.KeyCtrlM
+					case 'n':
+						key = tcell.KeyCtrlN
+					case 'o':
+						key = tcell.KeyCtrlO
+					case 'p':
+						key = tcell.KeyCtrlP
+					case 'q':
+						key = tcell.KeyCtrlQ
+					case 'r':
+						key = tcell.KeyCtrlR
+					case 's':
+						key = tcell.KeyCtrlS
+					case 't':
+						key = tcell.KeyCtrlT
+					case 'u':
+						key = tcell.KeyCtrlU
+					case 'v':
+						key = tcell.KeyCtrlV
+					case 'w':
+						key = tcell.KeyCtrlW
+					case 'x':
+						key = tcell.KeyCtrlX
+					case 'y':
+						key = tcell.KeyCtrlY
+					case 'z':
+						key = tcell.KeyCtrlZ
+					}
+					hasCtrlModifier = false
+					modifiers &^= tcell.ModCtrl
+				} else {
+					keyRune = rune(part[0])
+				}
+			} else if i == len(parts)-1 {
+				switch part {
+				case "escape":
+					key = tcell.KeyEscape
+				case "tab":
+					key = tcell.KeyTab
+				case "backtab":
+					key = tcell.KeyBacktab
+				case "enter":
+					key = tcell.KeyEnter
+				case "return":
+					key = tcell.KeyEnter
+				case "backspace":
+					key = tcell.KeyBackspace
+				case "delete":
+					key = tcell.KeyDelete
+				case "up":
+					key = tcell.KeyUp
+				case "down":
+					key = tcell.KeyDown
+				case "left":
+					key = tcell.KeyLeft
+				case "right":
+					key = tcell.KeyRight
+				case "home":
+					key = tcell.KeyHome
+				case "end":
+					key = tcell.KeyEnd
+				case "pageup":
+					key = tcell.KeyPgUp
+				case "pagedown":
+					key = tcell.KeyPgDn
+				case "f1":
+					key = tcell.KeyF1
+				case "f2":
+					key = tcell.KeyF2
+				case "f3":
+					key = tcell.KeyF3
+				case "f4":
+					key = tcell.KeyF4
+				case "f5":
+					key = tcell.KeyF5
+				case "f6":
+					key = tcell.KeyF6
+				case "f7":
+					key = tcell.KeyF7
+				case "f8":
+					key = tcell.KeyF8
+				case "f9":
+					key = tcell.KeyF9
+				case "f10":
+					key = tcell.KeyF10
+				case "f11":
+					key = tcell.KeyF11
+				case "f12":
+					key = tcell.KeyF12
+				}
+			}
+		}
+	}
+
+	return key, keyRune, modifiers
+}
+
+func jumpToContainer(ui *UIOrchestrator, containerIndex int) {
+	if isInFormPopup(ui) {
+		return
+	}
+
+	previousContainer := ui.NavCurrentContainer
+
+	ui.SetInactiveBorder(ui.MainCycle.panels[previousContainer])
+	ui.SetActiveBorder(ui.MainCycle.panels[containerIndex])
+
+	ui.NavPreviousContainer = previousContainer
+	ui.NavCurrentContainer = containerIndex
+	ui.NavCurrentChild = 0
+	ui.NavCurrentSubchild = 0
+
+	// Sync MainCycle.current with NavCurrentContainer (same as Tab navigation)
+	syncMainCycleWithExperimental(ui)
+
+	// Set focus using the same function as Tab navigation
+	setFocusForCoordinates(ui)
+
+	ui.UpdateFooter()
+}
+
+func jumpToWorkspacePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	jumpToContainer(ui, 0)
+	return nil
+}
+
+func jumpToEnvironmentPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	jumpToContainer(ui, 1)
+	return nil
+}
+
+func jumpToCollectionsPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	jumpToContainer(ui, 2)
+	return nil
+}
+
+func jumpToURLBarPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	jumpToContainer(ui, 3)
+	return nil
+}
+
+func jumpToRequestPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	jumpToContainer(ui, 4)
+	return nil
+}
+
+func jumpToResponsePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	jumpToContainer(ui, 5)
 	return nil
 }
