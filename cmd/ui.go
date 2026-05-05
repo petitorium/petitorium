@@ -3503,3 +3503,33 @@ func openSaveFileModal(app *tview.Application, pages *tview.Pages, colors *Color
 	pages.AddPage("saveResponseModal", modal, true, true)
 	app.SetFocus(fb.tree)
 }
+
+func createCollectionSearchPanel(colors *ColorManager) (*tview.Flex, *tview.InputField, *tview.List) {
+	container := tview.NewFlex().SetDirection(tview.FlexRow)
+	container.SetBackgroundColor(colors.Background)
+	container.SetBorder(true)
+	container.SetBorderColor(colors.BorderFocus)
+
+	input := tview.NewInputField()
+	input.SetLabel("/ ")
+	input.SetPlaceholder("Search requests...")
+	input.SetBackgroundColor(colors.InputBackground)
+	input.SetFieldBackgroundColor(colors.InputBackground)
+	input.SetFieldTextColor(colors.Foreground)
+	input.SetLabelColor(colors.BorderFocus)
+	input.SetBorder(false)
+	input.SetBorderPadding(0, 0, 1, 1)
+
+	results := tview.NewList()
+	results.SetBackgroundColor(colors.Background)
+	results.SetBorder(false)
+	results.SetMainTextColor(colors.Foreground)
+	results.SetSecondaryTextColor(colors.Foreground)
+	results.SetSelectedBackgroundColor(colors.Selection)
+	results.SetSelectedTextColor(colors.Foreground)
+
+	container.AddItem(input, 1, 0, false)
+	container.AddItem(results, 0, 1, false)
+
+	return container, input, results
+}

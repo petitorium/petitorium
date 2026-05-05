@@ -361,6 +361,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Duplicate selected request",
 			Context:     "tree_view",
 		},
+		{
+			Rune:        '/',
+			Action:      openCollectionSearch,
+			Description: "Search collections and requests",
+			Context:     "tree_view",
+		},
 	}
 
 	// Body edit panel keybindings
@@ -1715,4 +1721,20 @@ func jumpToRequestPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.
 func jumpToResponsePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	jumpToContainer(ui, 5)
 	return nil
+}
+
+func openCollectionSearch(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
+		currentFocus := ui.App.GetFocus()
+		ui.EnterModal()
+		m := NewCollectionSearchModal(ui)
+		m.returnFocus = currentFocus
+		ui.Pages.AddPage("collectionSearch", createModal(m, 100, 20, ui.Colors.Background), true, true)
+		ui.App.SetFocus(m.searchField)
+		return nil
+	}
+	return event
 }

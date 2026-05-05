@@ -287,6 +287,204 @@ func savePluginEnvironmentChanges(pluginEnv map[string]string, currentEnvIndex i
 	}
 }
 
+var collectionSearchDebounceTimer *time.Timer
+
+var collectionSearchResults []RequestSearchResult
+
+type CollectionSearchModal struct {
+	*tview.Flex
+	table       *tview.Table
+	searchField *tview.InputField
+	ui          *UIOrchestrator
+	results     []RequestSearchResult
+	returnFocus tview.Primitive
+}
+
+func NewCollectionSearchModal(ui *UIOrchestrator) *CollectionSearchModal {
+	m := &CollectionSearchModal{
+		Flex:        tview.NewFlex().SetDirection(tview.FlexRow),
+		table:       tview.NewTable().SetSelectable(true, false).SetFixed(1, 0),
+		ui:          ui,
+		returnFocus: ui.CollectionsTreeView,
+	}
+
+	m.SetBackgroundColor(ui.Colors.Background)
+
+	m.table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.Foreground))
+	m.table.SetBackgroundColor(ui.Colors.Background)
+
+	m.searchField = tview.NewInputField().
+		SetLabel(" / ").
+		SetLabelColor(ui.Colors.BorderFocus).
+		SetPlaceholder("Search requests...").
+		SetPlaceholderTextColor(ui.Colors.Placeholder).
+		SetFieldBackgroundColor(ui.Colors.InputBackground).
+		SetFieldTextColor(ui.Colors.Foreground)
+	m.searchField.SetBackgroundColor(ui.Colors.Background)
+
+	m.searchField.SetChangedFunc(func(text string) {
+		if collectionSearchDebounceTimer != nil {
+			collectionSearchDebounceTimer.Stop()
+		}
+		collectionSearchDebounceTimer = time.AfterFunc(300*time.Millisecond, func() {
+			ui.App.QueueUpdateDraw(func() {
+				m.filterRequests(text)
+			})
+		})
+	})
+
+	m.searchField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			closeRequestSearchModal(m)
+			return nil
+		}
+		if event.Key() == tcell.KeyDown || event.Key() == tcell.KeyTab {
+			if m.table.GetRowCount() > 1 {
+				ui.App.SetFocus(m.table)
+			}
+			return nil
+		}
+		return event
+	})
+
+	m.table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := m.table.GetSelection()
+		if event.Key() == tcell.KeyUp && row == 1 {
+			ui.App.SetFocus(m.searchField)
+			return nil
+		}
+		if event.Key() == tcell.KeyBacktab {
+			ui.App.SetFocus(m.searchField)
+			return nil
+		}
+		if event.Key() == tcell.KeyEnter {
+			m.selectResult()
+			return nil
+		}
+		if event.Rune() == '/' {
+			closeRequestSearchModal(m)
+			return nil
+		}
+		return event
+	})
+
+	m.table.SetSelectedFunc(func(row, column int) {
+		if row > 0 {
+			m.selectResult()
+		}
+	})
+
+	m.AddItem(m.searchField, 1, 0, true)
+	m.AddItem(m.table, 0, 1, false)
+
+	m.SetBorder(true).SetTitle(" Search Requests ")
+	m.SetBorderColor(ui.Colors.BorderFocus)
+	m.SetTitleColor(ui.Colors.Title)
+
+	m.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			closeRequestSearchModal(m)
+			return nil
+		}
+		if event.Rune() == '/' {
+			closeRequestSearchModal(m)
+			return nil
+		}
+		return event
+	})
+
+	return m
+}
+
+func (m *CollectionSearchModal) filterRequests(query string) {
+	m.table.Clear()
+	m.results = nil
+
+	if query == "" {
+		return
+	}
+
+	results := searchRequests(query, m.ui.WorkspaceData.Collections)
+	if len(results) == 0 {
+		return
+	}
+
+	headers := []string{"Collection", "Name", "Method", "URL"}
+	for i, h := range headers {
+		m.table.SetCell(0, i, tview.NewTableCell(" "+h+" ").
+			SetTextColor(m.ui.Colors.Title).
+			SetSelectable(false).
+			SetExpansion(1).
+			SetAlign(tview.AlignCenter))
+	}
+	m.table.GetCell(0, 0).SetAlign(tview.AlignLeft)
+
+	m.results = results
+	row := 1
+	for _, result := range results {
+		pathStr := strings.Join(result.CollectionPath, " > ")
+		m.table.SetCell(row, 0, tview.NewTableCell(" "+pathStr+" ").SetExpansion(1).SetTextColor(m.ui.Colors.Foreground).SetAlign(tview.AlignLeft))
+		m.table.SetCell(row, 1, tview.NewTableCell(" "+result.Request.Name+" ").SetExpansion(2).SetTextColor(m.ui.Colors.Foreground).SetAlign(tview.AlignLeft))
+		m.table.SetCell(row, 2, tview.NewTableCell(" "+result.Request.Method+" ").SetExpansion(0).SetTextColor(m.ui.Colors.Foreground).SetAlign(tview.AlignCenter))
+		urlDisplay := result.Request.URL
+		if len(urlDisplay) > 40 {
+			urlDisplay = urlDisplay[:37] + "..."
+		}
+		m.table.SetCell(row, 3, tview.NewTableCell(" "+urlDisplay+" ").SetExpansion(1).SetTextColor(m.ui.Colors.Placeholder).SetAlign(tview.AlignLeft))
+		row++
+	}
+}
+
+func (m *CollectionSearchModal) selectResult() {
+	row, _ := m.table.GetSelection()
+	if row < 1 || row-1 >= len(m.results) {
+		return
+	}
+
+	result := m.results[row-1]
+	collectionPath := result.CollectionPath
+	request := result.Request
+
+	node := findNodeByPath(m.ui.RootNode, collectionPath)
+	if node == nil {
+		closeRequestSearchModal(m)
+		return
+	}
+
+	for _, child := range node.GetChildren() {
+		if reqRef, ok := child.GetReference().(workspace.Request); ok {
+			if reqRef.Name == request.Name && reqRef.Method == request.Method && reqRef.URL == request.URL {
+				child.Expand()
+				m.ui.CollectionsTreeView.SetCurrentNode(child)
+				if m.ui.TreeHighlightHandler != nil {
+					m.ui.TreeHighlightHandler(child)
+				}
+				if m.ui.TreeSelectionHandler != nil {
+					m.ui.TreeSelectionHandler(child)
+				}
+				break
+			}
+		}
+	}
+
+	closeRequestSearchModal(m)
+}
+
+func closeRequestSearchModal(m *CollectionSearchModal) {
+	m.ui.Pages.RemovePage("collectionSearch")
+
+	// Restore focus
+	if m.returnFocus != nil {
+		m.ui.App.SetFocus(m.returnFocus)
+	} else {
+		m.ui.App.SetFocus(m.ui.CollectionsTreeView)
+	}
+
+	if m.ui.ExitModal != nil {
+		m.ui.ExitModal()
+	}
+}
+
 // SetupEventHandlers configures all event handlers for the UI
 func SetupEventHandlers(ui *UIOrchestrator) {
 	// Populate the collections tree initially
