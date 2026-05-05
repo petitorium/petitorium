@@ -103,6 +103,7 @@ type ShortcutsConfig struct {
 	JumpToURLBar      string `mapstructure:"jumpToURLBar"`
 	JumpToRequest     string `mapstructure:"jumpToRequest"`
 	JumpToResponse    string `mapstructure:"jumpToResponse"`
+	SendRequest       string `mapstructure:"sendRequest"`
 }
 
 var C AppConfig
@@ -210,6 +211,7 @@ shortcuts:
   jumpToURLBar: "ctrl+u"
   jumpToRequest: "ctrl+b"
   jumpToResponse: "ctrl+s"
+  sendRequest: "ctrl+j"
 `
 
 func LoadConfig() error {
@@ -261,6 +263,9 @@ func LoadConfig() error {
 	}
 	if C.Shortcuts.JumpToResponse == "" {
 		C.Shortcuts.JumpToResponse = "ctrl+s"
+	}
+	if C.Shortcuts.SendRequest == "" {
+		C.Shortcuts.SendRequest = "ctrl+j"
 	}
 
 	return nil

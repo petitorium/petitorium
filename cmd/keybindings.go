@@ -481,6 +481,18 @@ func NewKeyBindingManager() *KeyBindingManager {
 		})
 	}
 
+	if config.C.Shortcuts.SendRequest != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.SendRequest)
+		manager.treeViewBindings = append(manager.treeViewBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      handleTreeSendRequest,
+			Description: "Send request from tree",
+			Context:     "tree_view",
+		})
+	}
+
 	return manager
 }
 
@@ -1736,5 +1748,50 @@ func openCollectionSearch(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Even
 		ui.App.SetFocus(m.searchField)
 		return nil
 	}
+	return event
+}
+
+func handleTreeSendRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+
+	node := ui.CollectionsTreeView.GetCurrentNode()
+	if node == nil {
+		return event
+	}
+
+	reference := node.GetReference()
+	if col, ok := reference.(workspace.Collection); ok {
+		node.SetExpanded(!node.IsExpanded())
+		if node.IsExpanded() {
+			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
+			if len(node.GetChildren()) == 0 {
+				addChildrenToCollectionNode(node, col)
+			}
+			if config.C.UI.CollectionExpansion == "remember" {
+				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, true)
+			}
+		} else {
+			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
+			node.ClearChildren()
+			if config.C.UI.CollectionExpansion == "remember" {
+				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, false)
+			}
+		}
+		return nil
+	}
+
+	if _, ok := reference.(workspace.Request); ok {
+		if ui.RequestInProgress {
+			return nil
+		}
+		if ui.TreeSelectionHandler != nil {
+			ui.TreeSelectionHandler(node)
+		}
+		ui.SendButton.TriggerSelect()
+		return nil
+	}
+
 	return event
 }

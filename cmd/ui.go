@@ -294,6 +294,13 @@ func (cb *CustomButton) SetSelectedFunc(handler func()) *CustomButton {
 	return cb
 }
 
+// TriggerSelect triggers the button's selected handler if one is set
+func (cb *CustomButton) TriggerSelect() {
+	if cb.onSelected != nil {
+		cb.onSelected()
+	}
+}
+
 // SetText sets the button text
 func (cb *CustomButton) SetText(text string) *CustomButton {
 	cb.text = text
