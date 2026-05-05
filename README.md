@@ -17,6 +17,11 @@ A powerful Terminal API Testing Client
 - `Tab` - Cycle focus forward through main panels and elements
 - `Shift+Tab` - Cycle focus backward
 - `Ctrl+w` - Show workspace menu
+- `Ctrl+e` - Jump to environment selector
+- `Ctrl+r` - Jump to collections panel
+- `Ctrl+u` - Jump to URL bar
+- `Ctrl+b` - Jump to request panel
+- `Ctrl+s` - Jump to response panel
 - `Ctrl+p` - Open plugin marketplace
 - `q` / `Q` - Quit application
 
@@ -26,6 +31,7 @@ A powerful Terminal API Testing Client
 - `h` - Collapse collection / Move to parent collection
 - `l` - Expand collection / Select request
 - `g` / `G` - Go to top / bottom of tree
+- `/` - Open quick search to find requests by name or URL
 - `N` - Create new collection
 - `n` - Create new request
 - `D` (Shift+D) - Duplicate selected request
