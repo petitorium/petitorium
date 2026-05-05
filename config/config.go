@@ -207,9 +207,9 @@ shortcuts:
   jumpToWorkspace: "ctrl+w"
   jumpToEnvironment: "ctrl+e"
   jumpToCollections: "ctrl+r"
-  jumpToURLBar: "ctrl+l"
-  jumpToRequest: "ctrl+u"
-  jumpToResponse: "ctrl+p"
+  jumpToURLBar: "ctrl+u"
+  jumpToRequest: "ctrl+b"
+  jumpToResponse: "ctrl+s"
 `
 
 func LoadConfig() error {
@@ -241,7 +241,26 @@ func LoadConfig() error {
 
 	// Last resort fallback
 	if C.Plugins.RegistryURL == "" {
-		C.Plugins.RegistryURL = "http://localhost:8080/api/v1" // Use local for now to help user
+		C.Plugins.RegistryURL = "http://localhost:8080/api/v1"
+	}
+
+	if C.Shortcuts.JumpToWorkspace == "" {
+		C.Shortcuts.JumpToWorkspace = "ctrl+w"
+	}
+	if C.Shortcuts.JumpToEnvironment == "" {
+		C.Shortcuts.JumpToEnvironment = "ctrl+e"
+	}
+	if C.Shortcuts.JumpToCollections == "" {
+		C.Shortcuts.JumpToCollections = "ctrl+r"
+	}
+	if C.Shortcuts.JumpToURLBar == "" {
+		C.Shortcuts.JumpToURLBar = "ctrl+u"
+	}
+	if C.Shortcuts.JumpToRequest == "" {
+		C.Shortcuts.JumpToRequest = "ctrl+b"
+	}
+	if C.Shortcuts.JumpToResponse == "" {
+		C.Shortcuts.JumpToResponse = "ctrl+s"
 	}
 
 	return nil
