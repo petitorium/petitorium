@@ -269,3 +269,43 @@ func findNodeByPath(root *tview.TreeNode, path []string) *tview.TreeNode {
 	}
 	return nil
 }
+
+type RequestSearchResult struct {
+	Request        *workspace.Request
+	CollectionPath []string
+}
+
+func searchRequests(query string, collections []workspace.Collection) []RequestSearchResult {
+	if query == "" {
+		return nil
+	}
+
+	var results []RequestSearchResult
+	lowerQuery := strings.ToLower(query)
+
+	var traverse func(collections []workspace.Collection, path []string)
+	traverse = func(collections []workspace.Collection, path []string) {
+		for i := range collections {
+			col := &collections[i]
+			currentPath := append(path, col.Name)
+			for j := range col.Requests {
+				req := &col.Requests[j]
+				if strings.Contains(strings.ToLower(req.Name), lowerQuery) ||
+					strings.Contains(strings.ToLower(req.URL), lowerQuery) {
+					resultPath := make([]string, len(currentPath))
+					copy(resultPath, currentPath)
+					results = append(results, RequestSearchResult{
+						Request:        req,
+						CollectionPath: resultPath,
+					})
+				}
+			}
+			if col.Collections != nil {
+				traverse(col.Collections, currentPath)
+			}
+		}
+	}
+
+	traverse(collections, nil)
+	return results
+}

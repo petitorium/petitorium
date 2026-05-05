@@ -164,6 +164,10 @@ type UIOrchestrator struct {
 	EnvironmentsCycle                   *EnvironmentsCycle
 	WorkspaceCycle                      *WorkspaceCycle
 	LastSelectedRequestNode             *tview.TreeNode
+	CollectionSearchPanel               *tview.Flex
+	CollectionSearchInput               *tview.InputField
+	CollectionSearchResults             *tview.List
+	IsCollectionSearchActive            bool
 	BodyEditMode                        bool
 	CurrentBodyContent                  string
 	LastJSONBodyContent                 string // Store last JSON body when switching to No Body
@@ -347,6 +351,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	environmentPanel := ui.EnvironmentPanel
 	envDropdown := ui.EnvDropdown
 	envConfigButton := ui.EnvConfigButton
+	collectionSearchPanel := ui.CollectionSearchPanel
+	collectionSearchInput := ui.CollectionSearchInput
+	collectionSearchResults := ui.CollectionSearchResults
 
 	// Update environment dropdown with loaded environments
 	updateEnvironmentDropdown(envDropdown, *environmentsData)
@@ -505,7 +512,13 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	leftSide := tview.NewFlex().SetDirection(tview.FlexRow)
 	leftSide.AddItem(workspacePanel, 3, 1, false)
 	leftSide.AddItem(environmentPanel, 3, 1, false)
-	leftSide.AddItem(collectionsTreeView, 0, 1, false)
+
+	collectionsContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	collectionsContainer.SetBackgroundColor(colors.Background)
+	collectionsContainer.AddItem(collectionSearchPanel, 10, 1, false)
+	collectionsContainer.AddItem(collectionsTreeView, 0, 1, false)
+
+	leftSide.AddItem(collectionsContainer, 0, 1, false)
 
 	headersCycle = &HeadersCycle{
 		inputs:   []tview.Primitive{},
@@ -648,6 +661,10 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		FooterLeft:                     footerLeft,
 		FooterRight:                    footerRight,
 		CollectionsTreeView:            collectionsTreeView,
+		CollectionSearchPanel:          collectionSearchPanel,
+		CollectionSearchInput:          collectionSearchInput,
+		CollectionSearchResults:        collectionSearchResults,
+		IsCollectionSearchActive:       false,
 		ResponsePages:                  responsePages,
 		ResponseTabHeader:              responseTabHeader,
 		ResponseInfoBar:                responseInfoBar,

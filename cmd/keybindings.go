@@ -361,6 +361,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Duplicate selected request",
 			Context:     "tree_view",
 		},
+		{
+			Rune:        '/',
+			Action:      openCollectionSearch,
+			Description: "Search collections and requests",
+			Context:     "tree_view",
+		},
 	}
 
 	// Body edit panel keybindings
@@ -1715,4 +1721,73 @@ func jumpToRequestPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.
 func jumpToResponsePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	jumpToContainer(ui, 5)
 	return nil
+}
+
+func openCollectionSearch(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+	if ui.MainCycle.current == ui.PanelIndices.Collections {
+		ui.IsCollectionSearchActive = true
+		showCollectionSearchPanel(ui)
+		ui.App.SetFocus(ui.CollectionSearchInput)
+		return nil
+	}
+	return event
+}
+
+func showCollectionSearchPanel(ui *UIOrchestrator) {
+	ui.CollectionSearchInput.SetText("")
+	ui.CollectionSearchResults.Clear()
+}
+
+func hideCollectionSearchPanel(ui *UIOrchestrator) {
+	ui.IsCollectionSearchActive = false
+	ui.CollectionSearchInput.SetText("")
+	ui.CollectionSearchResults.Clear()
+}
+
+func closeCollectionSearch(ui *UIOrchestrator) {
+	hideCollectionSearchPanel(ui)
+	ui.App.SetFocus(ui.CollectionsTreeView)
+}
+
+func selectCollectionSearchResult(ui *UIOrchestrator) {
+	selectedIndex := ui.CollectionSearchResults.GetCurrentItem()
+	if selectedIndex < 0 {
+		return
+	}
+
+	if selectedIndex >= len(collectionSearchResults) {
+		return
+	}
+
+	result := collectionSearchResults[selectedIndex]
+
+	collectionPath := result.CollectionPath
+	request := result.Request
+
+	node := findNodeByPath(ui.RootNode, collectionPath)
+	if node == nil {
+		closeCollectionSearch(ui)
+		return
+	}
+
+	for _, child := range node.GetChildren() {
+		if reqRef, ok := child.GetReference().(workspace.Request); ok {
+			if reqRef.Name == request.Name && reqRef.Method == request.Method && reqRef.URL == request.URL {
+				child.Expand()
+				ui.CollectionsTreeView.SetCurrentNode(child)
+				if ui.TreeHighlightHandler != nil {
+					ui.TreeHighlightHandler(child)
+				}
+				if ui.TreeSelectionHandler != nil {
+					ui.TreeSelectionHandler(child)
+				}
+				break
+			}
+		}
+	}
+
+	closeCollectionSearch(ui)
 }

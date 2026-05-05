@@ -287,6 +287,91 @@ func savePluginEnvironmentChanges(pluginEnv map[string]string, currentEnvIndex i
 	}
 }
 
+var collectionSearchDebounceTimer *time.Timer
+var collectionSearchResults []RequestSearchResult
+
+func setupCollectionSearchPanel(ui *UIOrchestrator) {
+	ui.CollectionSearchInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			closeCollectionSearch(ui)
+			return nil
+		}
+		if event.Key() == tcell.KeyEnter {
+			selectCollectionSearchResult(ui)
+			return nil
+		}
+		if event.Rune() == '/' {
+			closeCollectionSearch(ui)
+			return nil
+		}
+		if event.Key() == tcell.KeyBacktab {
+			return nil
+		}
+		if event.Key() == tcell.KeyTab {
+			return nil
+		}
+		if event.Key() == tcell.KeyUp || event.Key() == tcell.KeyDown {
+			if ui.CollectionSearchResults.GetItemCount() > 0 {
+				if event.Key() == tcell.KeyUp {
+					current := ui.CollectionSearchResults.GetCurrentItem()
+					if current > 0 {
+						ui.CollectionSearchResults.SetCurrentItem(current - 1)
+					}
+				} else {
+					current := ui.CollectionSearchResults.GetCurrentItem()
+					if current < ui.CollectionSearchResults.GetItemCount()-1 {
+						ui.CollectionSearchResults.SetCurrentItem(current + 1)
+					}
+				}
+				return nil
+			}
+		}
+		return event
+	})
+
+	ui.CollectionSearchResults.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+		ui.CollectionSearchResults.SetCurrentItem(index)
+		selectCollectionSearchResult(ui)
+	})
+
+	ui.CollectionSearchInput.SetChangedFunc(func(text string) {
+		if collectionSearchDebounceTimer != nil {
+			collectionSearchDebounceTimer.Stop()
+		}
+
+		collectionSearchDebounceTimer = time.AfterFunc(300*time.Millisecond, func() {
+			ui.App.QueueUpdateDraw(func() {
+				performCollectionSearch(ui, text)
+			})
+		})
+	})
+}
+
+func performCollectionSearch(ui *UIOrchestrator, query string) {
+	ui.CollectionSearchResults.Clear()
+	collectionSearchResults = nil
+
+	if query == "" {
+		return
+	}
+
+	results := searchRequests(query, ui.WorkspaceData.Collections)
+	if len(results) == 0 {
+		return
+	}
+
+	collectionSearchResults = results
+	for _, result := range results {
+		displayText := formatSearchResultDisplay(result)
+		ui.CollectionSearchResults.AddItem(displayText, "", 0, nil)
+	}
+}
+
+func formatSearchResultDisplay(result RequestSearchResult) string {
+	pathStr := strings.Join(result.CollectionPath, " > ")
+	return fmt.Sprintf("%s > %s", pathStr, result.Request.Name)
+}
+
 // SetupEventHandlers configures all event handlers for the UI
 func SetupEventHandlers(ui *UIOrchestrator) {
 	// Populate the collections tree initially
@@ -431,6 +516,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	ui.ResponseCookiesPanel.SetInputCapture(responseViewCapture)
 	ui.ResponseTimelinePanel.SetInputCapture(responseViewCapture)
+
+	setupCollectionSearchPanel(ui)
 
 	// Initialize syncBodyContent function
 	ui.SyncBodyContent = func(content string) {
