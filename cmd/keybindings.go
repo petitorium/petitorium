@@ -1728,66 +1728,13 @@ func openCollectionSearch(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Even
 		return event
 	}
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		ui.IsCollectionSearchActive = true
-		showCollectionSearchPanel(ui)
-		ui.App.SetFocus(ui.CollectionSearchInput)
+		currentFocus := ui.App.GetFocus()
+		ui.EnterModal()
+		m := NewCollectionSearchModal(ui)
+		m.returnFocus = currentFocus
+		ui.Pages.AddPage("collectionSearch", createModal(m, 100, 20, ui.Colors.Background), true, true)
+		ui.App.SetFocus(m.searchField)
 		return nil
 	}
 	return event
-}
-
-func showCollectionSearchPanel(ui *UIOrchestrator) {
-	ui.CollectionSearchInput.SetText("")
-	ui.CollectionSearchResults.Clear()
-}
-
-func hideCollectionSearchPanel(ui *UIOrchestrator) {
-	ui.IsCollectionSearchActive = false
-	ui.CollectionSearchInput.SetText("")
-	ui.CollectionSearchResults.Clear()
-}
-
-func closeCollectionSearch(ui *UIOrchestrator) {
-	hideCollectionSearchPanel(ui)
-	ui.App.SetFocus(ui.CollectionsTreeView)
-}
-
-func selectCollectionSearchResult(ui *UIOrchestrator) {
-	selectedIndex := ui.CollectionSearchResults.GetCurrentItem()
-	if selectedIndex < 0 {
-		return
-	}
-
-	if selectedIndex >= len(collectionSearchResults) {
-		return
-	}
-
-	result := collectionSearchResults[selectedIndex]
-
-	collectionPath := result.CollectionPath
-	request := result.Request
-
-	node := findNodeByPath(ui.RootNode, collectionPath)
-	if node == nil {
-		closeCollectionSearch(ui)
-		return
-	}
-
-	for _, child := range node.GetChildren() {
-		if reqRef, ok := child.GetReference().(workspace.Request); ok {
-			if reqRef.Name == request.Name && reqRef.Method == request.Method && reqRef.URL == request.URL {
-				child.Expand()
-				ui.CollectionsTreeView.SetCurrentNode(child)
-				if ui.TreeHighlightHandler != nil {
-					ui.TreeHighlightHandler(child)
-				}
-				if ui.TreeSelectionHandler != nil {
-					ui.TreeSelectionHandler(child)
-				}
-				break
-			}
-		}
-	}
-
-	closeCollectionSearch(ui)
 }

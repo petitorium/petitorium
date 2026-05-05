@@ -6,37 +6,34 @@ import (
 
 // UIComponents holds all UI components for the application
 type UIComponents struct {
-	WorkspacePanel          *tview.Flex
-	WorkspaceSelector       *tview.DropDown
-	WorkspaceConfigButton   *CustomButton
-	RootNode                *tview.TreeNode
-	MethodURLBar            *tview.Flex
-	MethodDropdown          *tview.DropDown
-	URLInput                *URLVariableInput
-	SendButton              *CustomButton
-	CurlButton              *CustomButton
-	BodyViewPanel           *tview.TextView
-	BodyEditPanel           *tview.TextArea
-	Response                *tview.Flex
-	Footer                  *tview.Flex
-	FooterLeft              *tview.TextView
-	FooterRight             *tview.TextView
-	CollectionsTreeView     *tview.TreeView
-	CollectionSearchPanel   *tview.Flex
-	CollectionSearchInput   *tview.InputField
-	CollectionSearchResults *tview.List
-	ResponsePages           *tview.Pages
-	ResponseTabHeader       *tview.Flex
-	ResponseInfoBar         *tview.Flex
-	ResponseTimeText        *tview.TextView
-	ResponsePreviewPanel    *tview.TextView
-	ResponseHeadersPanel    tview.Primitive
-	ResponseCookiesPanel    *tview.TextView
-	ResponseTimelinePanel   *tview.TextView
-	EnvironmentPanel        *tview.Flex
-	EnvDropdown             *tview.DropDown
-	EnvConfigButton         *CustomButton
-	EnvIndicatorButton      *CustomButton
+	WorkspacePanel        *tview.Flex
+	WorkspaceSelector     *tview.DropDown
+	WorkspaceConfigButton *CustomButton
+	RootNode              *tview.TreeNode
+	MethodURLBar          *tview.Flex
+	MethodDropdown        *tview.DropDown
+	URLInput              *URLVariableInput
+	SendButton            *CustomButton
+	CurlButton            *CustomButton
+	BodyViewPanel         *tview.TextView
+	BodyEditPanel         *tview.TextArea
+	Response              *tview.Flex
+	Footer                *tview.Flex
+	FooterLeft            *tview.TextView
+	FooterRight           *tview.TextView
+	CollectionsTreeView   *tview.TreeView
+	ResponsePages         *tview.Pages
+	ResponseTabHeader     *tview.Flex
+	ResponseInfoBar       *tview.Flex
+	ResponseTimeText      *tview.TextView
+	ResponsePreviewPanel  *tview.TextView
+	ResponseHeadersPanel  tview.Primitive
+	ResponseCookiesPanel  *tview.TextView
+	ResponseTimelinePanel *tview.TextView
+	EnvironmentPanel      *tview.Flex
+	EnvDropdown           *tview.DropDown
+	EnvConfigButton       *CustomButton
+	EnvIndicatorButton    *CustomButton
 }
 
 // setupUIComponents creates and configures all UI components
@@ -112,40 +109,35 @@ func setupUIComponents(colors *ColorManager, app *tview.Application) *UIComponen
 		SetTitleColor(colors.Title).
 		SetBorderPadding(0, 0, 0, 0)
 
-	collectionSearchPanel, collectionSearchInput, collectionSearchResults := createCollectionSearchPanel(colors)
-
 	return &UIComponents{
-		WorkspacePanel:          workspacePanel,
-		WorkspaceSelector:       workspaceSelector,
-		WorkspaceConfigButton:   workspaceConfigButton,
-		RootNode:                rootNode,
-		MethodURLBar:            methodURLBar,
-		MethodDropdown:          methodDropdown,
-		URLInput:                urlInput,
-		SendButton:              sendButton,
-		CurlButton:              curlButton,
-		BodyViewPanel:           bodyViewPanel,
-		BodyEditPanel:           bodyEditPanel,
-		Response:                response,
-		Footer:                  footer,
-		FooterLeft:              footerLeft,
-		FooterRight:             footerRight,
-		CollectionsTreeView:     collectionsTreeView,
-		CollectionSearchPanel:   collectionSearchPanel,
-		CollectionSearchInput:   collectionSearchInput,
-		CollectionSearchResults: collectionSearchResults,
-		ResponsePages:           responsePages,
-		ResponseTabHeader:       responseTabHeader,
-		ResponseInfoBar:         responseInfoBar,
-		ResponseTimeText:        responseTimeText,
-		ResponsePreviewPanel:    responsePreviewPanel,
-		ResponseHeadersPanel:    responseHeadersPanel,
-		ResponseCookiesPanel:    responseCookiesPanel,
-		ResponseTimelinePanel:   responseTimelinePanel,
-		EnvironmentPanel:        environmentPanel,
-		EnvDropdown:             envDropdown,
-		EnvConfigButton:         envConfigButton,
-		EnvIndicatorButton:      envIndicatorButton,
+		WorkspacePanel:        workspacePanel,
+		WorkspaceSelector:     workspaceSelector,
+		WorkspaceConfigButton: workspaceConfigButton,
+		RootNode:              rootNode,
+		MethodURLBar:          methodURLBar,
+		MethodDropdown:        methodDropdown,
+		URLInput:              urlInput,
+		SendButton:            sendButton,
+		CurlButton:            curlButton,
+		BodyViewPanel:         bodyViewPanel,
+		BodyEditPanel:         bodyEditPanel,
+		Response:              response,
+		Footer:                footer,
+		FooterLeft:            footerLeft,
+		FooterRight:           footerRight,
+		CollectionsTreeView:   collectionsTreeView,
+		ResponsePages:         responsePages,
+		ResponseTabHeader:     responseTabHeader,
+		ResponseInfoBar:       responseInfoBar,
+		ResponseTimeText:      responseTimeText,
+		ResponsePreviewPanel:  responsePreviewPanel,
+		ResponseHeadersPanel:  responseHeadersPanel,
+		ResponseCookiesPanel:  responseCookiesPanel,
+		ResponseTimelinePanel: responseTimelinePanel,
+		EnvironmentPanel:      environmentPanel,
+		EnvDropdown:           envDropdown,
+		EnvConfigButton:       envConfigButton,
+		EnvIndicatorButton:    envIndicatorButton,
 	}
 }
 
