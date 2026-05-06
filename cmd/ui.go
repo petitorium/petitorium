@@ -188,6 +188,9 @@ type CustomButton struct {
 	isActivated             bool
 	disabled                bool
 	sending                 bool
+	spinnerChars            []string
+	spinnerIndex            int
+	stopSpinner             chan struct{}
 	app                     *tview.Application
 }
 
@@ -229,6 +232,9 @@ func NewCustomButton(text string) *CustomButton {
 		isActivated:             false,
 		disabled:                false,
 		sending:                 false,
+		spinnerChars:            []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"},
+		spinnerIndex:            0,
+		stopSpinner:             make(chan struct{}),
 		app:                     globalAppPtr,
 	}
 
@@ -334,7 +340,28 @@ func (cb *CustomButton) SetSending(sending bool) *CustomButton {
 	if sending {
 		cb.disabled = true
 		cb.isActivated = false
+		cb.spinnerIndex = 0
+		cb.stopSpinner = make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(100 * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-cb.stopSpinner:
+					return
+				case <-ticker.C:
+					if cb.app != nil {
+						cb.app.QueueUpdateDraw(func() {
+							cb.spinnerIndex = (cb.spinnerIndex + 1) % len(cb.spinnerChars)
+						})
+					}
+				}
+			}
+		}()
 	} else {
+		if cb.stopSpinner != nil {
+			close(cb.stopSpinner)
+		}
 		cb.disabled = false
 	}
 	cb.updateBackground()
@@ -374,8 +401,14 @@ func (cb *CustomButton) Draw(screen tcell.Screen) {
 		return
 	}
 
+	displayText := cb.text
+	if cb.sending {
+		// displayText = cb.spinnerChars[cb.spinnerIndex] + " " + cb.text
+		displayText = cb.spinnerChars[cb.spinnerIndex]
+	}
+
 	// Calculate text X position based on alignment
-	textLen := utf8.RuneCountInString(cb.text)
+	textLen := utf8.RuneCountInString(displayText)
 	var textX int
 	switch cb.textAlignment {
 	case "left":
@@ -396,8 +429,8 @@ func (cb *CustomButton) Draw(screen tcell.Screen) {
 		labelColor = cb.labelActivatedColor
 	}
 
-	// Draw each character of the text
-	for i, ch := range cb.text {
+	// Draw each character of the display text
+	for i, ch := range displayText {
 		if textX+i >= x && textX+i < x+width && textY >= y && textY < y+height {
 			screen.SetContent(textX+i, textY, ch, nil, tcell.StyleDefault.Background(cb.Box.GetBackgroundColor()).Foreground(labelColor))
 		}

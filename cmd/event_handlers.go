@@ -1291,7 +1291,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Mark request as in progress and update UI
 		ui.RequestInProgress = true
-		ui.SendButton.SetText("Sending").SetSending(true)
+		ui.SendButton.SetSending(true)
 
 		// Send the request in a goroutine
 		go func() {
@@ -1302,7 +1302,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				defer func() {
 					// Reset UI state when done
 					ui.RequestInProgress = false
-					ui.SendButton.SetText(" Send ").SetSending(false)
+					ui.SendButton.SetSending(false)
 				}()
 
 				if err != nil {
