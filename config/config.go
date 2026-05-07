@@ -36,6 +36,8 @@ type ThemeConfig struct {
 	TitleColor                string       `mapstructure:"titleColor"`
 	SelectionBackground       string       `mapstructure:"selectionBackground"`
 	TreeSelectionBackground   string       `mapstructure:"treeSelectionBackground"`
+	SelectedBackground        string       `mapstructure:"selectedBackground"`
+	SelectedForeground        string       `mapstructure:"selectedForeground"`
 	ActiveTabColor            string       `mapstructure:"activeTabColor"`
 	ButtonBackgroundColor     string       `mapstructure:"buttonBackgroundColor"`
 	ButtonSelectedColor       string       `mapstructure:"buttonSelectedColor"`
@@ -136,6 +138,8 @@ themeOverrides:
   # titleColor: "#EBEBEB"
   # selectionBackground: "#1B4248"
   # treeSelectionBackground: "#7AA2F7"
+  # selectedBackground: "#1B4248"
+  # selectedForeground: "#e4e4e4"
   # activeTabColor: "#FF9F77"
   # buttonBackgroundColor: "#1B4248"
   # buttonSelectedColor: "#FFD700"

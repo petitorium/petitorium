@@ -10,18 +10,20 @@ import (
 // ColorManager centralizes all color management for the application
 type ColorManager struct {
 	// Theme colors from configuration
-	Background       tcell.Color
-	Foreground       tcell.Color
-	Border           tcell.Color
-	BorderFocus      tcell.Color
-	Title            tcell.Color
-	Selection        tcell.Color
-	TreeSelection    tcell.Color
-	ActiveTab        tcell.Color
-	ButtonBackground tcell.Color // Button background color (normal state)
-	ButtonSelect     tcell.Color
-	DropdownFocus    tcell.Color
-	InputBackground  tcell.Color // Input field background color (subtle contrast)
+	Background         tcell.Color
+	Foreground         tcell.Color
+	Border             tcell.Color
+	BorderFocus        tcell.Color
+	Title              tcell.Color
+	Selection          tcell.Color
+	TreeSelection      tcell.Color
+	SelectedBackground tcell.Color
+	SelectedForeground tcell.Color
+	ActiveTab          tcell.Color
+	ButtonBackground   tcell.Color
+	ButtonSelect       tcell.Color
+	DropdownFocus      tcell.Color
+	InputBackground    tcell.Color // Input field background color (subtle contrast)
 
 	// Semantic colors for consistent usage across the app
 	Placeholder tcell.Color // Placeholder text color
@@ -72,6 +74,12 @@ func NewColorManager() *ColorManager {
 	if overrides.TreeSelectionBackground != "" {
 		theme.TreeSelectionBackground = overrides.TreeSelectionBackground
 	}
+	if overrides.SelectedBackground != "" {
+		theme.SelectedBackground = overrides.SelectedBackground
+	}
+	if overrides.SelectedForeground != "" {
+		theme.SelectedForeground = overrides.SelectedForeground
+	}
 	if overrides.ActiveTabColor != "" {
 		theme.ActiveTabColor = overrides.ActiveTabColor
 	}
@@ -113,6 +121,16 @@ func NewColorManager() *ColorManager {
 		valueColor = theme.ForegroundColor // Default to foreground color
 	}
 
+	// Set selected colors with fallbacks to maintain backward compatibility
+	selectedBackground := theme.SelectedBackground
+	if selectedBackground == "" {
+		selectedBackground = theme.SelectionBackground
+	}
+	selectedForeground := theme.SelectedForeground
+	if selectedForeground == "" {
+		selectedForeground = theme.ForegroundColor
+	}
+
 	return &ColorManager{
 		Background:          hexToColor(theme.BackgroundColor),
 		Foreground:          hexToColor(theme.ForegroundColor),
@@ -121,6 +139,8 @@ func NewColorManager() *ColorManager {
 		Title:               hexToColor(theme.TitleColor),
 		Selection:           hexToColor(theme.SelectionBackground),
 		TreeSelection:       hexToColor(theme.TreeSelectionBackground),
+		SelectedBackground:  hexToColor(selectedBackground),
+		SelectedForeground:  hexToColor(selectedForeground),
 		ActiveTab:           hexToColor(theme.ActiveTabColor),
 		ButtonBackground:    hexToColor(theme.ButtonBackgroundColor),
 		ButtonSelect:        hexToColor(theme.ButtonSelectedColor),

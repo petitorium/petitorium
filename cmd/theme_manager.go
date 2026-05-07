@@ -26,6 +26,8 @@ type ThemeColors struct {
 	Title               string
 	Selection           string
 	TreeSelection       string
+	SelectedBackground  string
+	SelectedForeground  string
 	ActiveTab           string
 	ButtonBackground    string
 	ButtonSelected      string
@@ -187,6 +189,8 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 		Title:               foreground,
 		Selection:           tm.adjustBrightness(background, 1.2), // Lighter than background
 		TreeSelection:       treeSelection,                        // Appropriate selection background
+		SelectedBackground:  stringColor,
+		SelectedForeground:  background,
 		ActiveTab:           keywordColor,
 		ButtonBackground:    tm.adjustBrightness(keywordColor, 0.7), // Similar to border color
 		ButtonSelected:      stringColor,
@@ -236,6 +240,8 @@ func (tm *ThemeManager) createDefaultTheme(themeName, background string) *Unifie
 			Title:               "#ebebeb",
 			Selection:           "#1b4248",
 			TreeSelection:       "#7aa2f7",
+			SelectedBackground:  "#28a745",
+			SelectedForeground:  background,
 			ActiveTab:           "#ff9f77",
 			ButtonBackground:    "#95ceda",
 			ButtonSelected:      "#ffd700",
@@ -408,6 +414,8 @@ func (tm *ThemeManager) ApplyTheme(themeName string) error {
 	config.C.Theme.TitleColor = theme.UIColors.Title
 	config.C.Theme.SelectionBackground = theme.UIColors.Selection
 	config.C.Theme.TreeSelectionBackground = theme.UIColors.TreeSelection
+	config.C.Theme.SelectedBackground = theme.UIColors.SelectedBackground
+	config.C.Theme.SelectedForeground = theme.UIColors.SelectedForeground
 	config.C.Theme.ActiveTabColor = theme.UIColors.ActiveTab
 	config.C.Theme.ButtonBackgroundColor = theme.UIColors.ButtonBackground
 	config.C.Theme.ButtonSelectedColor = theme.UIColors.ButtonSelected

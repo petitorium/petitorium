@@ -136,8 +136,9 @@ func createDropDownWithOpenOnFocus(title string,
 	dropdown.SetFocusedStyle(tcell.StyleDefault.Background(colors.DropdownFocus).Foreground(colors.ActiveTab))
 
 	// Set the dropdown list styles to match the theme
-	unselectedStyle := tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground)
-	selectedStyle := tcell.StyleDefault.Background(colors.Selection).Foreground(colors.Foreground)
+	unselectedStyle := tcell.StyleDefault.Background(colors.ButtonBackground).Foreground(colors.SelectedForeground)
+	selectedStyle := tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.SelectedForeground)
+
 	dropdown.SetListStyles(unselectedStyle, selectedStyle)
 
 	// Use reflection to set openOnFocus
@@ -675,8 +676,8 @@ func updateTabHeader(
 				if i == activeTabIndex {
 					// Active tab - use active tab color and background
 					tab.SetText(tabs[i])
-					tab.SetTextColor(colors.ActiveTab)
-					tab.SetBackgroundColor(colors.Selection)
+					tab.SetTextColor(colors.Foreground)
+					tab.SetBackgroundColor(colors.ButtonBackground)
 				} else {
 					// Inactive tab - use regular foreground color and background
 					tab.SetText(fmt.Sprintf(" %s ", tabs[i]))
@@ -705,8 +706,8 @@ func updateResponseTabHeader(
 				if i == activeTabIndex {
 					// Active tab - use active tab color and background
 					tab.SetText(tabs[i])
-					tab.SetTextColor(colors.ActiveTab)
-					tab.SetBackgroundColor(colors.Selection)
+					tab.SetTextColor(colors.Foreground)
+					tab.SetBackgroundColor(colors.ButtonBackground)
 				} else {
 					// Inactive tab - use regular foreground color and background
 					tab.SetText(fmt.Sprintf(" %s ", tabs[i]))
@@ -1124,6 +1125,28 @@ func createHeadersTabWithData(colors *ColorManager,
 	buttonRow.AddItem(nil, 0, 1, false)
 
 	headersContainer.AddItem(buttonRow, 1, 0, false)
+
+	// TODO: improve this
+	// Add header row with labels
+	// headerLabelsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	// headerLabelsRow.SetBackgroundColor(colors.Background)
+	//
+	// nameLabel := tview.NewTextView()
+	// nameLabel.SetText("Name")
+	// nameLabel.SetTextColor(colors.BorderFocus)
+	// nameLabel.SetBackgroundColor(colors.Background)
+	//
+	// valueLabel := tview.NewTextView()
+	// valueLabel.SetText("Value")
+	// valueLabel.SetTextColor(colors.BorderFocus)
+	// valueLabel.SetBackgroundColor(colors.Background)
+	//
+	// headerLabelsRow.AddItem(nameLabel, 25, 0, false)
+	// headerLabelsRow.AddItem(valueLabel, 50, 0, false)
+	// headerLabelsRow.AddItem(nil, 4, 0, false)
+	// headerLabelsRow.AddItem(nil, 0, 1, false)
+	//
+	// headersContainer.AddItem(headerLabelsRow, 1, 0, false)
 
 	// Add visual spacing between buttons and headers
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
@@ -1942,19 +1965,26 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	tabPages.AddPage(requestTabInternalNames[2], queryTab, true, false)
 	tabPages.AddPage(requestTabInternalNames[3], headersTab, true, false)
 
-	// Create tab header
-	tabHeader := createTabHeader(requestTabDisplayNames, colors, func(index int) {
+	callback := func(index int) {
 		if tabIndexSetter != nil {
 			tabIndexSetter(index)
 		}
 		if footerUpdater != nil {
 			footerUpdater()
 		}
-	})
+	}
+
+	// Create tab header
+	tabHeader := createTabHeader(requestTabDisplayNames, colors, callback)
+
+	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	topRow.AddItem(tabHeader, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	topRow.AddItem(spacer, 0, 1, false)
 
 	// Add to main container
-	requestDataTabs.AddItem(tabHeader, 1, 0, false)
-	requestDataTabs.AddItem(tabPages, 0, 1, false)
+	requestDataTabs.AddItem(topRow, 1, 0, false)
+	requestDataTabs.AddItem(tabPages, 0, 1, true)
 
 	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI
 }
