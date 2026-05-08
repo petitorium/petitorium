@@ -29,24 +29,25 @@ type AppConfig struct {
 }
 
 type ThemeConfig struct {
-	BackgroundColor           string       `mapstructure:"backgroundColor"`
-	ForegroundColor           string       `mapstructure:"foregroundColor"`
-	BorderColor               string       `mapstructure:"borderColor"`
-	BorderFocusColor          string       `mapstructure:"borderFocusColor"`
-	TitleColor                string       `mapstructure:"titleColor"`
-	SelectionBackground       string       `mapstructure:"selectionBackground"`
-	TreeSelectionBackground   string       `mapstructure:"treeSelectionBackground"`
-	SelectedBackground        string       `mapstructure:"selectedBackground"`
-	SelectedForeground        string       `mapstructure:"selectedForeground"`
-	ActiveTabColor            string       `mapstructure:"activeTabColor"`
-	ButtonBackgroundColor     string       `mapstructure:"buttonBackgroundColor"`
-	ButtonSelectedColor       string       `mapstructure:"buttonSelectedColor"`
-	DropdownFocusedBackground string       `mapstructure:"dropdownFocusedBackground"`
-	InputBackgroundColor      string       `mapstructure:"inputBackgroundColor"` // Background color for input fields (slightly lighter than background for contrast)
-	LabelColor                string       `mapstructure:"labelColor"`           // Color for form labels
-	ValueColor                string       `mapstructure:"valueColor"`           // Color for form values
-	Borders                   BorderConfig `mapstructure:"borders"`
-	BordersFocus              BorderConfig `mapstructure:"bordersFocus"`
+	BackgroundColor             string       `mapstructure:"backgroundColor"`
+	ForegroundColor             string       `mapstructure:"foregroundColor"`
+	BorderColor                 string       `mapstructure:"borderColor"`
+	BorderFocusColor            string       `mapstructure:"borderFocusColor"`
+	TitleColor                  string       `mapstructure:"titleColor"`
+	SelectionBackground         string       `mapstructure:"selectionBackground"`
+	TreeSelectionBackground     string       `mapstructure:"treeSelectionBackground"`
+	SelectedBackground          string       `mapstructure:"selectedBackground"`
+	SelectedForeground          string       `mapstructure:"selectedForeground"`
+	ActiveTabColor              string       `mapstructure:"activeTabColor"`
+	ButtonBackgroundColor       string       `mapstructure:"buttonBackgroundColor"`
+	ButtonSelectedColor         string       `mapstructure:"buttonSelectedColor"`
+	DropdownFocusedBackground   string       `mapstructure:"dropdownFocusedBackground"`
+	InputBackgroundColor        string       `mapstructure:"inputBackgroundColor"`        // Background color for input fields (slightly lighter than background for contrast)
+	InputBackgroundLighterColor string       `mapstructure:"inputBackgroundLighterColor"` // Lighter variant of input background for additional contrast states
+	LabelColor                  string       `mapstructure:"labelColor"`                  // Color for form labels
+	ValueColor                  string       `mapstructure:"valueColor"`                  // Color for form values
+	Borders                     BorderConfig `mapstructure:"borders"`
+	BordersFocus                BorderConfig `mapstructure:"bordersFocus"`
 }
 
 type BorderConfig struct {

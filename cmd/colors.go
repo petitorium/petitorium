@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
@@ -10,20 +13,21 @@ import (
 // ColorManager centralizes all color management for the application
 type ColorManager struct {
 	// Theme colors from configuration
-	Background         tcell.Color
-	Foreground         tcell.Color
-	Border             tcell.Color
-	BorderFocus        tcell.Color
-	Title              tcell.Color
-	Selection          tcell.Color
-	TreeSelection      tcell.Color
-	SelectedBackground tcell.Color
-	SelectedForeground tcell.Color
-	ActiveTab          tcell.Color
-	ButtonBackground   tcell.Color
-	ButtonSelect       tcell.Color
-	DropdownFocus      tcell.Color
-	InputBackground    tcell.Color // Input field background color (subtle contrast)
+	Background             tcell.Color
+	Foreground             tcell.Color
+	Border                 tcell.Color
+	BorderFocus            tcell.Color
+	Title                  tcell.Color
+	Selection              tcell.Color
+	TreeSelection          tcell.Color
+	SelectedBackground     tcell.Color
+	SelectedForeground     tcell.Color
+	ActiveTab              tcell.Color
+	ButtonBackground       tcell.Color
+	ButtonSelect           tcell.Color
+	DropdownFocus          tcell.Color
+	InputBackground        tcell.Color
+	InputBackgroundLighter tcell.Color
 
 	// Semantic colors for consistent usage across the app
 	Placeholder tcell.Color // Placeholder text color
@@ -95,6 +99,9 @@ func NewColorManager() *ColorManager {
 	if overrides.InputBackgroundColor != "" {
 		theme.InputBackgroundColor = overrides.InputBackgroundColor
 	}
+	if overrides.InputBackgroundLighterColor != "" {
+		theme.InputBackgroundLighterColor = overrides.InputBackgroundLighterColor
+	}
 	if overrides.LabelColor != "" {
 		theme.LabelColor = overrides.LabelColor
 	}
@@ -106,9 +113,15 @@ func NewColorManager() *ColorManager {
 	setupBorders(theme)
 
 	// Set input background color with fallback
-	inputBackground := theme.InputBackgroundColor
+	inputBackground := theme.TreeSelectionBackground
 	if inputBackground == "" {
-		inputBackground = theme.BackgroundColor // Default to background (no contrast)
+		inputBackground = adjustBrightness(inputBackground, 0.5)
+	}
+
+	// Set lighter input background color with fallback (50% brighter than inputBackground)
+	inputBackgroundLighter := theme.InputBackgroundLighterColor
+	if inputBackgroundLighter == "" {
+		inputBackgroundLighter = adjustBrightness(inputBackground, 1.9)
 	}
 
 	// Set label and value colors with fallbacks
@@ -132,36 +145,37 @@ func NewColorManager() *ColorManager {
 	}
 
 	return &ColorManager{
-		Background:          hexToColor(theme.BackgroundColor),
-		Foreground:          hexToColor(theme.ForegroundColor),
-		Border:              hexToColor(theme.BorderColor),
-		BorderFocus:         hexToColor(theme.BorderFocusColor),
-		Title:               hexToColor(theme.TitleColor),
-		Selection:           hexToColor(theme.SelectionBackground),
-		TreeSelection:       hexToColor(theme.TreeSelectionBackground),
-		SelectedBackground:  hexToColor(selectedBackground),
-		SelectedForeground:  hexToColor(selectedForeground),
-		ActiveTab:           hexToColor(theme.ActiveTabColor),
-		ButtonBackground:    hexToColor(theme.ButtonBackgroundColor),
-		ButtonSelect:        hexToColor(theme.ButtonSelectedColor),
-		DropdownFocus:       hexToColor(theme.DropdownFocusedBackground),
-		InputBackground:     hexToColor(inputBackground),
-		Placeholder:         hexToColor("#4A5053"),
-		Success:             hexToColor(status.Success),
-		Error:               hexToColor(status.ClientError),
-		Warning:             hexToColor(status.Redirection),
-		LabelColor:          hexToColor(labelColor),
-		ValueColor:          hexToColor(valueColor),
-		StatusSuccessBg:     hexToColor(status.Success),
-		StatusSuccessFg:     hexToColor(status.SuccessText),
-		StatusRedirectBg:    hexToColor(status.Redirection),
-		StatusRedirectFg:    hexToColor(status.RedirectionText),
-		StatusClientErrorBg: hexToColor(status.ClientError),
-		StatusClientErrorFg: hexToColor(status.ClientErrorText),
-		StatusServerErrorBg: hexToColor(status.ServerError),
-		StatusServerErrorFg: hexToColor(status.ServerErrorText),
-		StatusDefaultBg:     hexToColor(status.Default),
-		StatusDefaultFg:     hexToColor(status.DefaultText),
+		Background:             hexToColor(theme.BackgroundColor),
+		Foreground:             hexToColor(theme.ForegroundColor),
+		Border:                 hexToColor(theme.BorderColor),
+		BorderFocus:            hexToColor(theme.BorderFocusColor),
+		Title:                  hexToColor(theme.TitleColor),
+		Selection:              hexToColor(theme.SelectionBackground),
+		TreeSelection:          hexToColor(theme.TreeSelectionBackground),
+		SelectedBackground:     hexToColor(selectedBackground),
+		SelectedForeground:     hexToColor(selectedForeground),
+		ActiveTab:              hexToColor(theme.ActiveTabColor),
+		ButtonBackground:       hexToColor(theme.ButtonBackgroundColor),
+		ButtonSelect:           hexToColor(theme.ButtonSelectedColor),
+		DropdownFocus:          hexToColor(theme.DropdownFocusedBackground),
+		InputBackground:        hexToColor(inputBackground),
+		InputBackgroundLighter: hexToColor(inputBackgroundLighter),
+		Placeholder:            hexToColor("#4A5053"),
+		Success:                hexToColor(status.Success),
+		Error:                  hexToColor(status.ClientError),
+		Warning:                hexToColor(status.Redirection),
+		LabelColor:             hexToColor(labelColor),
+		ValueColor:             hexToColor(valueColor),
+		StatusSuccessBg:        hexToColor(status.Success),
+		StatusSuccessFg:        hexToColor(status.SuccessText),
+		StatusRedirectBg:       hexToColor(status.Redirection),
+		StatusRedirectFg:       hexToColor(status.RedirectionText),
+		StatusClientErrorBg:    hexToColor(status.ClientError),
+		StatusClientErrorFg:    hexToColor(status.ClientErrorText),
+		StatusServerErrorBg:    hexToColor(status.ServerError),
+		StatusServerErrorFg:    hexToColor(status.ServerErrorText),
+		StatusDefaultBg:        hexToColor(status.Default),
+		StatusDefaultFg:        hexToColor(status.DefaultText),
 	}
 }
 
@@ -180,4 +194,45 @@ func setupBorders(theme config.ThemeConfig) {
 	tview.Borders.BottomRightFocus = strToRune(theme.BordersFocus.BottomRight)
 	tview.Borders.HorizontalFocus = strToRune(theme.BordersFocus.Horizontal)
 	tview.Borders.VerticalFocus = strToRune(theme.BordersFocus.Vertical)
+}
+
+// adjustBrightness adjusts the brightness of a hex color by a factor
+func adjustBrightness(hexColor string, factor float64) string {
+	if hexColor == "" {
+		return ""
+	}
+
+	// Remove # if present
+	hexColor = strings.TrimPrefix(hexColor, "#")
+
+	// Parse hex color
+	var r, g, b int
+	fmt.Sscanf(hexColor, "%02x%02x%02x", &r, &g, &b)
+
+	// Adjust brightness
+	r = int(float64(r) * factor)
+	g = int(float64(g) * factor)
+	b = int(float64(b) * factor)
+
+	// Clamp values
+	if r > 255 {
+		r = 255
+	}
+	if g > 255 {
+		g = 255
+	}
+	if b > 255 {
+		b = 255
+	}
+	if r < 0 {
+		r = 0
+	}
+	if g < 0 {
+		g = 0
+	}
+	if b < 0 {
+		b = 0
+	}
+
+	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }

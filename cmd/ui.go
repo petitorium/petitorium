@@ -843,7 +843,15 @@ func addQueryParamRow(queryList *tview.Flex,
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+
+	removeButton.SetFocusFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+		removeButton.SetActivatedStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+	})
+	removeButton.SetBlurFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+	})
 
 	queryParamRow := &QueryParamRow{
 		KeyInput:     keyInput,
@@ -871,8 +879,12 @@ func addQueryParamRow(queryList *tview.Flex,
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
 
-	row.AddItem(keyInput, 0, 1, false)
-	row.AddItem(valueInput, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+
+	row.AddItem(keyInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 3, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 2, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
@@ -922,7 +934,15 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+
+	removeButton.SetFocusFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+		removeButton.SetActivatedStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+	})
+	removeButton.SetBlurFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+	})
 
 	queryParamRow := &QueryParamRow{
 		KeyInput:     keyInput,
@@ -975,8 +995,11 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
 
-	row.AddItem(keyInput, 0, 1, false)
-	row.AddItem(valueInput, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	row.AddItem(keyInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 3, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 2, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
@@ -1019,6 +1042,8 @@ var currentEnvRows []*EnvVarRow
 var currentEnvVarsList *tview.Flex
 
 var rowHeight int = 1
+
+const headerInputWidth = 30
 
 // HeaderRow represents a single header key-value pair in the UI
 type HeaderRow struct {
@@ -1188,7 +1213,15 @@ func addHeaderRow(headersList *tview.Flex,
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+
+	removeButton.SetFocusFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+		removeButton.SetActivatedStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+	})
+	removeButton.SetBlurFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+	})
 
 	headerRow := &HeaderRow{
 		KeyInput:     keyInput,
@@ -1218,8 +1251,11 @@ func addHeaderRow(headersList *tview.Flex,
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
 
-	row.AddItem(keyInput, 0, 1, false)
-	row.AddItem(valueInput, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	row.AddItem(keyInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 3, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 2, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
@@ -1271,7 +1307,15 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
 	removeButton.SetBorder(false)
-	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Foreground))
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+
+	removeButton.SetFocusFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+		removeButton.SetActivatedStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+	})
+	removeButton.SetBlurFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+	})
 
 	headerRow := &HeaderRow{
 		KeyInput:     keyInput,
@@ -1330,8 +1374,11 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
 
-	row.AddItem(keyInput, 0, 1, false)
-	row.AddItem(valueInput, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	row.AddItem(keyInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 3, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 2, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
@@ -1479,8 +1526,10 @@ func addEnvVarRowWithData(
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
 
-	row.AddItem(keyInput, 0, 1, false)
-	row.AddItem(valueInput, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	row.AddItem(keyInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 5, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentEnvRows = append(currentEnvRows, envVarRow)
@@ -1609,8 +1658,10 @@ func addEnvVarRow(variablesList *tview.Flex,
 	buttonContainer.AddItem(removeButton, 1, 0, false)
 	buttonContainer.AddItem(nil, 0, 1, false)
 
-	row.AddItem(keyInput, 0, 1, false)
-	row.AddItem(valueInput, 0, 1, false)
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	row.AddItem(keyInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 5, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentEnvRows = append(currentEnvRows, envVarRow)
@@ -2373,7 +2424,6 @@ type HeaderValueInput struct {
 func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
 
-	// Create view mode component (TextView)
 	viewMode := tview.NewTextView().
 		SetDynamicColors(true).
 		SetWordWrap(false).
@@ -2383,23 +2433,20 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 	viewMode.SetTextColor(colors.Foreground)
 	viewMode.SetBorderPadding(0, 0, 0, 0)
 
-	// Create edit mode component (InputField)
 	editMode := tview.NewInputField()
 	editMode.SetBackgroundColor(colors.Background)
 	editMode.SetFieldBackgroundColor(colors.InputBackground)
 	editMode.SetFieldTextColor(colors.Foreground)
 	editMode.SetBorder(false)
 
-	// Ensure edit mode is properly focusable
 	editMode.SetFocusFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.Selection)
+		editMode.SetFieldBackgroundColor(colors.Error)
 	})
 
 	editMode.SetBlurFunc(func() {
 		editMode.SetFieldBackgroundColor(colors.InputBackground)
 	})
 
-	// Create Pages container
 	pages := tview.NewPages()
 	pages.SetBackgroundColor(colors.Background)
 	pages.AddPage("view", viewMode, true, true)
@@ -2415,7 +2462,6 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 		variableRegex: variableRegex,
 	}
 
-	// Set up event handlers
 	editMode.SetChangedFunc(func(text string) {
 		input.rawText = text
 		if input.onChanged != nil {
@@ -2427,10 +2473,8 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 		if key == tcell.KeyEsc {
 			input.switchToViewMode()
 		}
-		// Enter key does nothing special in header edit mode (unlike URL bar)
 	})
 
-	// Set up view mode 'i' key to enter edit mode (vim-style)
 	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == 'i' {
 			input.switchToEditMode()
@@ -2439,15 +2483,14 @@ func NewHeaderValueInput(colors *ColorManager) *HeaderValueInput {
 		return event
 	})
 
-	// Make view mode focusable and handle focus properly
 	viewMode.SetFocusFunc(func() {
-		// When view mode gets focus, ensure it's properly highlighted
-		viewMode.SetBackgroundColor(colors.Selection)
+		viewMode.SetBackgroundColor(colors.SelectedBackground)
+		viewMode.SetTextColor(colors.SelectedForeground)
 	})
 
 	viewMode.SetBlurFunc(func() {
-		// When view mode loses focus, reset background
 		viewMode.SetBackgroundColor(colors.InputBackground)
+		viewMode.SetTextColor(colors.Foreground)
 	})
 
 	return input
@@ -2628,11 +2671,6 @@ func (h *HeaderValueInput) IsEditMode() bool {
 	return h.currentMode == "edit"
 }
 
-// HasFocusOrChildHasFocus returns true if this component or any of its children has focus
-func (h *HeaderValueInput) HasFocusOrChildHasFocus() bool {
-	return h.HasFocus()
-}
-
 // HeaderKeyInput is a dual-mode input component for header keys (similar to HeaderValueInput but with variable highlighting)
 type HeaderKeyInput struct {
 	*tview.Pages
@@ -2651,7 +2689,6 @@ type HeaderKeyInput struct {
 func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
 
-	// Create view mode component (TextView)
 	viewMode := tview.NewTextView().
 		SetDynamicColors(true).
 		SetWordWrap(false).
@@ -2661,23 +2698,20 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 	viewMode.SetTextColor(colors.Foreground)
 	viewMode.SetBorderPadding(0, 0, 0, 0)
 
-	// Create edit mode component (InputField)
 	editMode := tview.NewInputField()
 	editMode.SetBackgroundColor(colors.Background)
 	editMode.SetFieldBackgroundColor(colors.InputBackground)
 	editMode.SetFieldTextColor(colors.Foreground)
 	editMode.SetBorder(false)
 
-	// Ensure edit mode is properly focusable
 	editMode.SetFocusFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.Selection)
+		editMode.SetFieldBackgroundColor(colors.Error)
 	})
 
 	editMode.SetBlurFunc(func() {
 		editMode.SetFieldBackgroundColor(colors.InputBackground)
 	})
 
-	// Create Pages container
 	pages := tview.NewPages()
 	pages.SetBackgroundColor(colors.Background)
 	pages.AddPage("view", viewMode, true, true)
@@ -2693,7 +2727,6 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 		variableRegex: variableRegex,
 	}
 
-	// Set up event handlers
 	editMode.SetChangedFunc(func(text string) {
 		input.rawText = text
 		if input.onChanged != nil {
@@ -2705,10 +2738,8 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 		if key == tcell.KeyEsc {
 			input.switchToViewMode()
 		}
-		// Enter key does nothing special in header key edit mode
 	})
 
-	// Set up view mode 'i' key to enter edit mode (vim-style)
 	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == 'i' {
 			input.switchToEditMode()
@@ -2717,15 +2748,14 @@ func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
 		return event
 	})
 
-	// Make view mode focusable and handle focus properly
 	viewMode.SetFocusFunc(func() {
-		// When view mode gets focus, ensure it's properly highlighted
-		viewMode.SetBackgroundColor(colors.Selection)
+		viewMode.SetBackgroundColor(colors.SelectedBackground)
+		viewMode.SetTextColor(colors.SelectedForeground)
 	})
 
 	viewMode.SetBlurFunc(func() {
-		// When view mode loses focus, reset background
 		viewMode.SetBackgroundColor(colors.InputBackground)
+		viewMode.SetTextColor(colors.Foreground)
 	})
 
 	return input
@@ -2896,11 +2926,6 @@ func (h *HeaderKeyInput) SetInputCapture(capture func(*tcell.EventKey) *tcell.Ev
 // IsEditMode returns true if the component is in edit mode
 func (h *HeaderKeyInput) IsEditMode() bool {
 	return h.currentMode == "edit"
-}
-
-// HasFocusOrChildHasFocus returns true if this component or any of its children has focus
-func (h *HeaderKeyInput) HasFocusOrChildHasFocus() bool {
-	return h.HasFocus()
 }
 
 // MultipartFieldRow represents a single multipart field row in the UI

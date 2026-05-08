@@ -15,7 +15,6 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 
 	"github.com/petitorium/petitorium/config"
 )
@@ -709,41 +708,6 @@ func substituteVariablesInHeaders(headers map[string]string, variables map[strin
 		result[key] = substituteVariables(value, variables)
 	}
 	return result
-}
-
-// IsFocusOnHeaderInputField checks if focus is on a header input field (including HeaderValueInput and HeaderKeyInput in edit mode)
-func IsFocusOnHeaderInputField(currentFocusedElement tview.Primitive, headerRows []interface{}) bool {
-	for _, row := range headerRows {
-		if headerRow, ok := row.(struct {
-			KeyInput     *HeaderKeyInput
-			ValueInput   interface{}
-			DeleteButton *tview.Button
-			Row          *tview.Flex
-		}); ok {
-			// Check if focused on HeaderKeyInput or its inner components
-			if currentFocusedElement == headerRow.KeyInput {
-				if headerRow.KeyInput.IsEditMode() {
-					return true
-				}
-				continue
-			}
-			// Check if focused on HeaderValueInput or its inner edit field
-			if hvi, ok := headerRow.ValueInput.(*HeaderValueInput); ok {
-				// Check if focused on HeaderValueInput itself
-				if currentFocusedElement == hvi {
-					if hvi.IsEditMode() {
-						return true
-					}
-					continue
-				}
-				// Check if focused on the inner edit field
-				if hvi.IsEditMode() && hvi.editMode.HasFocus() {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 // StripTags removes tview color tags from a string
