@@ -293,6 +293,12 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 	var workspace *Workspace
 	if workspaceData, err := os.ReadFile(workspacePath); err == nil {
 		if err := yaml.Unmarshal(workspaceData, &workspace); err == nil {
+			if workspace.Name != name {
+				workspace.Name = name
+				if updatedData, err := yaml.Marshal(workspace); err == nil {
+					os.WriteFile(workspacePath, updatedData, 0o644)
+				}
+			}
 			// Successfully loaded workspace metadata
 			// Load expansion state
 			if err := LoadExpansionState(&workspace.Collections); err != nil {
@@ -893,6 +899,20 @@ func RenameWorkspace(oldName, newName string) error {
 	// Save manager
 	if err := SaveWorkspaceManager(manager); err != nil {
 		return err
+	}
+
+	// Load the workspace and update its internal Name to match the new name
+	workspacePath := filepath.Join(getWorkspaceDir(oldName), "workspace.yaml")
+	var ws Workspace
+	if data, err := os.ReadFile(workspacePath); err == nil {
+		if err := yaml.Unmarshal(data, &ws); err == nil {
+			ws.Name = newName
+			ws.UpdatedAt = time.Now()
+			updatedData, err := yaml.Marshal(&ws)
+			if err == nil {
+				os.WriteFile(workspacePath, updatedData, 0o644)
+			}
+		}
 	}
 
 	// Rename the workspace directory

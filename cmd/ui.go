@@ -2904,7 +2904,14 @@ func (h *HeaderKeyInput) updateViewModeWithWidth(width int) {
 // SetText sets the text content
 func (h *HeaderKeyInput) SetText(text string) {
 	h.rawText = text
-	h.updateViewMode()
+	if h.currentMode == "view" {
+		h.updateViewMode()
+	} else {
+		h.editMode.SetText(text)
+	}
+	if h.onChanged != nil {
+		h.onChanged(text)
+	}
 }
 
 // GetText returns the current text
