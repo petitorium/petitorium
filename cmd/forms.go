@@ -323,7 +323,7 @@ func createRequestForm(app *tview.Application,
 
 				// Suspend the app to open external editor
 				app.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(currentBody)
+					modifiedContent, err := openInExternalEditor(currentBody, "json")
 					if err != nil {
 						// Could show error but for now just continue
 						return
@@ -1529,7 +1529,7 @@ func createDuplicateRequestForm(
 
 				// Suspend the app to open external editor
 				app.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(currentBody)
+					modifiedContent, err := openInExternalEditor(currentBody, "json")
 					if err != nil {
 						// Could show error but for now just continue
 						return

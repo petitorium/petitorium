@@ -791,9 +791,8 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 			if ui.CurrentRequest != nil {
 				// Suspend TUI to open external editor
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent)
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "json")
 					if err != nil {
-						// Could show error but for now just continue
 						return
 					}
 
@@ -824,10 +823,8 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 				}
 				headerContent := strings.Join(headerLines, "\n")
 
-				// Open external editor
-				modifiedContent, err := openInExternalEditor(headerContent)
+				modifiedContent, err := openInExternalEditor(headerContent, "txt")
 				if err != nil {
-					// Could show error but for now just continue
 					return
 				}
 
@@ -873,7 +870,7 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 				}
 				paramContent := strings.Join(paramLines, "\n")
 
-				modifiedContent, err := openInExternalEditor(paramContent)
+				modifiedContent, err := openInExternalEditor(paramContent, "txt")
 				if err != nil {
 					return
 				}

@@ -283,19 +283,15 @@ func showEnvironmentModal(
 		if event.Key() == tcell.KeyF4 {
 			currentContent := jsonEditor.GetText()
 
-			// Suspend the app to open external editor
 			ui.App.Suspend(func() {
-				modifiedContent, err := openInExternalEditor(currentContent)
+				modifiedContent, err := openInExternalEditor(currentContent, "json")
 				if err != nil {
-					// Show error in the error text view
 					errorText.SetText(fmt.Sprintf("Error opening external editor: %v", err))
 					return
 				}
 
-				// Clear any previous error
 				errorText.SetText("")
 
-				// Update the JSON editor with the edited content
 				jsonEditor.SetText(modifiedContent, false)
 			})
 

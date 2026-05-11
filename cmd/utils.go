@@ -510,14 +510,13 @@ func hexToRGB(hex string) (int, int, int) {
 }
 
 // openInExternalEditor opens content in an external editor and returns the modified content
-func openInExternalEditor(content string) (string, error) {
-	// Get editor from environment variables, fallback to sensible defaults
+// ext is the file extension (e.g., "json", "txt") used for the temporary file
+func openInExternalEditor(content string, ext string) (string, error) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
 		editor = os.Getenv("VISUAL")
 	}
 	if editor == "" {
-		// Try common editors in order of preference
 		editors := []string{"nvim", "vim", "nano", "code", "subl", "gedit"}
 		for _, e := range editors {
 			if _, err := exec.LookPath(e); err == nil {
@@ -530,22 +529,20 @@ func openInExternalEditor(content string) (string, error) {
 		return "", fmt.Errorf("no editor found. Please set EDITOR or VISUAL environment variable")
 	}
 
-	// Create a temporary file
 	tmpDir := os.TempDir()
-	tmpFile, err := os.CreateTemp(tmpDir, "petitorium-body-*.json")
+	pattern := fmt.Sprintf("petitorium-*.%s", ext)
+	tmpFile, err := os.CreateTemp(tmpDir, pattern)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %v", err)
 	}
 	defer os.Remove(tmpFile.Name())
 
-	// Write content to temporary file
 	if _, err := tmpFile.WriteString(content); err != nil {
 		tmpFile.Close()
 		return "", fmt.Errorf("failed to write to temporary file: %v", err)
 	}
 	tmpFile.Close()
 
-	// Open editor
 	cmd := exec.Command(editor, tmpFile.Name())
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -555,7 +552,6 @@ func openInExternalEditor(content string) (string, error) {
 		return "", fmt.Errorf("editor exited with error: %v", err)
 	}
 
-	// Read back the content
 	modifiedContent, err := os.ReadFile(tmpFile.Name())
 	if err != nil {
 		return "", fmt.Errorf("failed to read modified content: %v", err)

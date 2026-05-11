@@ -1803,12 +1803,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// F4 to open body in external editor
+		// Open body in external editor
 		if ui.MainCycle.current == ui.PanelIndices.Request && event.Key() == tcell.KeyF4 {
 			if ui.CurrentRequest != nil {
-				// Suspend TUI to open external editor
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent)
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "json")
 					if err != nil {
 						fmt.Printf("Error opening external editor: %v\n", err)
 						fmt.Println("Press Enter to continue...")
@@ -1817,7 +1816,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						return
 					}
 
-					// Update the body with modified content
 					ui.SyncBodyContent(modifiedContent)
 					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 						ui.CurrentRequest.Body = modifiedContent
@@ -1836,12 +1834,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Vim-style modal editing: 'i' to enter insert mode
 		if event.Rune() == 'i' && ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
-			// Instead of switching to inline editor, open external editor for better paste support
 			if ui.CurrentRequest != nil {
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent)
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "json")
 					if err != nil {
-						// Could show error but for now just continue with current content
 						return
 					}
 
