@@ -344,6 +344,13 @@ func NewCollectionSearchModal(ui *UIOrchestrator) *CollectionSearchModal {
 			}
 			return nil
 		}
+		if event.Key() == tcell.KeyEnter {
+			if len(m.results) > 0 {
+				m.table.Select(1, 0)
+				m.selectResult()
+			}
+			return nil
+		}
 		return event
 	})
 
