@@ -89,4 +89,3 @@ func removeFromManager(name string) {
 	}
 	SaveWorkspaceManager(manager)
 }
-

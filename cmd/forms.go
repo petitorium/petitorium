@@ -709,7 +709,7 @@ func createCloneEnvironmentForm(
 	return form
 }
 
-func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
+func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager, dataManager *DataManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -721,16 +721,22 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the collection '%s'?\nThis will also delete all nested collections and requests.", selectedCollection.Name), 0, 2, false, false)
 
 	form.AddButton("Delete", func() {
-		// Remove collection from data
 		deleteCollectionFromData(&workspaceData.Collections, selectedCollection.Name)
 
-		// Rebuild tree from updated data
+		workspaceData.SelectedRequest = nil
+
+		dataManager.UpdateWorkspaceData(workspaceData)
+
 		rootNode.ClearChildren()
 		addWorkspaceToTree(workspaceData, rootNode)
 
-		// Save workspace
+		collectionsTreeView.SetRoot(rootNode)
+
+		if len(rootNode.GetChildren()) > 0 {
+			collectionsTreeView.SetCurrentNode(rootNode.GetChildren()[0])
+		}
+
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
 		}
 
 		pages.RemovePage("deleteCollection")
@@ -789,7 +795,7 @@ func removeCollectionFromParentNested(collections *[]workspace.Collection, name 
 	}
 }
 
-func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager) *tview.Form {
+func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager, dataManager *DataManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -832,25 +838,27 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 			newParent = possibleParents[selectedIndex-1]
 		}
 
-		// Remove from current parent
 		removeCollectionFromParent(workspaceData, selectedCollection.Name)
 
-		// Add to new parent
 		if newParent != nil {
 			newParent.Collections = append(newParent.Collections, *selectedCollection)
 		} else {
-			// Add to root
 			workspaceData.Collections = append(workspaceData.Collections, *selectedCollection)
 		}
 
-		// Save workspace
+		dataManager.UpdateWorkspaceData(workspaceData)
+
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
 		}
 
-		// Rebuild tree
 		rootNode.ClearChildren()
 		addWorkspaceToTree(workspaceData, rootNode)
+
+		collectionsTreeView.SetRoot(rootNode)
+
+		if len(rootNode.GetChildren()) > 0 {
+			collectionsTreeView.SetCurrentNode(rootNode.GetChildren()[0])
+		}
 
 		pages.RemovePage("moveCollection")
 		pages.SwitchToPage("main")
@@ -918,7 +926,7 @@ func removeRequestFromNestedCollections(collections *[]workspace.Collection, nam
 	return false
 }
 
-func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, colors *ColorManager) *tview.Form {
+func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, colors *ColorManager, dataManager *DataManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -959,13 +967,21 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 	form.AddButton("Move", func() {
 		selectedIndex, _ := collectionDropdown.GetCurrentOption()
 
+		foundPtr := dataManager.FindRequestPtr(*selectedRequest)
+		if foundPtr == nil {
+			pages.RemovePage("moveRequest")
+			pages.SwitchToPage("main")
+			app.SetFocus(collectionsTreeView)
+			return
+		}
+
+		selectedRequest = foundPtr
+
 		if selectedIndex == 0 {
-			// Move to first collection - first remove from current location, then add to first collection
 			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
 			if len(workspaceData.Collections) > 0 {
 				workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, *selectedRequest)
 			} else {
-				// Create default collection
 				defaultCollection := workspace.Collection{
 					Name:     "Requests",
 					Requests: []workspace.Request{*selectedRequest},
@@ -975,24 +991,26 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
 			targetCollection := targetCollections[selectedIndex-1]
 
-			// Remove from current collection
 			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
 
-			// Add to target collection
 			targetCollection.Requests = append(targetCollection.Requests, *selectedRequest)
 		}
 
-		// Save workspace
+		workspaceData.SelectedRequest = nil
+
+		dataManager.UpdateWorkspaceData(workspaceData)
+
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
 		}
 
-		// Rebuild tree
 		rootNode.ClearChildren()
 		addWorkspaceToTree(workspaceData, rootNode)
 
-		// Refresh the tree view
 		collectionsTreeView.SetRoot(rootNode)
+
+		if len(rootNode.GetChildren()) > 0 {
+			collectionsTreeView.SetCurrentNode(rootNode.GetChildren()[0])
+		}
 
 		pages.RemovePage("moveRequest")
 		pages.SwitchToPage("main")
@@ -1030,6 +1048,7 @@ func createDeleteRequestConfirm(app *tview.Application,
 	collectionsTreeView *tview.TreeView,
 	node *tview.TreeNode,
 	colors *ColorManager,
+	dataManager *DataManager,
 ) *tview.Form {
 
 	form := tview.NewForm()
@@ -1043,16 +1062,30 @@ func createDeleteRequestConfirm(app *tview.Application,
 	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete\nthe request '%s'?", selectedRequest.Name), 0, 2, false, false)
 
 	form.AddButton("Delete", func() {
-		// Remove request from data
-		deleteRequestFromData(workspaceData, selectedRequest.Name)
+		foundPtr := dataManager.FindRequestPtr(*selectedRequest)
+		if foundPtr == nil {
+			pages.RemovePage("deleteRequest")
+			pages.SwitchToPage("main")
+			app.SetFocus(collectionsTreeView)
+			return
+		}
 
-		// Rebuild tree from updated data
+		deleteRequestFromData(workspaceData, foundPtr.Name)
+
+		workspaceData.SelectedRequest = nil
+
+		dataManager.UpdateWorkspaceData(workspaceData)
+
 		rootNode.ClearChildren()
 		addWorkspaceToTree(workspaceData, rootNode)
 
-		// Save workspace
+		collectionsTreeView.SetRoot(rootNode)
+
+		if len(rootNode.GetChildren()) > 0 {
+			collectionsTreeView.SetCurrentNode(rootNode.GetChildren()[0])
+		}
+
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
 		}
 
 		pages.RemovePage("deleteRequest")
@@ -1068,7 +1101,6 @@ func createDeleteRequestConfirm(app *tview.Application,
 
 	form.AddButton("Cancel", cancelFunc)
 
-	// Handle Esc key to cancel
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			cancelFunc()

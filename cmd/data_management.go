@@ -26,13 +26,11 @@ func (dm *DataManager) FindRequestPtr(targetReq workspace.Request) *workspace.Re
 
 // findRequestPtr finds the request pointer in workspace collections
 func (dm *DataManager) findRequestPtr(data *workspace.Workspace, req workspace.Request) *workspace.Request {
-	// Search in collections
 	for i := range data.Collections {
 		for j := range data.Collections[i].Requests {
 			if data.Collections[i].Requests[j].Name == req.Name &&
 				data.Collections[i].Requests[j].Method == req.Method &&
-				data.Collections[i].Requests[j].URL == req.URL &&
-				data.Collections[i].Requests[j].Body == req.Body {
+				data.Collections[i].Requests[j].URL == req.URL {
 				return &data.Collections[i].Requests[j]
 			}
 		}
@@ -49,8 +47,7 @@ func (dm *DataManager) findRequestPtrInCollections(data []workspace.Collection, 
 		for j := range data[i].Requests {
 			if data[i].Requests[j].Name == req.Name &&
 				data[i].Requests[j].Method == req.Method &&
-				data[i].Requests[j].URL == req.URL &&
-				data[i].Requests[j].Body == req.Body {
+				data[i].Requests[j].URL == req.URL {
 				return &data[i].Requests[j]
 			}
 		}

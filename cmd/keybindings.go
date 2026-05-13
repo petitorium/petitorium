@@ -734,16 +734,14 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
 			if col, ok := node.GetReference().(workspace.Collection); ok {
-				// Move collection
-				form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+				form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
 				modal := createModal(form, 40, 12, tcell.ColorDefault)
 				ui.Pages.AddPage("moveCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
-			} else if _, ok := node.GetReference().(workspace.Request); ok {
-				// Move request - use current request data instead of stale node reference
-				if ui.CurrentRequest != nil {
-					form := createMoveRequestForm(ui.App, ui.Pages, ui.CurrentRequest, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+			} else if req, ok := node.GetReference().(workspace.Request); ok {
+				if ptr := ui.DataManager.FindRequestPtr(req); ptr != nil {
+					form := createMoveRequestForm(ui.App, ui.Pages, ptr, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors, ui.DataManager)
 					modal := createModal(form, 30, 7, tcell.ColorDefault)
 					ui.Pages.AddPage("moveRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -766,19 +764,19 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 			reference := node.GetReference()
 
 			if col, ok := reference.(workspace.Collection); ok {
-				// Delete collection with confirmation
-				form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+				form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
 				modal := createModal(form, 66, 8, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req, ok := reference.(workspace.Request); ok {
-				// Delete request with confirmation
-				form := createDeleteRequestConfirm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createModal(form, 40, 8, tcell.ColorDefault)
-				ui.Pages.AddPage("deleteRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
+				if ptr := ui.DataManager.FindRequestPtr(req); ptr != nil {
+					form := createDeleteRequestConfirm(ui.App, ui.Pages, ptr, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+					modal := createModal(form, 40, 8, tcell.ColorDefault)
+					ui.Pages.AddPage("deleteRequest", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
+				}
 			}
 		}
 	}
