@@ -962,8 +962,7 @@ func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		// Only switch tabs if not focused on an input field
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("body")
-			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 0, ui.Colors)
+			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 0, ui.Colors)
 			ui.CurrentTabIndex = 0
 			ui.UpdateFooter()
 			return nil
@@ -989,8 +988,7 @@ func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("auth")
-			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 1, ui.Colors)
+			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 1, ui.Colors)
 			ui.CurrentTabIndex = 1
 			ui.UpdateFooter()
 			return nil
@@ -1022,8 +1020,7 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("query")
-			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 2, ui.Colors)
+			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 2, ui.Colors)
 			ui.CurrentTabIndex = 2
 			ui.UpdateFooter()
 			return nil
@@ -1055,8 +1052,7 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("headers")
-			requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-			updateTabHeader(requestTabs, ui.TabHeader, 3, ui.Colors)
+			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 3, ui.Colors)
 			ui.CurrentTabIndex = 3
 			ui.UpdateFooter()
 			return nil
@@ -1083,10 +1079,9 @@ func enterInsertMode(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.PanelIndices.Request && !ui.BodyEditMode {
 		ui.CurrentTabIndex = (ui.CurrentTabIndex - 1 + 4) % 4
-		tabNames := []string{"body", "auth", "query", "headers"}
+		tabNames := RequestTabInternalNames
 		ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
-		requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-		updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
+		updateTabHeader(RequestTabDisplayNames, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
 		// Focus the appropriate tab content
 		switch ui.CurrentTabIndex {
 		case 0: // Body tab
@@ -1120,10 +1115,8 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.PanelIndices.Request && !ui.BodyEditMode {
 		ui.CurrentTabIndex = (ui.CurrentTabIndex + 1) % 4
-		tabNames := []string{"body", "auth", "query", "headers"}
-		ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
-		requestTabs := []string{"Body", "Auth", "Query", "Headers"}
-		updateTabHeader(requestTabs, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
+		ui.TabPages.SwitchToPage(RequestTabInternalNames[ui.CurrentTabIndex])
+		updateTabHeader(RequestTabDisplayNames, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
 		// Focus the appropriate tab content
 		switch ui.CurrentTabIndex {
 		case 0: // Body tab

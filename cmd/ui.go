@@ -20,14 +20,11 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
-// Tab names for UI consistency
-// Display names for UI tab headers
-var requestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers"}
+var RequestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers"}
+
+var RequestTabInternalNames = []string{"body", "auth", "query", "headers"}
 
 var responseTabDisplayNames = []string{"Preview", "Headers", "Cookies", "Timeline"}
-
-// Internal names for page identifiers and logic
-var requestTabInternalNames = []string{"body", "auth", "query", "headers"}
 
 var responseTabInternalNames = []string{"preview", "headers", "cookies", "timeline"}
 
@@ -664,8 +661,6 @@ func updateTabHeader(
 	activeTabIndex int,
 	colors *ColorManager,
 ) {
-	// Tab titles
-	tabs = requestTabDisplayNames
 
 	// Update each tab's appearance based on whether it's active
 	for i := 0; i < len(tabs); i++ {
@@ -2010,11 +2005,10 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	// Create headers tab
 	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages, footerUpdater)
 
-	// Add pages
-	tabPages.AddPage(requestTabInternalNames[0], bodyContainer, true, true)
-	tabPages.AddPage(requestTabInternalNames[1], authTab, true, false)
-	tabPages.AddPage(requestTabInternalNames[2], queryTab, true, false)
-	tabPages.AddPage(requestTabInternalNames[3], headersTab, true, false)
+	tabPages.AddPage(RequestTabInternalNames[0], bodyContainer, true, true)
+	tabPages.AddPage(RequestTabInternalNames[1], authTab, true, false)
+	tabPages.AddPage(RequestTabInternalNames[2], queryTab, true, false)
+	tabPages.AddPage(RequestTabInternalNames[3], headersTab, true, false)
 
 	callback := func(index int) {
 		if tabIndexSetter != nil {
@@ -2025,8 +2019,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 		}
 	}
 
-	// Create tab header
-	tabHeader := createTabHeader(requestTabDisplayNames, colors, callback)
+	tabHeader := createTabHeader(RequestTabDisplayNames, colors, callback)
 
 	topRow := tview.NewFlex().SetDirection(tview.FlexColumn)
 	topRow.AddItem(tabHeader, 0, 1, false)

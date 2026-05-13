@@ -765,12 +765,11 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		}
 		currentTabIndex = tabIndex
 		uiOrchestrator.CurrentTabIndex = tabIndex
-		updateTabHeader(requestTabDisplayNames, tabHeader, currentTabIndex, colors)
+		updateTabHeader(RequestTabDisplayNames, tabHeader, currentTabIndex, colors)
 		uiOrchestrator.UpdateFooter()
 
-		// Switch to the selected tab page
-		if tabIndex >= 0 && tabIndex < len(requestTabInternalNames) {
-			tabPages.SwitchToPage(requestTabInternalNames[tabIndex])
+		if tabIndex >= 0 && tabIndex < len(RequestTabInternalNames) {
+			tabPages.SwitchToPage(RequestTabInternalNames[tabIndex])
 		}
 	}
 
@@ -1049,7 +1048,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	updateResponseTabHeader(uiOrchestrator.ResponseTabHeader, uiOrchestrator.CurrentResponseTabIndex, uiOrchestrator.Colors)
 
 	// Initialize request tab header with body tab active
-	updateTabHeader(requestTabDisplayNames, uiOrchestrator.TabHeader, uiOrchestrator.CurrentTabIndex, uiOrchestrator.Colors)
+	updateTabHeader(RequestTabDisplayNames, uiOrchestrator.TabHeader, uiOrchestrator.CurrentTabIndex, uiOrchestrator.Colors)
 
 	// Set initial tab to Body (0) to show content type dropdown
 	tabIndexSetter(0)
