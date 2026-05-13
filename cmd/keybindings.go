@@ -834,13 +834,17 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 					if line == "" {
 						continue
 					}
-					// Split on first colon
 					parts := strings.SplitN(line, ":", 2)
 					if len(parts) == 2 {
 						key := strings.TrimSpace(parts[0])
 						value := strings.TrimSpace(parts[1])
 						if key != "" {
 							newHeaders[key] = value
+						}
+					} else if len(parts) == 1 {
+						key := strings.TrimSpace(parts[0])
+						if key != "" {
+							newHeaders[key] = ""
 						}
 					}
 				}
@@ -855,6 +859,15 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 						}
 					}
 				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
+
+				if ui.CurrentRequest != nil {
+					ui.CurrentRequest.Headers = newHeaders
+					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+				}
+
+				if currentHeadersList != nil {
+					ui.App.SetFocus(currentHeadersList)
+				}
 			})
 			return nil
 		} else if ui.CurrentTabIndex == ui.RPQueryTabIndex {
@@ -887,6 +900,11 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 						if key != "" {
 							newParams[key] = value
 						}
+					} else if len(parts) == 1 {
+						key := strings.TrimSpace(parts[0])
+						if key != "" {
+							newParams[key] = ""
+						}
 					}
 				}
 
@@ -899,6 +917,15 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 						}
 					}
 				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
+
+				if ui.CurrentRequest != nil {
+					ui.CurrentRequest.QueryParams = newParams
+					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+				}
+
+				if currentQueryParamsList != nil {
+					ui.App.SetFocus(currentQueryParamsList)
+				}
 			})
 			return nil
 		}
