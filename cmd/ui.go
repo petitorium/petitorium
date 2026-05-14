@@ -1860,12 +1860,20 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 		return infoBar, nil, 14 // "No response" is 11 chars, plus copy button width 3, plus some padding
 	} else {
 		if copyCallback != nil {
-			copyButton := NewCustomButtonWithColors("📋", colors)
+			copyIcon := config.C.UI.CopyResponseIcon
+			if copyIcon == "" {
+				copyIcon = "📋"
+			}
+			copyButton := NewCustomButtonWithColors(copyIcon, colors)
 			copyButton.SetSelectedFunc(copyCallback)
 			infoBar.AddItem(copyButton, copyButtonSize, 0, false)
 		}
 		if saveCallback != nil {
-			saveButton := NewCustomButtonWithColors("💾", colors)
+			exportIcon := config.C.UI.ExportResponseIcon
+			if exportIcon == "" {
+				exportIcon = "💾"
+			}
+			saveButton := NewCustomButtonWithColors(exportIcon, colors)
 			saveButton.SetSelectedFunc(saveCallback)
 			infoBar.AddItem(saveButton, saveButtonSize, 0, false)
 		}

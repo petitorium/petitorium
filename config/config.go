@@ -73,6 +73,8 @@ type UIConfig struct {
 	FileBrowserFolderIcon         string `mapstructure:"fileBrowserFolderIcon"`         // icon for folders in file browser
 	FileBrowserFolderExpandedIcon string `mapstructure:"fileBrowserFolderExpandedIcon"` // icon for expanded folders in file browser
 	FileBrowserFileIcon           string `mapstructure:"fileBrowserFileIcon"`           // icon for files in file browser
+	CopyResponseIcon              string `mapstructure:"copyResponseIcon"`              // icon for copy response button
+	ExportResponseIcon            string `mapstructure:"exportResponseIcon"`            // icon for export/save response button
 }
 
 type MethodColorsConfig struct {
@@ -163,6 +165,8 @@ ui:
   fileBrowserFolderIcon: "📁"
   fileBrowserFolderExpandedIcon: "📂"
   fileBrowserFileIcon: "📄"
+  copyResponseIcon: "📋"
+  exportResponseIcon: "💾"
 
 # Syntax highlighting theme (chroma themes)
 # Popular options: github-dark, dracula, monokai, solarized-dark, nord, one-dark, vim, github
