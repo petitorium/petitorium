@@ -149,7 +149,7 @@ func (c *HeadersCycle) GetParent() Cycle {
 func (c *HeadersCycle) UpdateInputs() {
 	c.inputs = []tview.Primitive{}
 	for _, row := range currentHeaderRows {
-		c.inputs = append(c.inputs, row.KeyInput, row.ValueInput)
+		c.inputs = append(c.inputs, row.KeyInput, row.ValueInput, row.Checkbox)
 	}
 }
 
@@ -201,7 +201,7 @@ func (c *QueryParamsCycle) GetParent() Cycle {
 func (c *QueryParamsCycle) UpdateInputs() {
 	c.inputs = []tview.Primitive{}
 	for _, row := range currentQueryRows {
-		c.inputs = append(c.inputs, row.KeyInput, row.ValueInput)
+		c.inputs = append(c.inputs, row.KeyInput, row.ValueInput, row.Checkbox)
 	}
 }
 

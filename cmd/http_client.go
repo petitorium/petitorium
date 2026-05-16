@@ -290,24 +290,18 @@ func FormatResponse(response *HTTPResponse) string {
 	return result.String()
 }
 
-// GetCurrentRequestData extracts the current request data from UI state
-func GetCurrentRequestData(methodDropdown *tview.DropDown, urlInput *URLVariableInput, currentRequest *workspace.Request) (string, string, string, map[string]string, map[string]string) {
-	// Get method from dropdown
+func GetCurrentRequestData(methodDropdown *tview.DropDown, urlInput *URLVariableInput, currentRequest *workspace.Request) (string, string, string, map[string]workspace.Entry, map[string]workspace.Entry) {
 	_, method := methodDropdown.GetCurrentOption()
 
-	// Get URL from input field
 	url := urlInput.GetText()
 
-	// Get body from current request
 	body := ""
 	if currentRequest != nil {
 		body = currentRequest.Body
 	}
 
-	// Get headers from UI
 	headers := getHeadersFromUI()
 
-	// Get query params from UI
 	queryParams := getQueryParamsFromUI()
 
 	return method, url, body, headers, queryParams

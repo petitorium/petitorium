@@ -1493,12 +1493,11 @@ func createDuplicateRequestForm(
 			URL:         url,
 			ContentType: contentType,
 			Body:        body,
-			Headers:     make(map[string]string), // Copy headers from original
+			Headers:     make(map[string]workspace.Entry),
 		}
 
-		// Copy headers from original request
 		for key, value := range originalRequest.Headers {
-			newRequest.Headers[key] = value
+			newRequest.Headers[key] = workspace.Entry{Value: value.Value, Enabled: value.Enabled}
 		}
 
 		if selectedCollection == nil {

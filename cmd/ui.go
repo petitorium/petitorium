@@ -544,6 +544,98 @@ func setFocusStyle(p tview.Primitive, focused bool, borderColor, borderFocusColo
 	}
 }
 
+type CheckboxPrimitive struct {
+	*tview.TextView
+	enabled     bool
+	onChar      string
+	offChar     string
+	changedFunc func(bool)
+	colors      *ColorManager
+}
+
+func NewCheckboxPrimitive(onChar, offChar string, enabled bool, colors *ColorManager) *CheckboxPrimitive {
+	cb := &CheckboxPrimitive{
+		TextView: tview.NewTextView(),
+		enabled:  enabled,
+		onChar:   onChar,
+		offChar:  offChar,
+		colors:   colors,
+	}
+	cb.SetBorder(false)
+	cb.SetBackgroundColor(colors.Background)
+	cb.SetText(onChar)
+	cb.SetTextAlign(tview.AlignCenter)
+	if enabled {
+		cb.SetTextColor(colors.Foreground)
+	} else {
+		cb.SetTextColor(tcell.ColorGray)
+	}
+	cb.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEnter || event.Rune() == ' ' {
+			cb.toggle()
+			return nil
+		}
+		return event
+	})
+	cb.SetFocusFunc(func() {
+		cb.SetBackgroundColor(colors.SelectedBackground)
+	})
+	cb.SetBlurFunc(func() {
+		cb.SetBackgroundColor(colors.Background)
+	})
+	return cb
+}
+
+func (cb *CheckboxPrimitive) toggle() {
+	cb.enabled = !cb.enabled
+	if cb.enabled {
+		cb.SetText(cb.onChar)
+		cb.SetTextColor(cb.colors.Foreground)
+		cb.SetBackgroundColor(cb.colors.Background)
+	} else {
+		cb.SetText(cb.offChar)
+		cb.SetTextColor(tcell.ColorGray)
+		cb.SetBackgroundColor(cb.colors.Background)
+	}
+	if cb.changedFunc != nil {
+		cb.changedFunc(cb.enabled)
+	}
+}
+
+func (cb *CheckboxPrimitive) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+	return func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+		if action == tview.MouseLeftClick {
+			cb.toggle()
+			return true, cb
+		}
+		return false, nil
+	}
+}
+
+func (cb *CheckboxPrimitive) IsEnabled() bool {
+	return cb.enabled
+}
+
+func (cb *CheckboxPrimitive) SetEnabled(enabled bool) *CheckboxPrimitive {
+	cb.enabled = enabled
+	if enabled {
+		cb.SetText(cb.onChar)
+		cb.SetTextColor(cb.colors.Foreground)
+	} else {
+		cb.SetText(cb.offChar)
+		cb.SetTextColor(tcell.ColorGray)
+	}
+	if cb.changedFunc != nil {
+		cb.changedFunc(enabled)
+	}
+	return cb
+}
+
+func (cb *CheckboxPrimitive) SetChangedFunc(handler func(bool)) *CheckboxPrimitive {
+	cb.changedFunc = handler
+	return cb
+}
+
 // createTextArea creates a new text area with consistent styling for body editing
 func createTextArea(title string, backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextArea {
 	textArea := tview.NewTextArea()
@@ -722,9 +814,8 @@ func createAuthTab(colors *ColorManager) *tview.TextView {
 	return authPanel
 }
 
-// createQueryParamsTabWithData creates query parameters tab with initial data
 func createQueryParamsTabWithData(colors *ColorManager,
-	initialParams map[string]string,
+	initialParams map[string]workspace.Entry,
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 	app *tview.Application,
@@ -760,8 +851,8 @@ func createQueryParamsTabWithData(colors *ColorManager,
 
 	// Add initial rows based on data
 	if initialParams != nil && len(initialParams) > 0 {
-		for key, value := range initialParams {
-			addQueryParamRowWithData(queryList, colors, key, value, refreshQueryParamsUI, saveCallback, focusSetter, footerUpdater)
+		for key, entry := range initialParams {
+			addQueryParamRowWithData(queryList, colors, key, entry.Value, entry.Enabled, refreshQueryParamsUI, saveCallback, focusSetter, footerUpdater)
 		}
 	}
 
@@ -834,6 +925,21 @@ func addQueryParamRow(queryList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
+	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
+	checkbox.SetEnabled(true)
+	checkbox.SetChangedFunc(func(enabled bool) {
+		if enabled {
+			keyInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+		} else {
+			keyInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+		}
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
@@ -851,6 +957,7 @@ func addQueryParamRow(queryList *tview.Flex,
 	queryParamRow := &QueryParamRow{
 		KeyInput:     keyInput,
 		ValueInput:   valueInput,
+		Checkbox:     checkbox,
 		DeleteButton: removeButton,
 		Row:          row,
 	}
@@ -875,11 +982,13 @@ func addQueryParamRow(queryList *tview.Flex,
 	buttonContainer.AddItem(nil, 0, 1, false)
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-
+	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 3, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(checkbox, 3, 0, false)
+	row.AddItem(spacer2, 1, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
@@ -899,6 +1008,7 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	colors *ColorManager,
 	key string,
 	value string,
+	enabled bool,
 	refreshUI func(),
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
@@ -923,7 +1033,24 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 			saveCallback()
 		}
 	})
-	valueInput.onModeChange = footerUpdater
+
+	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
+	if !enabled {
+		keyInput.SetBackgroundColor(colors.Selection)
+		valueInput.SetBackgroundColor(colors.Selection)
+	}
+	checkbox.SetChangedFunc(func(enabled bool) {
+		if enabled {
+			keyInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+		} else {
+			keyInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+		}
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
 
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
 	removeButton.SetBackgroundColor(colors.Background)
@@ -940,6 +1067,7 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	})
 
 	queryParamRow := &QueryParamRow{
+		Checkbox:     checkbox,
 		KeyInput:     keyInput,
 		ValueInput:   valueInput,
 		DeleteButton: removeButton,
@@ -991,10 +1119,13 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	buttonContainer.AddItem(nil, 0, 1, false)
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 3, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(checkbox, 3, 0, false)
+	row.AddItem(spacer2, 1, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
@@ -1040,19 +1171,19 @@ var rowHeight int = 1
 
 const headerInputWidth = 30
 
-// HeaderRow represents a single header key-value pair in the UI
 type HeaderRow struct {
 	KeyInput      *HeaderKeyInput
 	ValueInput    *HeaderValueInput
+	Checkbox      *CheckboxPrimitive
 	DeleteButton  *tview.Button
 	Row           *tview.Flex
 	FooterUpdater func()
 }
 
-// QueryParamRow represents a single query parameter key-value pair in the UI
 type QueryParamRow struct {
 	KeyInput     *HeaderKeyInput
 	ValueInput   *HeaderValueInput
+	Checkbox     *CheckboxPrimitive
 	DeleteButton *tview.Button
 	Row          *tview.Flex
 }
@@ -1065,9 +1196,8 @@ type EnvVarRow struct {
 	Row          *tview.Flex
 }
 
-// createHeadersTabWithData creates headers tab with initial data
 func createHeadersTabWithData(colors *ColorManager,
-	initialHeaders map[string]string,
+	initialHeaders map[string]workspace.Entry,
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 	app *tview.Application,
@@ -1104,11 +1234,10 @@ func createHeadersTabWithData(colors *ColorManager,
 
 	// Add initial rows based on data
 	if initialHeaders != nil && len(initialHeaders) > 0 {
-		for key, value := range initialHeaders {
-			addHeaderRowWithData(headersList, colors, key, value, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
+		for key, entry := range initialHeaders {
+			addHeaderRowWithData(headersList, colors, key, entry.Value, entry.Enabled, refreshHeadersUI, saveCallback, focusSetter, footerUpdater)
 		}
 	}
-	// Don't automatically add empty row - user can use Add Header button
 
 	// Add button row at the top
 	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -1204,6 +1333,21 @@ func addHeaderRow(headersList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
+	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
+	checkbox.SetEnabled(true)
+	checkbox.SetChangedFunc(func(enabled bool) {
+		if enabled {
+			keyInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+		} else {
+			keyInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+		}
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
@@ -1221,6 +1365,7 @@ func addHeaderRow(headersList *tview.Flex,
 	headerRow := &HeaderRow{
 		KeyInput:     keyInput,
 		ValueInput:   valueInput,
+		Checkbox:     checkbox,
 		DeleteButton: removeButton,
 		Row:          row,
 	}
@@ -1247,10 +1392,13 @@ func addHeaderRow(headersList *tview.Flex,
 	buttonContainer.AddItem(nil, 0, 1, false)
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 3, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(checkbox, 3, 0, false)
+	row.AddItem(spacer2, 1, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
@@ -1272,6 +1420,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	colors *ColorManager,
 	key string,
 	value string,
+	enabled bool,
 	refreshUI func(),
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
@@ -1298,6 +1447,24 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
+	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
+	checkbox.SetChangedFunc(func(enabled bool) {
+		if enabled {
+			keyInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+		} else {
+			keyInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+		}
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	if !enabled {
+		keyInput.SetBackgroundColor(colors.Selection)
+		valueInput.SetBackgroundColor(colors.Selection)
+	}
+
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
 	removeButton.SetBackgroundColor(colors.Background)
 	removeButton.SetLabelColor(colors.Foreground)
@@ -1315,6 +1482,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	headerRow := &HeaderRow{
 		KeyInput:     keyInput,
 		ValueInput:   valueInput,
+		Checkbox:     checkbox,
 		DeleteButton: removeButton,
 		Row:          row,
 	}
@@ -1370,10 +1538,13 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	buttonContainer.AddItem(nil, 0, 1, false)
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 3, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(checkbox, 3, 0, false)
+	row.AddItem(spacer2, 1, 0, false)
 	row.AddItem(buttonContainer, 4, 0, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
@@ -1673,9 +1844,7 @@ func addEnvVarRow(variablesList *tview.Flex,
 	}
 }
 
-// setHeadersInUI populates the UI with the given headers
-func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
-	// Clear existing rows
+func setHeadersInUI(colors *ColorManager, headers map[string]workspace.Entry, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
 	currentHeaderRows = []*HeaderRow{}
 
 	if currentHeadersList != nil {
@@ -1689,9 +1858,8 @@ func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallbac
 		sort.Strings(keys)
 
 		for _, key := range keys {
-			value := headers[key]
-			addHeaderRowWithData(currentHeadersList, colors, key, value, func() {
-				// Refresh function - for now just rebuild the list
+			entry := headers[key]
+			addHeaderRowWithData(currentHeadersList, colors, key, entry.Value, entry.Enabled, func() {
 				setHeadersInUI(colors, getHeadersFromUI(), saveCallback, focusSetter, footerUpdater)
 			}, saveCallback, focusSetter, footerUpdater)
 		}
@@ -1728,14 +1896,14 @@ func setHeadersInUI(colors *ColorManager, headers map[string]string, saveCallbac
 	}
 }
 
-// getHeadersFromUI extracts headers from the current UI state
-func getHeadersFromUI() map[string]string {
-	headers := make(map[string]string)
+func getHeadersFromUI() map[string]workspace.Entry {
+	headers := make(map[string]workspace.Entry)
 	for _, row := range currentHeaderRows {
 		key := strings.TrimSpace(row.KeyInput.GetText())
 		value := strings.TrimSpace(row.ValueInput.GetText())
 		if key != "" {
-			headers[key] = value
+			enabled := row.Checkbox == nil || row.Checkbox.IsEnabled()
+			headers[key] = workspace.Entry{Value: value, Enabled: enabled}
 		}
 	}
 	return headers
@@ -1754,21 +1922,20 @@ func getEnvVarsFromUI() map[string]string {
 	return variables
 }
 
-// getQueryParamsFromUI extracts query parameters from the current UI state
-func getQueryParamsFromUI() map[string]string {
-	params := make(map[string]string)
+func getQueryParamsFromUI() map[string]workspace.Entry {
+	params := make(map[string]workspace.Entry)
 	for _, row := range currentQueryRows {
 		key := strings.TrimSpace(row.KeyInput.GetText())
 		value := strings.TrimSpace(row.ValueInput.GetText())
 		if key != "" {
-			params[key] = value
+			enabled := row.Checkbox == nil || row.Checkbox.IsEnabled()
+			params[key] = workspace.Entry{Value: value, Enabled: enabled}
 		}
 	}
 	return params
 }
 
-// setQueryParamsInUI populates the UI with the given query parameters
-func setQueryParamsInUI(colors *ColorManager, params map[string]string, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
+func setQueryParamsInUI(colors *ColorManager, params map[string]workspace.Entry, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
 	currentQueryRows = []*QueryParamRow{}
 
 	if currentQueryParamsList != nil {
@@ -1781,8 +1948,8 @@ func setQueryParamsInUI(colors *ColorManager, params map[string]string, saveCall
 		sort.Strings(keys)
 
 		for _, key := range keys {
-			value := params[key]
-			addQueryParamRowWithData(currentQueryParamsList, colors, key, value, func() {
+			entry := params[key]
+			addQueryParamRowWithData(currentQueryParamsList, colors, key, entry.Value, entry.Enabled, func() {
 				setQueryParamsInUI(colors, getQueryParamsFromUI(), saveCallback, focusSetter, footerUpdater)
 			}, saveCallback, focusSetter, footerUpdater)
 		}
@@ -2003,8 +2170,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	// Create auth tab
 	authTab := createAuthTab(colors)
 
-	// Create query tab
-	var initialQueryParams map[string]string
+	var initialQueryParams map[string]workspace.Entry
 	if currentRequest != nil {
 		initialQueryParams = currentRequest.QueryParams
 	}

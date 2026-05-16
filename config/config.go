@@ -75,6 +75,8 @@ type UIConfig struct {
 	FileBrowserFileIcon           string `mapstructure:"fileBrowserFileIcon"`           // icon for files in file browser
 	CopyResponseIcon              string `mapstructure:"copyResponseIcon"`              // icon for copy response button
 	ExportResponseIcon            string `mapstructure:"exportResponseIcon"`            // icon for export/save response button
+	CheckboxOn                    string `mapstructure:"checkboxOn"`                    // checkbox enabled state icon
+	CheckboxOff                   string `mapstructure:"checkboxOff"`                   // checkbox disabled state icon
 }
 
 type MethodColorsConfig struct {
@@ -167,6 +169,8 @@ ui:
   fileBrowserFileIcon: "📄"
   copyResponseIcon: "📋"
   exportResponseIcon: "💾"
+  checkboxOn: "●"
+  checkboxOff: "○"
 
 # Syntax highlighting theme (chroma themes)
 # Popular options: github-dark, dracula, monokai, solarized-dark, nord, one-dark, vim, github
@@ -253,6 +257,13 @@ func LoadConfig() error {
 	// Last resort fallback
 	if C.Plugins.RegistryURL == "" {
 		C.Plugins.RegistryURL = "http://localhost:8080/api/v1"
+	}
+
+	if C.UI.CheckboxOn == "" {
+		C.UI.CheckboxOn = "●"
+	}
+	if C.UI.CheckboxOff == "" {
+		C.UI.CheckboxOff = "○"
 	}
 
 	if C.Shortcuts.JumpToWorkspace == "" {

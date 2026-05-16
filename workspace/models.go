@@ -4,6 +4,8 @@ package workspace
 import (
 	"net/http"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 var HTTPMethods = []string{
@@ -27,15 +29,44 @@ type HTTPResponse struct {
 	Timestamp  time.Time           `yaml:"timestamp"`
 }
 
+// Entry represents a key-value pair with enabled state for headers and query params
+type Entry struct {
+	Value   string `yaml:"value"`
+	Enabled bool   `yaml:"enabled"`
+}
+
+// UnmarshalYAML implements custom unmarshaling for Entry
+// It handles both legacy string format and new Entry format
+func (e *Entry) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		// Legacy format: just a string value
+		e.Value = node.Value
+		e.Enabled = true
+		return nil
+	}
+
+	// New format: map with value and enabled fields
+	var legacy struct {
+		Value   string `yaml:"value"`
+		Enabled bool   `yaml:"enabled"`
+	}
+	if err := node.Decode(&legacy); err != nil {
+		return err
+	}
+	e.Value = legacy.Value
+	e.Enabled = legacy.Enabled
+	return nil
+}
+
 type Request struct {
-	Name            string            `yaml:"name"`
-	Method          string            `yaml:"method"`
-	URL             string            `yaml:"url"`
-	QueryParams     map[string]string `yaml:"query_params,omitempty"`
-	Headers         map[string]string `yaml:"headers,omitempty"`
-	ContentType     string            `yaml:"content_type,omitempty"`
-	Body            string            `yaml:"body,omitempty"`
-	ResponseHistory []HTTPResponse    `yaml:"response_history,omitempty"`
+	Name            string           `yaml:"name"`
+	Method          string           `yaml:"method"`
+	URL             string           `yaml:"url"`
+	QueryParams     map[string]Entry `yaml:"query_params,omitempty"`
+	Headers         map[string]Entry `yaml:"headers,omitempty"`
+	ContentType     string           `yaml:"content_type,omitempty"`
+	Body            string           `yaml:"body,omitempty"`
+	ResponseHistory []HTTPResponse   `yaml:"response_history,omitempty"`
 }
 
 type BodyContent struct {

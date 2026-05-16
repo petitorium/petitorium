@@ -811,13 +811,11 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 		} else if ui.CurrentTabIndex == ui.RPHeadersTabIndex {
 			// Bulk edit headers
 			ui.App.Suspend(func() {
-				// Get current headers
 				headers := getHeadersFromUI()
 
-				// Format headers as "Key: Value" one per line
 				var headerLines []string
-				for key, value := range headers {
-					headerLines = append(headerLines, fmt.Sprintf("%s: %s", key, value))
+				for key, entry := range headers {
+					headerLines = append(headerLines, fmt.Sprintf("%s: %s", key, entry.Value))
 				}
 				headerContent := strings.Join(headerLines, "\n")
 
@@ -828,7 +826,7 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 
 				// Parse the modified content back into headers
 				lines := strings.Split(strings.TrimSpace(modifiedContent), "\n")
-				newHeaders := make(map[string]string)
+				newHeaders := make(map[string]workspace.Entry)
 				for _, line := range lines {
 					line = strings.TrimSpace(line)
 					if line == "" {
@@ -839,12 +837,12 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 						key := strings.TrimSpace(parts[0])
 						value := strings.TrimSpace(parts[1])
 						if key != "" {
-							newHeaders[key] = value
+							newHeaders[key] = workspace.Entry{Value: value, Enabled: true}
 						}
 					} else if len(parts) == 1 {
 						key := strings.TrimSpace(parts[0])
 						if key != "" {
-							newHeaders[key] = ""
+							newHeaders[key] = workspace.Entry{Value: "", Enabled: true}
 						}
 					}
 				}
@@ -876,8 +874,8 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 				queryParams := getQueryParamsFromUI()
 
 				var paramLines []string
-				for key, value := range queryParams {
-					paramLines = append(paramLines, fmt.Sprintf("%s: %s", key, value))
+				for key, entry := range queryParams {
+					paramLines = append(paramLines, fmt.Sprintf("%s: %s", key, entry.Value))
 				}
 				paramContent := strings.Join(paramLines, "\n")
 
@@ -887,7 +885,7 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 				}
 
 				lines := strings.Split(strings.TrimSpace(modifiedContent), "\n")
-				newParams := make(map[string]string)
+				newParams := make(map[string]workspace.Entry)
 				for _, line := range lines {
 					line = strings.TrimSpace(line)
 					if line == "" {
@@ -898,12 +896,12 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 						key := strings.TrimSpace(parts[0])
 						value := strings.TrimSpace(parts[1])
 						if key != "" {
-							newParams[key] = value
+							newParams[key] = workspace.Entry{Value: value, Enabled: true}
 						}
 					} else if len(parts) == 1 {
 						key := strings.TrimSpace(parts[0])
 						if key != "" {
-							newParams[key] = ""
+							newParams[key] = workspace.Entry{Value: "", Enabled: true}
 						}
 					}
 				}

@@ -19,21 +19,16 @@ func isBinaryContentType(contentType string) bool {
 	if contentType == "" {
 		return false
 	}
-	contentType = strings.ToLower(strings.TrimSpace(contentType))
 	binaryPrefixes := []string{
 		"image/",
 		"audio/",
 		"video/",
+		"application/octet-stream",
 		"application/pdf",
 		"application/zip",
-		"application/gzip",
-		"application/x-tar",
 		"application/x-rar-compressed",
-		"application/octet-stream",
-		"application/msword",
-		"application/vnd.ms-excel",
-		"application/vnd.ms-powerpoint",
-		"application/vnd.openxmlformats-officedocument",
+		"application/x-tar",
+		"application/gzip",
 	}
 	for _, prefix := range binaryPrefixes {
 		if strings.HasPrefix(contentType, prefix) {
@@ -41,6 +36,22 @@ func isBinaryContentType(contentType string) bool {
 		}
 	}
 	return false
+}
+
+func entriesToStringMap(entries map[string]workspace.Entry) map[string]string {
+	result := make(map[string]string)
+	for key, entry := range entries {
+		result[key] = entry.Value
+	}
+	return result
+}
+
+func stringMapToEntries(stringMap map[string]string) map[string]workspace.Entry {
+	result := make(map[string]workspace.Entry)
+	for key, value := range stringMap {
+		result[key] = workspace.Entry{Value: value, Enabled: true}
+	}
+	return result
 }
 
 func refreshCollectionsTree(ui *UIOrchestrator) {
@@ -1221,8 +1232,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				contentType = ""
 			} else {
 				// Remove any manual Content-Type header to allow automatic multipart setting
-				delete(headers, "Content-Type")
-				delete(headers, "content-type")
+				if _, ok := headers["Content-Type"]; ok {
+					delete(headers, "Content-Type")
+				}
+				if _, ok := headers["content-type"]; ok {
+					delete(headers, "content-type")
+				}
 			}
 		}
 
@@ -1256,13 +1271,31 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Substitute environment variables in URL, body, headers, and query params
 		url = substituteVariables(url, envVars)
 		body = substituteVariables(body, envVars)
-		headers = substituteVariablesInHeaders(headers, envVars)
-		queryParams = substituteVariablesInHeaders(queryParams, envVars)
+
+		// Filter out disabled headers before substitution
+		filteredHeaders := make(map[string]workspace.Entry)
+		for key, entry := range headers {
+			if entry.Enabled {
+				filteredHeaders[key] = entry
+			}
+		}
+		headersStr := entriesToStringMap(filteredHeaders)
+		headersStr = substituteVariablesInHeaders(headersStr, envVars)
+
+		// Filter out disabled query params before substitution
+		filteredParams := make(map[string]workspace.Entry)
+		for key, entry := range queryParams {
+			if entry.Enabled {
+				filteredParams[key] = entry
+			}
+		}
+		queryParamsStr := entriesToStringMap(filteredParams)
+		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
 
 		requestData := &plugins.RequestData{
 			Method:      method,
 			URL:         url,
-			Headers:     headers,
+			Headers:     headersStr,
 			Body:        body,
 			Collection:  collection,
 			RequestName: requestName,
@@ -1290,10 +1323,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// Update headers from context (plugins may have modified them)
-		headers = context.Request.Headers
+		headersStr = context.Request.Headers
 
 		// Also update the request data in context to reflect the final headers for logging
-		context.Request.Headers = headers
+		context.Request.Headers = headersStr
 
 		// Mark request as in progress and update UI
 		ui.RequestInProgress = true
@@ -1301,7 +1334,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Send the request in a goroutine
 		go func() {
-			resp, err := SendRequest(method, url, body, contentType, headers, queryParams)
+			resp, err := SendRequest(method, url, body, contentType, headersStr, queryParamsStr)
 
 			// Use QueueUpdateDraw to handle the response on the main thread
 			ui.App.QueueUpdateDraw(func() {
@@ -1484,13 +1517,29 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Substitute environment variables in URL, body, headers, and query params
 		url = substituteVariables(url, envVars)
 		body = substituteVariables(body, envVars)
-		headers = substituteVariablesInHeaders(headers, envVars)
-		queryParams = substituteVariablesInHeaders(queryParams, envVars)
 
-		// Generate curl command
-		curlCommand := generateCurlCommand(method, url, headers, body, contentType, queryParams)
+		// Filter out disabled headers before substitution
+		filteredHeaders := make(map[string]workspace.Entry)
+		for key, entry := range headers {
+			if entry.Enabled {
+				filteredHeaders[key] = entry
+			}
+		}
+		headersStr := entriesToStringMap(filteredHeaders)
+		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 
-		// Copy to clipboard
+		// Filter out disabled query params before substitution
+		filteredParams := make(map[string]workspace.Entry)
+		for key, entry := range queryParams {
+			if entry.Enabled {
+				filteredParams[key] = entry
+			}
+		}
+		queryParamsStr := entriesToStringMap(filteredParams)
+		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
+
+		curlCommand := generateCurlCommand(method, url, headersStr, body, contentType, queryParamsStr)
+
 		copyToClipboard(curlCommand)
 
 		// Show a brief notification (could be improved with a proper toast notification)
@@ -1970,8 +2019,8 @@ func getMaxHeaderRowElement(headerRow *HeaderRow) int {
 		return 0
 	}
 
-	// Header rows have: Key input (0), Value input (1), Delete button (2)
-	return 2
+	// Header rows have: Key input (0), Value input (1), Checkbox (2), Delete button (3)
+	return 3
 }
 
 func getMaxQueryParamRowElement(queryParamRow *QueryParamRow) int {
@@ -1979,8 +2028,8 @@ func getMaxQueryParamRowElement(queryParamRow *QueryParamRow) int {
 		return 0
 	}
 
-	// Query param rows have: Key input (0), Value input (1), Delete button (2)
-	return 2
+	// Query param rows have: Key input (0), Value input (1), Checkbox (2), Delete button (3)
+	return 3
 }
 
 // getCurrentContentType returns the current content type from the dropdown
@@ -2384,13 +2433,23 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 											if queryParamRow.ValueInput != nil {
 												ui.App.SetFocus(queryParamRow.ValueInput)
 											} else {
+												if queryParamRow.Checkbox != nil {
+													ui.App.SetFocus(queryParamRow.Checkbox)
+												} else {
+													ui.App.SetFocus(currentQueryParamsTab)
+												}
+											}
+										case 2: // Checkbox
+											if queryParamRow.Checkbox != nil {
+												ui.App.SetFocus(queryParamRow.Checkbox)
+											} else {
 												if queryParamRow.DeleteButton != nil {
 													ui.App.SetFocus(queryParamRow.DeleteButton)
 												} else {
 													ui.App.SetFocus(currentQueryParamsTab)
 												}
 											}
-										case 2: // Delete button
+										case 3: // Delete button
 											if queryParamRow.DeleteButton != nil {
 												ui.App.SetFocus(queryParamRow.DeleteButton)
 											} else {
@@ -2475,7 +2534,6 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 											if headerRow.KeyInput != nil {
 												ui.App.SetFocus(headerRow.KeyInput)
 											} else {
-												// Fallback to value input
 												if headerRow.ValueInput != nil {
 													ui.App.SetFocus(headerRow.ValueInput)
 												} else {
@@ -2486,18 +2544,26 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 											if headerRow.ValueInput != nil {
 												ui.App.SetFocus(headerRow.ValueInput)
 											} else {
-												// Fallback to delete button
+												if headerRow.Checkbox != nil {
+													ui.App.SetFocus(headerRow.Checkbox)
+												} else {
+													ui.App.SetFocus(currentHeadersTab)
+												}
+											}
+										case 2: // Checkbox
+											if headerRow.Checkbox != nil {
+												ui.App.SetFocus(headerRow.Checkbox)
+											} else {
 												if headerRow.DeleteButton != nil {
 													ui.App.SetFocus(headerRow.DeleteButton)
 												} else {
 													ui.App.SetFocus(currentHeadersTab)
 												}
 											}
-										case 2: // Delete button
+										case 3: // Delete button
 											if headerRow.DeleteButton != nil {
 												ui.App.SetFocus(headerRow.DeleteButton)
 											} else {
-												// Fallback to key input
 												if headerRow.KeyInput != nil {
 													ui.App.SetFocus(headerRow.KeyInput)
 												} else {
@@ -2505,7 +2571,6 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 												}
 											}
 										default:
-											// Invalid header element, default to key input
 											ui.NavCurrentHeaderElement = 0
 											if headerRow.KeyInput != nil {
 												ui.App.SetFocus(headerRow.KeyInput)
