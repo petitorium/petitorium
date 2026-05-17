@@ -2259,6 +2259,7 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	responseHeadersPanel.SetSelectable(true, false)
 	responseHeadersPanel.SetBorderPadding(1, 0, 1, 0)
 	responseHeadersPanel.SetTitleColor(colors.Title)
+	responseHeadersPanel.SetSelectedStyle(tcell.StyleDefault.Background(colors.Selection).Foreground(colors.Foreground))
 
 	responseCookiesPanel := tview.NewTextView()
 	responseCookiesPanel.SetBackgroundColor(colors.Background)

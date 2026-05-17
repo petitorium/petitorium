@@ -132,16 +132,16 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 
 	if resp != nil && len(resp.Headers) > 0 {
 		// Add header row
-		headersTable.SetCell(0, 0,
-			tview.NewTableCell("Name").
-				SetTextColor(colors.BorderFocus).
-				SetAlign(tview.AlignLeft).
-				SetSelectable(false))
-		headersTable.SetCell(0, 1,
-			tview.NewTableCell("Value").
-				SetTextColor(colors.BorderFocus).
-				SetAlign(tview.AlignLeft).
-				SetSelectable(false))
+		// headersTable.SetCell(0, 0,
+		// 	tview.NewTableCell("Name").
+		// 		SetTextColor(colors.BorderFocus).
+		// 		SetAlign(tview.AlignLeft).
+		// 		SetSelectable(false))
+		// headersTable.SetCell(0, 1,
+		// 	tview.NewTableCell("Value").
+		// 		SetTextColor(colors.BorderFocus).
+		// 		SetAlign(tview.AlignLeft).
+		// 		SetSelectable(false))
 
 		// Add data rows
 		row := 1
@@ -155,12 +155,12 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 
 				headersTable.SetCell(row, 0,
 					tview.NewTableCell(key).
-						SetTextColor(colors.Foreground).
+						SetTextColor(colors.BorderFocus).
 						SetAlign(tview.AlignLeft).
 						SetSelectable(true))
 				headersTable.SetCell(row, 1,
 					tview.NewTableCell(truncatedValue).
-						SetTextColor(colors.Foreground).
+						SetTextColor(colors.Success).
 						SetAlign(tview.AlignLeft).
 						SetSelectable(true))
 				row++
