@@ -2208,7 +2208,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 }
 
 // createResponseTabs creates the response tabs interface
-func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, tabCallback func(int), copyCallback func()) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, tview.Primitive, *tview.TextView, *tview.TextView, *tview.TextView) {
+func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time.Time, tabCallback func(int), copyCallback func()) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.Flex, *tview.TextView, tview.Primitive, *tview.TextView, *tview.Table, *tview.TextView) {
 	// Create main response container
 	response := tview.NewFlex().SetDirection(tview.FlexRow)
 	response.SetBackgroundColor(colors.Background)
@@ -2268,12 +2268,15 @@ func createResponseTabs(colors *ColorManager, resp *HTTPResponse, lastTime *time
 	responseCookiesPanel.SetTitleColor(colors.Title)
 	responseCookiesPanel.SetBorderColor(colors.Background)
 
-	responseTimelinePanel := tview.NewTextView()
+	responseTimelinePanel := tview.NewTable()
+	responseTimelinePanel.SetBorders(false)
 	responseTimelinePanel.SetBackgroundColor(colors.Background)
-	responseTimelinePanel.SetTextColor(colors.Foreground)
-	responseTimelinePanel.SetBorder(true)
-	responseTimelinePanel.SetTitleColor(colors.Title)
 	responseTimelinePanel.SetBorderColor(colors.Background)
+	responseTimelinePanel.SetFixed(1, 0)
+	responseTimelinePanel.SetSelectable(true, false)
+	responseTimelinePanel.SetBorderPadding(1, 0, 1, 0)
+	responseTimelinePanel.SetTitleColor(colors.Title)
+	responseTimelinePanel.SetSelectedStyle(tcell.StyleDefault.Background(colors.Selection).Foreground(colors.Foreground))
 
 	// Add pages
 	responsePages.AddPage(responseTabInternalNames[0], responsePreviewPanel, true, true)

@@ -85,7 +85,7 @@ func syncContentTypeDropdown(currentRequest *workspace.Request, contentTypeDropd
 }
 
 // updateResponseTabs updates the response tabs with new response data
-func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel *tview.TextView, colors *ColorManager, copyCallback func(), saveCallback func()) {
+func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel tview.Primitive, colors *ColorManager, copyCallback func(), saveCallback func()) {
 	// Update the info bar - replace it in the top row
 	newInfoBar, newTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime, copyCallback, saveCallback)
 	// The response container has: topRow (item 0), tabPages (item 1)
@@ -205,16 +205,52 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 	}
 
 	// Update timeline tab
+	timelineTable, ok := responseTimelinePanel.(*tview.Table)
+	if !ok {
+		return
+	}
+	timelineTable.Clear()
+
 	if resp != nil {
-		var timelineText strings.Builder
-		timelineText.WriteString("Request Timeline:\n\n")
-		timelineText.WriteString(fmt.Sprintf("Request sent: %s\n", resp.Timestamp.Format("2006-01-02 15:04:05")))
-		timelineText.WriteString(fmt.Sprintf("Response received: %s\n", resp.Timestamp.Add(resp.Duration).Format("2006-01-02 15:04:05")))
-		timelineText.WriteString(fmt.Sprintf("Total duration: %v\n", resp.Duration.Round(time.Millisecond)))
-		timelineText.WriteString(fmt.Sprintf("Response size: %d bytes\n", resp.BodySize))
-		responseTimelinePanel.SetText(timelineText.String())
+		// timelineTable.SetCell(0, 0,
+		// 	tview.NewTableCell("Field").
+		// 		SetTextColor(colors.LabelColor).
+		// 		SetAlign(tview.AlignLeft).
+		// 		SetSelectable(false))
+		// timelineTable.SetCell(0, 1,
+		// 	tview.NewTableCell("Value").
+		// 		SetTextColor(colors.LabelColor).
+		// 		SetAlign(tview.AlignLeft).
+		// 		SetSelectable(false))
+
+		timelineData := []struct {
+			field string
+			value string
+		}{
+			{"Request sent", resp.Timestamp.Format("2006-01-02 15:04:05")},
+			{"Response received", resp.Timestamp.Add(resp.Duration).Format("2006-01-02 15:04:05")},
+			{"Total duration", resp.Duration.Round(time.Millisecond).String()},
+			{"Response size", fmt.Sprintf("%d bytes", resp.BodySize)},
+		}
+
+		for i, item := range timelineData {
+			timelineTable.SetCell(i+1, 0,
+				tview.NewTableCell(item.field).
+					SetTextColor(colors.BorderFocus).
+					SetAlign(tview.AlignLeft).
+					SetSelectable(true))
+			timelineTable.SetCell(i+1, 1,
+				tview.NewTableCell(item.value).
+					SetTextColor(colors.Success).
+					SetAlign(tview.AlignLeft).
+					SetSelectable(true))
+		}
 	} else {
-		responseTimelinePanel.SetText("No request timeline available")
+		timelineTable.SetCell(0, 0,
+			tview.NewTableCell("No request timeline available").
+				SetTextColor(colors.Foreground).
+				SetAlign(tview.AlignCenter).
+				SetSelectable(false))
 	}
 }
 

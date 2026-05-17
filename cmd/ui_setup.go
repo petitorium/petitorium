@@ -29,7 +29,7 @@ type UIComponents struct {
 	ResponsePreviewPanel  *tview.TextView
 	ResponseHeadersPanel  tview.Primitive
 	ResponseCookiesPanel  *tview.TextView
-	ResponseTimelinePanel *tview.TextView
+	ResponseTimelinePanel *tview.Table
 	EnvironmentPanel      *tview.Flex
 	EnvDropdown           *tview.DropDown
 	EnvConfigButton       *CustomButton
