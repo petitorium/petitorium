@@ -468,6 +468,14 @@ func (m *CollectionSearchModal) selectResult() {
 		return
 	}
 
+	for _, pathPart := range collectionPath {
+		ancestorNode := findNodeByPath(m.ui.RootNode, []string{pathPart})
+		if ancestorNode != nil {
+			expandCollectionAndLoadChildren(ancestorNode)
+		}
+	}
+	expandCollectionAndLoadChildren(node)
+
 	for _, child := range node.GetChildren() {
 		if reqRef, ok := child.GetReference().(workspace.Request); ok {
 			if reqRef.Name == request.Name && reqRef.Method == request.Method && reqRef.URL == request.URL {

@@ -306,6 +306,22 @@ func findNodeByPath(root *tview.TreeNode, path []string) *tview.TreeNode {
 	return nil
 }
 
+// expandCollectionAndLoadChildren expands a collection node and loads its children if not already done.
+// This is useful when navigating to a request in a collapsed collection - we need to ensure
+// the collection is expanded and children are loaded before we can find the target request.
+func expandCollectionAndLoadChildren(node *tview.TreeNode) {
+	ref := node.GetReference()
+	col, ok := ref.(workspace.Collection)
+	if !ok {
+		return
+	}
+
+	if !node.IsExpanded() {
+		addChildrenToCollectionNode(node, col)
+		node.SetExpanded(true)
+	}
+}
+
 type RequestSearchResult struct {
 	Request        *workspace.Request
 	CollectionPath []string
