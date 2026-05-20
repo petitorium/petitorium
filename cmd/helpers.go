@@ -8,6 +8,7 @@ import (
 
 	"github.com/rivo/tview"
 
+	"github.com/petitorium/petitorium/config"
 	"github.com/petitorium/petitorium/workspace"
 )
 
@@ -319,6 +320,7 @@ func expandCollectionAndLoadChildren(node *tview.TreeNode) {
 	if !node.IsExpanded() {
 		addChildrenToCollectionNode(node, col)
 		node.SetExpanded(true)
+		node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
 	}
 }
 
