@@ -332,6 +332,18 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "tree_view",
 		},
 		{
+			Key:         tcell.KeyLeft,
+			Action:      collapseOrMoveToParentArrow,
+			Description: "Collapse or move to parent (arrow)",
+			Context:     "tree_view",
+		},
+		{
+			Key:         tcell.KeyRight,
+			Action:      expandOrSelectRequestArrow,
+			Description: "Expand or select request (arrow)",
+			Context:     "tree_view",
+		},
+		{
 			Rune:        'g',
 			Action:      navigateTreeToTop,
 			Description: "Go to top of tree",
@@ -1363,6 +1375,19 @@ func expandOrSelectRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 		}
 	}
 	return event
+}
+
+func collapseOrMoveToParentArrow(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	collapseOrMoveToParent(ui, event)
+	return nil
+}
+
+func expandOrSelectRequestArrow(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	result := expandOrSelectRequest(ui, event)
+	if result != nil {
+		return result
+	}
+	return nil
 }
 
 func navigateTreeToTop(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
