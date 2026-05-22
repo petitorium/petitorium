@@ -1227,26 +1227,16 @@ func createNewWorkspaceForm(
 			return
 		}
 
-		workspace.SwitchWorkspace(name)
-
-		workspaceNames, _ := workspace.ListWorkspaces()
-		ui.WorkspaceSelector.SetOptions(workspaceNames, nil)
-
-		for i, n := range workspaceNames {
-			if n == name {
-				ui.WorkspaceSelector.SetCurrentOption(i)
-				break
+		ui.WorkspaceNames, _ = workspace.ListWorkspaces()
+		ui.WorkspaceSelector.SetOptions(ui.WorkspaceNames, nil)
+		ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
+			if text != "" {
+				ui.SwitchWorkspace(text)
 			}
-		}
+		})
 
 		pages.RemovePage("createWorkspace")
 		pages.SwitchToPage("main")
-
-		ws, _ := workspace.LoadWorkspace()
-		ui.WorkspaceData = ws
-		ui.EnvironmentsData = &ws.Environments
-		ui.DataManager = NewDataManager(ws)
-		refreshCollectionsTree(ui)
 
 		app.SetFocus(collectionsTreeView)
 	})

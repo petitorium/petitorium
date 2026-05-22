@@ -120,6 +120,7 @@ type UIOrchestrator struct {
 	EnvConfigButton            *CustomButton
 	WorkspacePanel             *tview.Flex
 	WorkspaceSelector          *tview.DropDown
+	WorkspaceNames             []string
 	WorkspaceConfigButton      *CustomButton
 	Pages                      *tview.Pages
 	Grid                       *tview.Grid

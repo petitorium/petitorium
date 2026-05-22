@@ -522,9 +522,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 
 	// Store workspace names for lookup
-	workspaceNames, err := workspace.ListWorkspaces()
+	var err error
+	ui.WorkspaceNames, err = workspace.ListWorkspaces()
 	if err != nil {
-		workspaceNames = []string{"Default"}
+		ui.WorkspaceNames = []string{"Default"}
 	}
 
 	ui.SwitchWorkspace = func(text string) {
@@ -614,8 +615,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Update workspace selector dropdown to show the current workspace
 		ui.ProgrammaticallyUpdatingWorkspace = true
-		workspaceNames, _ := workspace.ListWorkspaces()
-		for i, name := range workspaceNames {
+		ui.WorkspaceNames, _ = workspace.ListWorkspaces()
+		for i, name := range ui.WorkspaceNames {
 			if name == text {
 				ui.WorkspaceSelector.SetCurrentOption(i)
 				break
@@ -625,9 +626,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 
 	ui.WorkspaceSelector.SetSelectedFunc(func(text string, index int) {
-		// ui.FooterRight.SetText(fmt.Sprintf("Text %s, Index: %d, workspace name: %s", text, index, workspaceNames[index]))
-		if index >= 0 && index < len(workspaceNames) {
-			ui.SwitchWorkspace(workspaceNames[index])
+		if text != "" {
+			ui.SwitchWorkspace(text)
 		}
 	})
 
