@@ -262,6 +262,18 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Open response in fx",
 			Context:     "response_view",
 		},
+		{
+			Rune:        'c',
+			Action:      copyResponseAction,
+			Description: "Copy response to clipboard",
+			Context:     "response_view",
+		},
+		{
+			Rune:        's',
+			Action:      saveResponseAction,
+			Description: "Save response to file",
+			Context:     "response_view",
+		},
 	}
 
 	// Define tree navigation functions
@@ -502,6 +514,30 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Action:      handleTreeSendRequest,
 			Description: "Send request from tree",
 			Context:     "tree_view",
+		})
+	}
+
+	if config.C.Shortcuts.CopyResponse != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.CopyResponse)
+		manager.responseViewBindings = append(manager.responseViewBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      copyResponseAction,
+			Description: "Copy response to clipboard",
+			Context:     "response_view",
+		})
+	}
+
+	if config.C.Shortcuts.SaveResponse != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.SaveResponse)
+		manager.responseViewBindings = append(manager.responseViewBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      saveResponseAction,
+			Description: "Save response to file",
+			Context:     "response_view",
 		})
 	}
 
@@ -1560,6 +1596,16 @@ func openResponseInFx(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 			openInFxFunc(ui.LastResponse.Body)
 		})
 	}
+	return nil
+}
+
+func copyResponseAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.CopyResponse()
+	return nil
+}
+
+func saveResponseAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	ui.SaveResponse()
 	return nil
 }
 

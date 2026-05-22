@@ -1419,12 +1419,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					}
 					suggestedPath := filepath.Join(os.Getenv("HOME"), suggestedName)
 
+					currentFocus := ui.App.GetFocus()
 					onSave := func(path string) {
 						err := os.WriteFile(path, resp.BodyBytes, 0644)
 						if err != nil {
-							showErrorModal(ui.Pages, fmt.Sprintf("Failed to save file: %v", err), ui.Colors)
+							showErrorModalWithFocus(ui.App, ui.Pages, fmt.Sprintf("Failed to save file: %v", err), currentFocus, ui.Colors)
 						} else {
-							showSuccessModal(ui.Pages, fmt.Sprintf("Downloaded to: %s", path), ui.Colors)
+							showSuccessModalWithFocus(ui.App, ui.Pages, fmt.Sprintf("Downloaded to: %s", path), currentFocus, ui.Colors)
 						}
 					}
 					openSaveFileModal(ui.App, ui.Pages, ui.Colors, suggestedPath, onSave, nil)

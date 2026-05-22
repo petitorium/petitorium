@@ -909,11 +909,59 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		}
 	}
 
-	// CopyResponse copies the current response body to clipboard
+	// CopyResponse opens a file browser to save the response body to a file
 	uiOrchestrator.CopyResponse = func() {
-		if uiOrchestrator.LastResponse != nil {
-			copyToClipboard(uiOrchestrator.LastResponse.Body)
+		if uiOrchestrator.LastResponse == nil || len(uiOrchestrator.LastResponse.BodyBytes) == 0 {
+			currentFocus := app.GetFocus()
+			showErrorModalWithFocus(app, pages, "No response body available to save", currentFocus, uiOrchestrator.Colors)
+			return
 		}
+
+		// Get suggested filename from Content-Disposition header
+		suggestedName := "response"
+		if headers, ok := uiOrchestrator.LastResponse.Headers["Content-Disposition"]; ok && len(headers) > 0 {
+			parts := strings.Split(headers[0], "filename=")
+			if len(parts) > 1 {
+				suggestedName = strings.Trim(strings.Split(parts[1], ";")[0], "\" ")
+			}
+		}
+		// Fallback to Content-Type extension
+		if suggestedName == "response" {
+			if ct, ok := uiOrchestrator.LastResponse.Headers["Content-Type"]; ok && len(ct) > 0 {
+				switch {
+				case strings.HasPrefix(ct[0], "image/png"):
+					suggestedName = "response.png"
+				case strings.HasPrefix(ct[0], "image/jpeg"):
+					suggestedName = "response.jpg"
+				case strings.HasPrefix(ct[0], "image/gif"):
+					suggestedName = "response.gif"
+				case strings.HasPrefix(ct[0], "image/webp"):
+					suggestedName = "response.webp"
+				case strings.HasPrefix(ct[0], "application/pdf"):
+					suggestedName = "response.pdf"
+				case strings.HasPrefix(ct[0], "application/zip"):
+					suggestedName = "response.zip"
+				case strings.HasPrefix(ct[0], "video/"):
+					suggestedName = "response.video"
+				case strings.HasPrefix(ct[0], "audio/"):
+					suggestedName = "response.audio"
+				}
+			}
+		}
+
+		suggestedPath := filepath.Join(os.Getenv("HOME"), suggestedName)
+
+		onSave := func(path string) {
+			err := os.WriteFile(path, uiOrchestrator.LastResponse.BodyBytes, 0644)
+			if err != nil {
+				currentFocus := app.GetFocus()
+				showErrorModalWithFocus(app, pages, fmt.Sprintf("Failed to save file: %v", err), currentFocus, uiOrchestrator.Colors)
+				return
+			}
+			showSuccessModal(pages, fmt.Sprintf("Saved to: %s", path), uiOrchestrator.Colors)
+		}
+
+		openSaveFileModal(app, pages, uiOrchestrator.Colors, suggestedPath, onSave, nil)
 	}
 
 	// SaveResponse opens a file browser to save the response body to a file
@@ -957,14 +1005,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 		suggestedPath := filepath.Join(os.Getenv("HOME"), suggestedName)
 
-		// Callback when file should be saved
+		currentFocus := app.GetFocus()
 		onSave := func(path string) {
 			err := os.WriteFile(path, uiOrchestrator.LastResponse.BodyBytes, 0644)
 			if err != nil {
-				showErrorModal(pages, fmt.Sprintf("Failed to save file: %v", err), uiOrchestrator.Colors)
+				showErrorModalWithFocus(app, pages, fmt.Sprintf("Failed to save file: %v", err), currentFocus, uiOrchestrator.Colors)
 				return
 			}
-			showSuccessModal(pages, fmt.Sprintf("Saved to: %s", path), uiOrchestrator.Colors)
+			showSuccessModalWithFocus(app, pages, fmt.Sprintf("Saved to: %s", path), currentFocus, uiOrchestrator.Colors)
 		}
 
 		openSaveFileModal(app, pages, uiOrchestrator.Colors, suggestedPath, onSave, nil)

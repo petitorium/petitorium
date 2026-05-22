@@ -71,6 +71,8 @@ A powerful Terminal API Testing Client
 - `g` / `G` - Go to top / bottom
 - `d` / `u` - Half-page scroll down / up
 - `f` - Open response in `fx` (if installed)
+- `c` - Copy response body to clipboard
+- `s` - Save response body to file
 - `1`, `2`, `3`, `4` - Switch tabs (Preview, Headers, Cookies, Timeline)
 - `Left` / `RightArrow` - Previous / Next tab
 

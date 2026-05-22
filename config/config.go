@@ -111,6 +111,8 @@ type ShortcutsConfig struct {
 	JumpToRequest     string `mapstructure:"jumpToRequest"`
 	JumpToResponse    string `mapstructure:"jumpToResponse"`
 	SendRequest       string `mapstructure:"sendRequest"`
+	CopyResponse      string `mapstructure:"copyResponse"`
+	SaveResponse      string `mapstructure:"saveResponse"`
 }
 
 var C AppConfig
@@ -225,6 +227,8 @@ shortcuts:
   jumpToRequest: "ctrl+b"
   jumpToResponse: "ctrl+s"
   sendRequest: "ctrl+j"
+  copyResponse: "c"
+  saveResponse: "s"
 `
 
 func LoadConfig() error {
@@ -286,6 +290,12 @@ func LoadConfig() error {
 	}
 	if C.Shortcuts.SendRequest == "" {
 		C.Shortcuts.SendRequest = "ctrl+j"
+	}
+	if C.Shortcuts.CopyResponse == "" {
+		C.Shortcuts.CopyResponse = "c"
+	}
+	if C.Shortcuts.SaveResponse == "" {
+		C.Shortcuts.SaveResponse = "s"
 	}
 
 	return nil
