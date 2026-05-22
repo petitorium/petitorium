@@ -544,98 +544,6 @@ func setFocusStyle(p tview.Primitive, focused bool, borderColor, borderFocusColo
 	}
 }
 
-type CheckboxPrimitive struct {
-	*tview.TextView
-	enabled     bool
-	onChar      string
-	offChar     string
-	changedFunc func(bool)
-	colors      *ColorManager
-}
-
-func NewCheckboxPrimitive(onChar, offChar string, enabled bool, colors *ColorManager) *CheckboxPrimitive {
-	cb := &CheckboxPrimitive{
-		TextView: tview.NewTextView(),
-		enabled:  enabled,
-		onChar:   onChar,
-		offChar:  offChar,
-		colors:   colors,
-	}
-	cb.SetBorder(false)
-	cb.SetBackgroundColor(colors.Background)
-	cb.SetText(onChar)
-	cb.SetTextAlign(tview.AlignCenter)
-	if enabled {
-		cb.SetTextColor(colors.Foreground)
-	} else {
-		cb.SetTextColor(tcell.ColorGray)
-	}
-	cb.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter || event.Rune() == ' ' {
-			cb.toggle()
-			return nil
-		}
-		return event
-	})
-	cb.SetFocusFunc(func() {
-		cb.SetBackgroundColor(colors.SelectedBackground)
-	})
-	cb.SetBlurFunc(func() {
-		cb.SetBackgroundColor(colors.Background)
-	})
-	return cb
-}
-
-func (cb *CheckboxPrimitive) toggle() {
-	cb.enabled = !cb.enabled
-	if cb.enabled {
-		cb.SetText(cb.onChar)
-		cb.SetTextColor(cb.colors.Foreground)
-		cb.SetBackgroundColor(cb.colors.Background)
-	} else {
-		cb.SetText(cb.offChar)
-		cb.SetTextColor(tcell.ColorGray)
-		cb.SetBackgroundColor(cb.colors.Background)
-	}
-	if cb.changedFunc != nil {
-		cb.changedFunc(cb.enabled)
-	}
-}
-
-func (cb *CheckboxPrimitive) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
-	return func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
-		if action == tview.MouseLeftClick {
-			cb.toggle()
-			return true, cb
-		}
-		return false, nil
-	}
-}
-
-func (cb *CheckboxPrimitive) IsEnabled() bool {
-	return cb.enabled
-}
-
-func (cb *CheckboxPrimitive) SetEnabled(enabled bool) *CheckboxPrimitive {
-	cb.enabled = enabled
-	if enabled {
-		cb.SetText(cb.onChar)
-		cb.SetTextColor(cb.colors.Foreground)
-	} else {
-		cb.SetText(cb.offChar)
-		cb.SetTextColor(tcell.ColorGray)
-	}
-	if cb.changedFunc != nil {
-		cb.changedFunc(enabled)
-	}
-	return cb
-}
-
-func (cb *CheckboxPrimitive) SetChangedFunc(handler func(bool)) *CheckboxPrimitive {
-	cb.changedFunc = handler
-	return cb
-}
-
 // createTextArea creates a new text area with consistent styling for body editing
 func createTextArea(title string, backgroundColor, borderColor, titleColor, foregroundColor tcell.Color) *tview.TextArea {
 	textArea := tview.NewTextArea()
@@ -925,7 +833,7 @@ func addQueryParamRow(queryList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
-	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
+	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
 	checkbox.SetEnabled(true)
 	checkbox.SetChangedFunc(func(enabled bool) {
 		if enabled {
@@ -975,21 +883,14 @@ func addQueryParamRow(queryList *tview.Flex,
 		}
 	})
 
-	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(colors.Background)
-	buttonContainer.AddItem(nil, 0, 1, false)
-	buttonContainer.AddItem(removeButton, 1, 0, false)
-	buttonContainer.AddItem(nil, 0, 1, false)
-
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 3, 0, false)
-	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
-	row.AddItem(spacer2, 1, 0, false)
-	row.AddItem(buttonContainer, 4, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(removeButton, 3, 0, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
 	queryList.AddItem(row, rowHeight, 0, false)
@@ -1034,7 +935,7 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 		}
 	})
 
-	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
+	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
 	if !enabled {
 		keyInput.SetBackgroundColor(colors.Selection)
 		valueInput.SetBackgroundColor(colors.Selection)
@@ -1112,21 +1013,14 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 		return event
 	})
 
-	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(colors.Background)
-	buttonContainer.AddItem(nil, 0, 1, false)
-	buttonContainer.AddItem(removeButton, 1, 0, false)
-	buttonContainer.AddItem(nil, 0, 1, false)
-
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 3, 0, false)
-	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
-	row.AddItem(spacer2, 1, 0, false)
-	row.AddItem(buttonContainer, 4, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(removeButton, 3, 0, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
 	queryList.AddItem(row, rowHeight, 0, false)
@@ -1333,7 +1227,7 @@ func addHeaderRow(headersList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
-	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
+	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
 	checkbox.SetEnabled(true)
 	checkbox.SetChangedFunc(func(enabled bool) {
 		if enabled {
@@ -1384,22 +1278,14 @@ func addHeaderRow(headersList *tview.Flex,
 		}
 	})
 
-	// Wrap button in a container to match row height
-	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(colors.Background)
-	buttonContainer.AddItem(nil, 0, 1, false)
-	buttonContainer.AddItem(removeButton, 1, 0, false)
-	buttonContainer.AddItem(nil, 0, 1, false)
-
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 3, 0, false)
-	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
-	row.AddItem(spacer2, 1, 0, false)
-	row.AddItem(buttonContainer, 4, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(removeButton, 3, 0, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
 	headersList.AddItem(row, rowHeight, 0, false)
@@ -1447,7 +1333,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
-	checkbox := NewCheckboxPrimitive(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
+	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
 	checkbox.SetChangedFunc(func(enabled bool) {
 		if enabled {
 			keyInput.SetBackgroundColor(colors.InputBackground)
@@ -1530,22 +1416,14 @@ func addHeaderRowWithData(headersList *tview.Flex,
 		return event
 	})
 
-	// Wrap button in a container to match row height
-	buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonContainer.SetBackgroundColor(colors.Background)
-	buttonContainer.AddItem(nil, 0, 1, false)
-	buttonContainer.AddItem(removeButton, 1, 0, false)
-	buttonContainer.AddItem(nil, 0, 1, false)
-
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-	spacer2 := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 3, 0, false)
-	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(valueInput, headerInputWidth, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
-	row.AddItem(spacer2, 1, 0, false)
-	row.AddItem(buttonContainer, 4, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(removeButton, 3, 0, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
 	headersList.AddItem(row, rowHeight, 0, false)
