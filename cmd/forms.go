@@ -1119,7 +1119,7 @@ func createWorkspaceManagementForm(
 	app *tview.Application,
 	pages *tview.Pages,
 	workspaceData *workspace.Workspace,
-	workspaceSelector *CustomButton,
+	ui *UIOrchestrator,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	colors *ColorManager,
@@ -1147,7 +1147,7 @@ func createWorkspaceManagementForm(
 	// Workspace actions
 	form.AddButton("Create New Workspace", func() {
 		pages.RemovePage("workspaceMenu")
-		createForm := createNewWorkspaceForm(app, pages, workspaceSelector, rootNode, collectionsTreeView, colors)
+		createForm := createNewWorkspaceForm(app, pages, ui, rootNode, collectionsTreeView, colors)
 		modal := createModal(createForm, 50, 8, tcell.ColorDefault)
 		pages.AddPage("createWorkspace", modal, true, true)
 		app.SetFocus(createForm)
@@ -1155,12 +1155,12 @@ func createWorkspaceManagementForm(
 
 	form.AddButton("Switch Workspace", func() {
 		pages.RemovePage("workspaceMenu")
-		showWorkspaceModal(&UIOrchestrator{App: app, Pages: pages, WorkspaceConfigButton: workspaceSelector, Colors: colors, WorkspaceData: workspaceData, RootNode: rootNode, CollectionsTreeView: collectionsTreeView})
+		showWorkspaceModal(&UIOrchestrator{App: app, Pages: pages, WorkspaceConfigButton: ui.WorkspaceConfigButton, Colors: colors, WorkspaceData: workspaceData, RootNode: rootNode, CollectionsTreeView: collectionsTreeView})
 	})
 
 	form.AddButton("Rename Current Workspace", func() {
 		pages.RemovePage("workspaceMenu")
-		renameForm := createRenameWorkspaceForm(app, pages, currentWorkspace, workspaceSelector, colors)
+		renameForm := createRenameWorkspaceForm(app, pages, currentWorkspace, ui.WorkspaceConfigButton, colors)
 		modal := createModal(renameForm, 50, 8, tcell.ColorDefault)
 		pages.AddPage("renameWorkspace", modal, true, true)
 		app.SetFocus(renameForm)
@@ -1168,7 +1168,7 @@ func createWorkspaceManagementForm(
 
 	form.AddButton("Duplicate Workspace", func() {
 		pages.RemovePage("workspaceMenu")
-		duplicateForm := createDuplicateWorkspaceForm(app, pages, currentWorkspace, workspaceSelector, colors)
+		duplicateForm := createDuplicateWorkspaceForm(app, pages, currentWorkspace, ui.WorkspaceConfigButton, colors)
 		modal := createModal(duplicateForm, 50, 10, tcell.ColorDefault)
 		pages.AddPage("duplicateWorkspace", modal, true, true)
 		app.SetFocus(duplicateForm)
@@ -1176,7 +1176,7 @@ func createWorkspaceManagementForm(
 
 	form.AddButton("Delete Workspace", func() {
 		pages.RemovePage("workspaceMenu")
-		deleteForm := createDeleteWorkspaceForm(app, pages, currentWorkspace, workspaceSelector, colors)
+		deleteForm := createDeleteWorkspaceForm(app, pages, currentWorkspace, ui.WorkspaceConfigButton, colors)
 		modal := createModal(deleteForm, 50, 8, tcell.ColorDefault)
 		pages.AddPage("deleteWorkspace", modal, true, true)
 		app.SetFocus(deleteForm)
@@ -1195,7 +1195,7 @@ func createWorkspaceManagementForm(
 func createNewWorkspaceForm(
 	app *tview.Application,
 	pages *tview.Pages,
-	workspaceSelector *CustomButton,
+	ui *UIOrchestrator,
 	rootNode *tview.TreeNode,
 	collectionsTreeView *tview.TreeView,
 	colors *ColorManager,
@@ -1224,12 +1224,30 @@ func createNewWorkspaceForm(
 
 		_, err := workspace.CreateWorkspace(name)
 		if err != nil {
-			// Show error - for now just ignore
 			return
+		}
+
+		workspace.SwitchWorkspace(name)
+
+		workspaceNames, _ := workspace.ListWorkspaces()
+		ui.WorkspaceSelector.SetOptions(workspaceNames, nil)
+
+		for i, n := range workspaceNames {
+			if n == name {
+				ui.WorkspaceSelector.SetCurrentOption(i)
+				break
+			}
 		}
 
 		pages.RemovePage("createWorkspace")
 		pages.SwitchToPage("main")
+
+		ws, _ := workspace.LoadWorkspace()
+		ui.WorkspaceData = ws
+		ui.EnvironmentsData = &ws.Environments
+		ui.DataManager = NewDataManager(ws)
+		refreshCollectionsTree(ui)
+
 		app.SetFocus(collectionsTreeView)
 	})
 

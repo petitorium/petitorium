@@ -462,7 +462,7 @@ func showWorkspaceModal(
 
 	onCreateNew = func() {
 		currentFocus := ui.App.GetFocus()
-		form := createNewWorkspaceForm(ui.App, ui.Pages, ui.WorkspaceConfigButton, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+		form := createNewWorkspaceForm(ui.App, ui.Pages, ui, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			if event.Key() == tcell.KeyEsc {
 				ui.Pages.RemovePage("createWorkspace")
