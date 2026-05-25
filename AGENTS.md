@@ -112,6 +112,23 @@ Refer to `cmd/event_handlers.go` for how external editors are launched. It typic
 3. **Verify**: Always run `go build .` to check for compilation errors before submitting.
 4. **Style**: Strictly follow `go fmt` output.
 
+## Debugging
+
+For debugging output that should not appear in the UI, write to `/tmp/petitorium_debug.log` using a `logToFile()` helper function rather than `fmt.Printf()`. This avoids corrupting the terminal display.
+
+Example pattern:
+```go
+func logToFile(msg string) {
+    f, err := os.OpenFile("/tmp/petitorium_debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+    if err == nil {
+        f.WriteString(msg)
+        f.Close()
+    }
+}
+```
+
+When adding debug statements, always use `logToFile()` instead of `fmt.Printf()` to avoid interfering with the TUI rendering.
+
 ---
 
 _Note: This file is intended for agentic coding agents. Update it as the project conventions evolve._

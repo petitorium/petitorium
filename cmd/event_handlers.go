@@ -1342,7 +1342,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Send the request in a goroutine
 		go func() {
-			resp, err := SendRequest(method, url, body, contentType, headersStr, queryParamsStr)
+			resp, err := SendRequest(method, url, body, contentType, headersStr, queryParamsStr, &ui.WorkspaceData.CookieJar)
 
 			// Use QueueUpdateDraw to handle the response on the main thread
 			ui.App.QueueUpdateDraw(func() {
@@ -1486,6 +1486,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				now := time.Now()
 				ui.LastResponse = resp
 				updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
+				RefreshCookiesTab(ui.WorkspaceData.CookieJar.Cookies, ui.Colors)
 			})
 		}()
 	})

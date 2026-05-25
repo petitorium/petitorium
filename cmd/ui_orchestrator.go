@@ -575,7 +575,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	var tabIndexSetter func(int)
 	var saveCallbackProxy func()
 
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI :=
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, _, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
@@ -596,6 +596,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			app,
 			pages,
 			currentRequest,
+			&workspaceData.CookieJar,
 		)
 
 	// Track if content type dropdown is added (now in uiOrchestrator.dropdownAdded)
