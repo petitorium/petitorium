@@ -27,6 +27,7 @@ type Cookie struct {
 	Secure   bool   `yaml:"secure"`
 	HttpOnly bool   `yaml:"http_only"`
 	SameSite string `yaml:"same_site,omitempty"`
+	Enabled  bool   `yaml:"enabled"`
 }
 
 type CookieJar struct {

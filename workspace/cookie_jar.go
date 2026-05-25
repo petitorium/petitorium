@@ -113,6 +113,9 @@ func (cj *CookieJar) GetCookies(u *url.URL) []*http.Cookie {
 	path := u.Path
 
 	for _, c := range cj.Cookies {
+		if !c.Enabled {
+			continue
+		}
 		if cj.cookieMatches(c, host, path) {
 			cookie := c.ToHttpCookie()
 			result = append(result, cookie)

@@ -1090,7 +1090,11 @@ type QueryParamRow struct {
 
 type CookieRow struct {
 	DomainInput   *HeaderKeyInput
-	CookieInput   *HeaderValueInput
+	NameInput     *HeaderKeyInput
+	ValueInput    *HeaderValueInput
+	PathInput     *HeaderKeyInput
+	SecureInput   *HeaderKeyInput
+	HttpOnlyInput *HeaderKeyInput
 	Checkbox      *CheckboxPrimitive
 	DeleteButton  *tview.Button
 	Row           *tview.Flex
@@ -1304,8 +1308,7 @@ func createCookiesTabWithData(colors *ColorManager,
 	cookiesContainer.AddItem(cookiesList, 0, 1, false)
 
 	for _, cookie := range initialCookies {
-		cookieStr := fmt.Sprintf("name=%s; value=%s; path=%s; secure=%t; http_only=%t", cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly)
-		addCookieRowWithData(cookiesList, colors, cookie.Domain, cookieStr, true, refreshCookiesUI, saveCallback, focusSetter, footerUpdater)
+		addCookieRowWithData(cookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, refreshCookiesUI, saveCallback, focusSetter, footerUpdater)
 	}
 
 	refreshCookiesUI()
@@ -1320,45 +1323,7 @@ func RefreshCookiesTab(cookies []workspace.Cookie, colors *ColorManager) {
 	currentCookieRows = nil
 	currentCookiesList.Clear()
 	for _, cookie := range cookies {
-		cookieStr := fmt.Sprintf("name=%s; value=%s; path=%s; secure=%t; http_only=%t", cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly)
-		row := tview.NewFlex().SetDirection(tview.FlexColumn)
-		row.SetBackgroundColor(colors.Background)
-
-		domainInput := NewHeaderKeyInput(colors)
-		domainInput.SetText(cookie.Domain)
-
-		cookieInput := NewHeaderValueInput(colors)
-		cookieInput.SetText(cookieStr)
-
-		checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
-		checkbox.SetEnabled(true)
-
-		removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
-		removeButton.SetBackgroundColor(colors.Background)
-		removeButton.SetLabelColor(colors.Foreground)
-		removeButton.SetBorder(false)
-		removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
-
-		cookieRow := &CookieRow{
-			DomainInput:  domainInput,
-			CookieInput:  cookieInput,
-			Checkbox:     checkbox,
-			DeleteButton: removeButton,
-			Row:          row,
-		}
-
-		spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-		row.AddItem(domainInput, 20, 0, false)
-		row.AddItem(spacer, 2, 0, false)
-		row.AddItem(cookieInput, 55, 0, false)
-		row.AddItem(spacer, 1, 0, false)
-		row.AddItem(checkbox, 3, 0, false)
-		row.AddItem(spacer, 1, 0, false)
-		row.AddItem(removeButton, 3, 0, false)
-
-		currentCookieRows = append(currentCookieRows, cookieRow)
-		currentCookiesList.AddItem(row, rowHeight, 0, false)
-		currentCookiesList.AddItem(spacer, 1, 0, false)
+		addCookieRowWithData(currentCookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, func() {}, nil, func(p tview.Primitive) {}, func() {})
 	}
 	if len(cookies) == 0 {
 		emptyLabel := tview.NewTextView()
@@ -1420,23 +1385,64 @@ func addCookieRow(cookiesList *tview.Flex,
 	})
 	domainInput.onModeChange = footerUpdater
 
-	cookieInput := NewHeaderValueInput(colors)
-	cookieInput.SetChangedFunc(func(text string) {
+	nameInput := NewHeaderKeyInput(colors)
+	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
 		}
 	})
-	cookieInput.onModeChange = footerUpdater
+	nameInput.onModeChange = footerUpdater
+
+	valueInput := NewHeaderValueInput(colors)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.onModeChange = footerUpdater
+
+	pathInput := NewHeaderKeyInput(colors)
+	pathInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	pathInput.onModeChange = footerUpdater
+
+	secureInput := NewHeaderKeyInput(colors)
+	secureInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	secureInput.onModeChange = footerUpdater
+	secureInput.SetTitleAlign(tview.AlignCenter)
+
+	httpOnlyInput := NewHeaderKeyInput(colors)
+	httpOnlyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	httpOnlyInput.onModeChange = footerUpdater
 
 	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
 	checkbox.SetEnabled(true)
 	checkbox.SetChangedFunc(func(enabled bool) {
 		if enabled {
 			domainInput.SetBackgroundColor(colors.InputBackground)
-			cookieInput.SetBackgroundColor(colors.InputBackground)
+			nameInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+			pathInput.SetBackgroundColor(colors.InputBackground)
+			secureInput.SetBackgroundColor(colors.InputBackground)
+			httpOnlyInput.SetBackgroundColor(colors.InputBackground)
 		} else {
 			domainInput.SetBackgroundColor(colors.Selection)
-			cookieInput.SetBackgroundColor(colors.Selection)
+			nameInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+			pathInput.SetBackgroundColor(colors.Selection)
+			secureInput.SetBackgroundColor(colors.Selection)
+			httpOnlyInput.SetBackgroundColor(colors.Selection)
 		}
 		if saveCallback != nil {
 			saveCallback()
@@ -1458,11 +1464,15 @@ func addCookieRow(cookiesList *tview.Flex,
 	})
 
 	cookieRow := &CookieRow{
-		DomainInput:  domainInput,
-		CookieInput:  cookieInput,
-		Checkbox:     checkbox,
-		DeleteButton: removeButton,
-		Row:          row,
+		DomainInput:   domainInput,
+		NameInput:     nameInput,
+		ValueInput:    valueInput,
+		PathInput:     pathInput,
+		SecureInput:   secureInput,
+		HttpOnlyInput: httpOnlyInput,
+		Checkbox:      checkbox,
+		DeleteButton:  removeButton,
+		Row:           row,
 	}
 
 	removeButton.SetSelectedFunc(func() {
@@ -1479,9 +1489,17 @@ func addCookieRow(cookiesList *tview.Flex,
 	})
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-	row.AddItem(domainInput, 20, 0, false)
-	row.AddItem(spacer, 2, 0, false)
-	row.AddItem(cookieInput, 55, 0, false)
+	row.AddItem(domainInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(nameInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(valueInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(pathInput, 8, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(secureInput.SetTitleAlign(tview.AlignCenter), 7, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(httpOnlyInput.SetTitleAlign(tview.AlignCenter), 7, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
@@ -1499,7 +1517,11 @@ func addCookieRow(cookiesList *tview.Flex,
 func addCookieRowWithData(cookiesList *tview.Flex,
 	colors *ColorManager,
 	domain string,
-	cookieStr string,
+	name string,
+	value string,
+	path string,
+	secure bool,
+	httpOnly bool,
 	enabled bool,
 	refreshUI func(),
 	saveCallback func(),
@@ -1518,23 +1540,68 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	})
 	domainInput.onModeChange = footerUpdater
 
-	cookieInput := NewHeaderValueInput(colors)
-	cookieInput.SetText(cookieStr)
-	cookieInput.SetChangedFunc(func(text string) {
+	nameInput := NewHeaderKeyInput(colors)
+	nameInput.SetText(name)
+	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
 		}
 	})
-	cookieInput.onModeChange = footerUpdater
+	nameInput.onModeChange = footerUpdater
+
+	valueInput := NewHeaderValueInput(colors)
+	valueInput.SetText(value)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.onModeChange = footerUpdater
+
+	pathInput := NewHeaderKeyInput(colors)
+	pathInput.SetText(path)
+	pathInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	pathInput.onModeChange = footerUpdater
+
+	secureInput := NewHeaderKeyInput(colors)
+	secureInput.SetText(fmt.Sprintf("%t", secure))
+	secureInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	secureInput.onModeChange = footerUpdater
+	secureInput.SetTitleAlign(tview.AlignRight)
+
+	httpOnlyInput := NewHeaderKeyInput(colors)
+	httpOnlyInput.SetText(fmt.Sprintf("%t", httpOnly))
+	httpOnlyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	httpOnlyInput.onModeChange = footerUpdater
 
 	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
 	checkbox.SetChangedFunc(func(enabled bool) {
 		if enabled {
 			domainInput.SetBackgroundColor(colors.InputBackground)
-			cookieInput.SetBackgroundColor(colors.InputBackground)
+			nameInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+			pathInput.SetBackgroundColor(colors.InputBackground)
+			secureInput.SetBackgroundColor(colors.InputBackground)
+			httpOnlyInput.SetBackgroundColor(colors.InputBackground)
 		} else {
 			domainInput.SetBackgroundColor(colors.Selection)
-			cookieInput.SetBackgroundColor(colors.Selection)
+			nameInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+			pathInput.SetBackgroundColor(colors.Selection)
+			secureInput.SetBackgroundColor(colors.Selection)
+			httpOnlyInput.SetBackgroundColor(colors.Selection)
 		}
 		if saveCallback != nil {
 			saveCallback()
@@ -1542,7 +1609,11 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	})
 	if !enabled {
 		domainInput.SetBackgroundColor(colors.Selection)
-		cookieInput.SetBackgroundColor(colors.Selection)
+		nameInput.SetBackgroundColor(colors.Selection)
+		valueInput.SetBackgroundColor(colors.Selection)
+		pathInput.SetBackgroundColor(colors.Selection)
+		secureInput.SetBackgroundColor(colors.Selection)
+		httpOnlyInput.SetBackgroundColor(colors.Selection)
 	}
 
 	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
@@ -1560,11 +1631,15 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	})
 
 	cookieRow := &CookieRow{
-		DomainInput:  domainInput,
-		CookieInput:  cookieInput,
-		Checkbox:     checkbox,
-		DeleteButton: removeButton,
-		Row:          row,
+		DomainInput:   domainInput,
+		NameInput:     nameInput,
+		ValueInput:    valueInput,
+		PathInput:     pathInput,
+		SecureInput:   secureInput,
+		HttpOnlyInput: httpOnlyInput,
+		Checkbox:      checkbox,
+		DeleteButton:  removeButton,
+		Row:           row,
 	}
 
 	removeButton.SetSelectedFunc(func() {
@@ -1580,22 +1655,18 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 		}
 	})
 
-	// Handle Tab navigation for delete button
-	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			if len(currentCookieRows) > 0 {
-				firstRow := currentCookieRows[0]
-				focusSetter(firstRow.DomainInput)
-			}
-			return nil
-		}
-		return event
-	})
-
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-	row.AddItem(domainInput, 20, 0, false)
-	row.AddItem(spacer, 2, 0, false)
-	row.AddItem(cookieInput, 55, 0, false)
+	row.AddItem(domainInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(nameInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(valueInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(pathInput, 8, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(secureInput, 7, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(httpOnlyInput, 7, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
