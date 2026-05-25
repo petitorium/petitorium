@@ -1213,6 +1213,7 @@ func createCookiesTabWithData(colors *ColorManager,
 	app *tview.Application,
 	pages *tview.Pages,
 	footerUpdater func(),
+	cookieJar *workspace.CookieJar,
 ) *tview.Flex {
 	cookiesContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	cookiesContainer.SetBackgroundColor(colors.Background)
@@ -1253,12 +1254,13 @@ func createCookiesTabWithData(colors *ColorManager,
 	clearAllButton.SetSelectedFunc(func() {
 		clearCallback := func() {
 			currentCookies = []workspace.Cookie{}
+			cookieJar.ClearAll()
 			refreshCookiesUI()
 			if saveCallback != nil {
 				saveCallback()
 			}
 		}
-		form := createDeleteAllHeadersConfirm(app, pages, colors, clearCallback)
+		form := createDeleteAllCookiesConfirm(app, pages, colors, clearCallback)
 		modal := createModal(form, 50, 8, tcell.ColorDefault)
 		pages.AddPage("clearAllCookies", modal, true, true)
 		app.SetFocus(form)
@@ -2193,7 +2195,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	if cookieJar != nil {
 		initialCookies = cookieJar.Cookies
 	}
-	cookiesTab := createCookiesTabWithData(colors, initialCookies, saveCallback, focusSetter, app, pages, footerUpdater)
+	cookiesTab := createCookiesTabWithData(colors, initialCookies, saveCallback, focusSetter, app, pages, footerUpdater, cookieJar)
 
 	tabPages.AddPage(RequestTabInternalNames[0], bodyContainer, true, true)
 	tabPages.AddPage(RequestTabInternalNames[1], authTab, true, false)
