@@ -1225,6 +1225,67 @@ func createHeadersTabWithData(colors *ColorManager,
 	return headersContainer
 }
 
+func createCookiesTableHeader(colors *ColorManager) *tview.Flex {
+	headerRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	headerRow.SetBackgroundColor(colors.Background)
+
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+
+	domainLabel := tview.NewTextView()
+	domainLabel.SetText("Domain")
+	domainLabel.SetTextColor(colors.Foreground)
+	domainLabel.SetBackgroundColor(colors.Background)
+	domainLabel.SetTextAlign(tview.AlignLeft)
+
+	nameLabel := tview.NewTextView()
+	nameLabel.SetText("Name")
+	nameLabel.SetTextColor(colors.Foreground)
+	nameLabel.SetBackgroundColor(colors.Background)
+	nameLabel.SetTextAlign(tview.AlignLeft)
+
+	valueLabel := tview.NewTextView()
+	valueLabel.SetText("Value")
+	valueLabel.SetTextColor(colors.Foreground)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignLeft)
+
+	pathLabel := tview.NewTextView()
+	pathLabel.SetText("Path")
+	pathLabel.SetTextColor(colors.Foreground)
+	pathLabel.SetBackgroundColor(colors.Background)
+	pathLabel.SetTextAlign(tview.AlignLeft)
+
+	secureLabel := tview.NewTextView()
+	secureLabel.SetText("Secure")
+	secureLabel.SetTextColor(colors.Foreground)
+	secureLabel.SetBackgroundColor(colors.Background)
+	secureLabel.SetTextAlign(tview.AlignLeft)
+
+	httpOnlyLabel := tview.NewTextView()
+	httpOnlyLabel.SetText("HttpOnly")
+	httpOnlyLabel.SetTextColor(colors.Foreground)
+	httpOnlyLabel.SetBackgroundColor(colors.Background)
+	httpOnlyLabel.SetTextAlign(tview.AlignLeft)
+
+	headerRow.AddItem(domainLabel, 15, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nameLabel, 15, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(valueLabel, 15, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(pathLabel, 8, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(secureLabel, 9, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(httpOnlyLabel, 9, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+
+	return headerRow
+}
+
 func createCookiesTabWithData(colors *ColorManager,
 	initialCookies []workspace.Cookie,
 	saveCallback func(),
@@ -1305,6 +1366,8 @@ func createCookiesTabWithData(colors *ColorManager,
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	cookiesContainer.AddItem(spacer, 1, 0, false)
 
+	headerRow := createCookiesTableHeader(colors)
+	cookiesContainer.AddItem(headerRow, 1, 0, false)
 	cookiesContainer.AddItem(cookiesList, 0, 1, false)
 
 	for _, cookie := range initialCookies {
@@ -1497,9 +1560,9 @@ func addCookieRow(cookiesList *tview.Flex,
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(pathInput, 8, 0, false)
 	row.AddItem(spacer, 1, 0, false)
-	row.AddItem(secureInput.SetTitleAlign(tview.AlignCenter), 7, 0, false)
+	row.AddItem(secureInput, 9, 0, false)
 	row.AddItem(spacer, 1, 0, false)
-	row.AddItem(httpOnlyInput.SetTitleAlign(tview.AlignCenter), 7, 0, false)
+	row.AddItem(httpOnlyInput, 9, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
@@ -1664,9 +1727,9 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(pathInput, 8, 0, false)
 	row.AddItem(spacer, 1, 0, false)
-	row.AddItem(secureInput, 7, 0, false)
+	row.AddItem(secureInput, 9, 0, false)
 	row.AddItem(spacer, 1, 0, false)
-	row.AddItem(httpOnlyInput, 7, 0, false)
+	row.AddItem(httpOnlyInput, 9, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
