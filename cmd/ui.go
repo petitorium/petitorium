@@ -817,7 +817,7 @@ func addQueryParamRow(queryList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -918,7 +918,7 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetText(key)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -1440,7 +1440,7 @@ func addCookieRow(cookiesList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	domainInput := NewHeaderKeyInput(colors)
+	domainInput := AppInputDualMode(colors)
 	domainInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -1448,7 +1448,7 @@ func addCookieRow(cookiesList *tview.Flex,
 	})
 	domainInput.onModeChange = footerUpdater
 
-	nameInput := NewHeaderKeyInput(colors)
+	nameInput := AppInputDualMode(colors)
 	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -1464,7 +1464,7 @@ func addCookieRow(cookiesList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
-	pathInput := NewHeaderKeyInput(colors)
+	pathInput := AppInputDualMode(colors)
 	pathInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -1472,7 +1472,7 @@ func addCookieRow(cookiesList *tview.Flex,
 	})
 	pathInput.onModeChange = footerUpdater
 
-	secureInput := NewHeaderKeyInput(colors)
+	secureInput := AppInputDualMode(colors)
 	secureInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -1481,7 +1481,7 @@ func addCookieRow(cookiesList *tview.Flex,
 	secureInput.onModeChange = footerUpdater
 	secureInput.SetTitleAlign(tview.AlignCenter)
 
-	httpOnlyInput := NewHeaderKeyInput(colors)
+	httpOnlyInput := AppInputDualMode(colors)
 	httpOnlyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -1594,7 +1594,7 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	domainInput := NewHeaderKeyInput(colors)
+	domainInput := AppInputDualMode(colors)
 	domainInput.SetText(domain)
 	domainInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -1603,7 +1603,7 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	})
 	domainInput.onModeChange = footerUpdater
 
-	nameInput := NewHeaderKeyInput(colors)
+	nameInput := AppInputDualMode(colors)
 	nameInput.SetText(name)
 	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -1621,7 +1621,7 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	})
 	valueInput.onModeChange = footerUpdater
 
-	pathInput := NewHeaderKeyInput(colors)
+	pathInput := AppInputDualMode(colors)
 	pathInput.SetText(path)
 	pathInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -1630,7 +1630,7 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	})
 	pathInput.onModeChange = footerUpdater
 
-	secureInput := NewHeaderKeyInput(colors)
+	secureInput := AppInputDualMode(colors)
 	secureInput.SetText(fmt.Sprintf("%t", secure))
 	secureInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -1640,7 +1640,7 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	secureInput.onModeChange = footerUpdater
 	secureInput.SetTitleAlign(tview.AlignRight)
 
-	httpOnlyInput := NewHeaderKeyInput(colors)
+	httpOnlyInput := AppInputDualMode(colors)
 	httpOnlyInput.SetText(fmt.Sprintf("%t", httpOnly))
 	httpOnlyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -1754,7 +1754,7 @@ func addHeaderRow(headersList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -1858,7 +1858,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetText(key)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -3268,270 +3268,6 @@ func (h *HeaderValueInput) SetInputCapture(capture func(*tcell.EventKey) *tcell.
 
 // IsEditMode returns true if the component is in edit mode
 func (h *HeaderValueInput) IsEditMode() bool {
-	return h.currentMode == "edit"
-}
-
-// HeaderKeyInput is a dual-mode input component for header keys (similar to HeaderValueInput but with variable highlighting)
-type HeaderKeyInput struct {
-	*tview.Pages
-	viewMode      *tview.TextView
-	editMode      *tview.InputField
-	currentMode   string // "view" or "edit"
-	rawText       string // The actual text
-	onChanged     func(string)
-	onModeChange  func()
-	colors        *ColorManager
-	variableRegex *regexp.Regexp
-	lastWidth     int
-}
-
-// NewHeaderKeyInput creates a new dual-mode header key input component
-func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
-	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
-
-	viewMode := tview.NewTextView().
-		SetDynamicColors(true).
-		SetWordWrap(false).
-		SetScrollable(false)
-
-	viewMode.SetBackgroundColor(colors.InputBackground)
-	viewMode.SetTextColor(colors.Foreground)
-	viewMode.SetBorderPadding(0, 0, 0, 0)
-
-	editMode := tview.NewInputField()
-	editMode.SetBackgroundColor(colors.Background)
-	editMode.SetFieldBackgroundColor(colors.InputBackground)
-	editMode.SetFieldTextColor(colors.Foreground)
-	editMode.SetBorder(false)
-
-	editMode.SetFocusFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.Error)
-	})
-
-	editMode.SetBlurFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.InputBackground)
-	})
-
-	pages := tview.NewPages()
-	pages.SetBackgroundColor(colors.Background)
-	pages.AddPage("view", viewMode, true, true)
-	pages.AddPage("edit", editMode, true, false)
-
-	input := &HeaderKeyInput{
-		Pages:         pages,
-		viewMode:      viewMode,
-		editMode:      editMode,
-		currentMode:   "view",
-		rawText:       "",
-		colors:        colors,
-		variableRegex: variableRegex,
-	}
-
-	editMode.SetChangedFunc(func(text string) {
-		input.rawText = text
-		if input.onChanged != nil {
-			input.onChanged(text)
-		}
-	})
-
-	editMode.SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEsc {
-			input.switchToViewMode()
-		}
-	})
-
-	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Rune() == 'i' {
-			input.switchToEditMode()
-			return nil
-		}
-		return event
-	})
-
-	viewMode.SetFocusFunc(func() {
-		viewMode.SetBackgroundColor(colors.SelectedBackground)
-		viewMode.SetTextColor(colors.SelectedForeground)
-	})
-
-	viewMode.SetBlurFunc(func() {
-		viewMode.SetBackgroundColor(colors.InputBackground)
-		viewMode.SetTextColor(colors.Foreground)
-	})
-
-	return input
-}
-
-// switchToViewMode switches to view mode, showing the text
-func (h *HeaderKeyInput) switchToViewMode() {
-	h.currentMode = "view"
-	h.viewMode.SetBackgroundColor(h.colors.InputBackground)
-	h.Pages.SwitchToPage("view")
-	h.updateViewMode()
-	if h.onModeChange != nil {
-		h.onModeChange()
-	}
-}
-
-// switchToEditMode switches to edit mode, showing raw text
-func (h *HeaderKeyInput) switchToEditMode() {
-	h.currentMode = "edit"
-	h.editMode.SetBackgroundColor(h.colors.Background)
-	h.editMode.SetFieldBackgroundColor(h.colors.InputBackground)
-	h.editMode.SetText(h.rawText)
-	h.Pages.SwitchToPage("edit")
-	if h.onModeChange != nil {
-		h.onModeChange()
-	}
-}
-
-// Focus delegates focus to the appropriate child component
-func (h *HeaderKeyInput) Focus(delegate func(p tview.Primitive)) {
-	// Let the Pages container handle focus for the visible page
-	h.Pages.Focus(delegate)
-}
-
-// Draw overrides the default Draw method to handle truncation in view mode
-func (h *HeaderKeyInput) Draw(screen tcell.Screen) {
-	if h.currentMode == "view" {
-		_, _, width, _ := h.viewMode.GetInnerRect()
-		if width > 0 && width != h.lastWidth {
-			h.lastWidth = width
-			h.updateViewModeWithWidth(width)
-		}
-	}
-	h.Pages.Draw(screen)
-}
-
-// HasFocus returns whether the component or its children have focus
-
-func (h *HeaderKeyInput) HasFocus() bool {
-	if h.currentMode == "edit" {
-		return h.editMode.HasFocus()
-	}
-	return h.viewMode.HasFocus()
-}
-
-// InputHandler handles input for the component
-func (h *HeaderKeyInput) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-		// Handle 'i' key to switch to edit mode when in view mode
-		if event.Rune() == 'i' && h.currentMode == "view" {
-			h.switchToEditMode()
-			// Focus the edit field
-			setFocus(h.editMode)
-			return
-		}
-
-		// For Tab/Backtab events, let them bubble up to parent navigation
-		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
-			// Return to let parent handle it
-			return
-		}
-		// For other events, delegate to the Pages component
-		if h.Pages.InputHandler() != nil {
-			h.Pages.InputHandler()(event, setFocus)
-		}
-	}
-}
-
-// MouseHandler delegates to the Pages container
-func (h *HeaderKeyInput) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
-	return h.Pages.MouseHandler()
-}
-
-// updateViewMode renders the text with variables highlighted in view mode
-func (h *HeaderKeyInput) updateViewMode() {
-	h.lastWidth = 0
-	h.updateViewModeWithWidth(0)
-}
-
-// updateViewModeWithWidth renders the text with variables highlighted and optional truncation
-func (h *HeaderKeyInput) updateViewModeWithWidth(width int) {
-	if h.rawText == "" {
-		h.viewMode.SetText("")
-		return
-	}
-
-	// Find all variable positions
-	matches := h.variableRegex.FindAllStringIndex(h.rawText, -1)
-	if len(matches) == 0 {
-		text := h.rawText
-		if width > 0 {
-			text = TruncateTaggedString(text, width)
-		}
-		h.viewMode.SetText(text)
-		return
-	}
-
-	// Build result with proper spacing
-	var result strings.Builder
-	lastEnd := 0
-
-	for i, match := range matches {
-		start, end := match[0], match[1]
-
-		// Add text before this variable
-		result.WriteString(h.rawText[lastEnd:start])
-
-		// Extract variable name (remove {{ and }})
-		varName := h.rawText[start+2 : end-2]
-
-		// Render variable with background color (same as URL component)
-		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
-			config.C.Theme.DropdownFocusedBackground,
-			config.C.Theme.BorderFocusColor,
-			varName))
-
-		// Add space only if next character is another variable (no text between)
-		if i < len(matches)-1 && end == matches[i+1][0] {
-			result.WriteString(" ")
-		}
-
-		lastEnd = end
-	}
-
-	// Add remaining text after last variable
-	result.WriteString(h.rawText[lastEnd:])
-
-	renderedText := result.String()
-	if width > 0 {
-		renderedText = TruncateTaggedString(renderedText, width)
-	}
-
-	h.viewMode.SetText(renderedText)
-}
-
-// SetText sets the text content
-func (h *HeaderKeyInput) SetText(text string) {
-	h.rawText = text
-	if h.currentMode == "view" {
-		h.updateViewMode()
-	} else {
-		h.editMode.SetText(text)
-	}
-	if h.onChanged != nil {
-		h.onChanged(text)
-	}
-}
-
-// GetText returns the current text
-func (h *HeaderKeyInput) GetText() string {
-	return h.rawText
-}
-
-// SetChangedFunc sets the callback for when text changes
-func (h *HeaderKeyInput) SetChangedFunc(callback func(string)) {
-	h.onChanged = callback
-}
-
-// SetInputCapture sets input capture for the component
-func (h *HeaderKeyInput) SetInputCapture(capture func(*tcell.EventKey) *tcell.EventKey) {
-	h.viewMode.SetInputCapture(capture)
-	h.editMode.SetInputCapture(capture)
-}
-
-// IsEditMode returns true if the component is in edit mode
-func (h *HeaderKeyInput) IsEditMode() bool {
 	return h.currentMode == "edit"
 }
 
