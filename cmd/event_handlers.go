@@ -172,14 +172,14 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 	case event.Key() == tcell.KeyLeft:
 		// Wrap around from left
 		if isRequestPanel {
-			targetTabIndex = (ui.CurrentTabIndex - 1 + 4) % 4
+			targetTabIndex = (ui.CurrentTabIndex - 1 + len(RequestTabInternalNames)) % len(RequestTabInternalNames)
 		} else if isResponsePanel {
 			targetTabIndex = (ui.CurrentResponseTabIndex - 1 + 4) % 4
 		}
 	case event.Key() == tcell.KeyRight:
 		// Wrap around from right
 		if isRequestPanel {
-			targetTabIndex = (ui.CurrentTabIndex + 1) % 4
+			targetTabIndex = (ui.CurrentTabIndex + 1) % len(RequestTabInternalNames)
 		} else if isResponsePanel {
 			targetTabIndex = (ui.CurrentResponseTabIndex + 1) % 4
 		}
