@@ -30,6 +30,9 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 		// Sync query params from UI before saving
 		currentRequest.QueryParams = getQueryParamsFromUI()
 
+		// Sync cookies from UI before saving
+		syncCookiesFromUI(workspaceData)
+
 		// Sync body content based on content type
 		if currentRequest.ContentType == "Multipart" {
 			multipartBody := collectMultipartFieldsFromUI()
@@ -52,6 +55,46 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 			return
 		}
 	}
+}
+
+func syncCookiesFromUI(workspaceData *workspace.Workspace) {
+	if workspaceData == nil {
+		return
+	}
+
+	workspaceData.CookieJar.Cookies = nil
+
+	for _, row := range currentCookieRows {
+		domain := row.DomainInput.GetText()
+		name := row.NameInput.GetText()
+		value := row.ValueInput.GetText()
+		path := row.PathInput.GetText()
+		secureStr := row.SecureInput.GetText()
+		httpOnlyStr := row.HttpOnlyInput.GetText()
+		enabled := row.Checkbox.IsEnabled()
+
+		secure := secureStr == "true"
+		httpOnly := httpOnlyStr == "true"
+
+		cookie := workspace.Cookie{
+			Name:     name,
+			Value:    value,
+			Domain:   domain,
+			Path:     path,
+			Secure:   secure,
+			HttpOnly: httpOnly,
+			Enabled:  enabled,
+		}
+
+		workspaceData.CookieJar.Cookies = append(workspaceData.CookieJar.Cookies, cookie)
+	}
+}
+
+func SaveCookies(workspaceData *workspace.Workspace) {
+	if workspaceData == nil {
+		return
+	}
+	workspace.SaveWorkspace(workspaceData)
 }
 
 // syncMethodDropdown syncs the method dropdown with the current request's method

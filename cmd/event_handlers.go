@@ -1340,6 +1340,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.RequestInProgress = true
 		ui.SendButton.SetSending(true)
 
+		syncCookiesFromUI(ui.WorkspaceData)
+
 		// Send the request in a goroutine
 		go func() {
 			resp, err := SendRequest(method, url, body, contentType, headersStr, queryParamsStr, &ui.WorkspaceData.CookieJar)
