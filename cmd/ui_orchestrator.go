@@ -100,6 +100,8 @@ type UIOrchestrator struct {
 	DeleteAllHeadersButton     *CustomButton
 	AddQueryParamButton        *CustomButton
 	DeleteAllQueryParamsButton *CustomButton
+	AddCookieButton            *CustomButton
+	DeleteAllCookiesButton     *CustomButton
 	Response                   *tview.Flex
 	Footer                     *tview.Flex
 	FooterLeft                 *tview.TextView
@@ -154,6 +156,8 @@ type UIOrchestrator struct {
 	NavCurrentHeaderElement             int // For navigation within a header row (0: Key input, 1: Value input, 2: Delete button)
 	NavCurrentQueryParamRowElement      int // For navigation within query params (0: Add Param, 1: Delete All, 2+: param rows)
 	NavCurrentQueryParamElement         int // For navigation within a query param row (0: Key input, 1: Value input, 2: Delete button)
+	NavCurrentCookieRowElement          int // For navigation within cookies (0: Add Cookie, 1: Delete All, 2+: cookie rows)
+	NavCurrentCookieElement             int // For navigation within a cookie row (0: Domain, 1: Name, 2: Value, 3: Path, 4: Secure, 5: HttpOnly, 6: Checkbox, 7: Delete button)
 	NavPreviousContainer                int
 	NavRequestInTabHeaders              bool // True when in Request panel tab headers
 	NavResponseInTabHeaders             bool // True when in Response panel tab headers
@@ -733,6 +737,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		DeleteAllHeadersButton:       currentDeleteAllHeadersButton,
 		AddQueryParamButton:          currentAddQueryParamButton,
 		DeleteAllQueryParamsButton:   currentDeleteAllQueryParamsButton,
+		AddCookieButton:              currentAddCookieButton,
+		DeleteAllCookiesButton:       currentDeleteAllCookiesButton,
 		MultipartAddButton:           currentMultipartAddButton,
 		MultipartDeleteAllButton:     currentMultipartDeleteAllButton,
 		Suspend:                      app.Suspend,

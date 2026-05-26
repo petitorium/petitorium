@@ -1065,6 +1065,8 @@ var currentCookies []workspace.Cookie
 
 var currentCookiesList *tview.Flex
 
+var currentCookiesTab *tview.Flex
+
 var refreshCookiesTab func()
 
 var rowHeight int = 1
@@ -1307,6 +1309,7 @@ func createCookiesTabWithData(colors *ColorManager,
 
 	currentCookieRows = nil
 	currentCookiesList = cookiesList
+	currentCookiesTab = cookiesContainer
 
 	var refreshCookiesUI func()
 	refreshCookiesUI = func() {
