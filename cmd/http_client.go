@@ -20,10 +20,6 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
-// func logToFile(msg string) {
-// 	debugLog("%s", msg)
-// }
-
 // HTTPResponse represents the response from an HTTP request
 type HTTPResponse struct {
 	StatusCode int

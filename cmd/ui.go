@@ -1333,7 +1333,7 @@ func createCookiesTabWithData(colors *ColorManager,
 	addButton := createThemedButton(" Add Cookie ", colors)
 	currentAddCookieButton = addButton
 	addButton.SetSelectedFunc(func() {
-		addCookieRow(cookiesList, colors, refreshCookiesUI, saveCallback, focusSetter, footerUpdater)
+		addCookieRow(cookiesList, colors, refreshCookiesUI, saveCallback, focusSetter, footerUpdater, app, pages)
 		if footerUpdater != nil {
 			footerUpdater()
 		}
@@ -1371,7 +1371,7 @@ func createCookiesTabWithData(colors *ColorManager,
 	cookiesContainer.AddItem(cookiesList, 0, 1, false)
 
 	for _, cookie := range initialCookies {
-		addCookieRowWithData(cookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, refreshCookiesUI, saveCallback, focusSetter, footerUpdater)
+		addCookieRowWithData(cookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, refreshCookiesUI, saveCallback, focusSetter, footerUpdater, app, pages)
 	}
 
 	refreshCookiesUI()
@@ -1379,14 +1379,14 @@ func createCookiesTabWithData(colors *ColorManager,
 	return cookiesContainer
 }
 
-func RefreshCookiesTab(cookies []workspace.Cookie, colors *ColorManager) {
+func RefreshCookiesTab(cookies []workspace.Cookie, colors *ColorManager, app *tview.Application, pages *tview.Pages) {
 	if currentCookiesList == nil {
 		return
 	}
 	currentCookieRows = nil
 	currentCookiesList.Clear()
 	for _, cookie := range cookies {
-		addCookieRowWithData(currentCookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, func() {}, nil, func(p tview.Primitive) {}, func() {})
+		addCookieRowWithData(currentCookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, func() {}, nil, func(p tview.Primitive) {}, func() {}, app, pages)
 	}
 	if len(cookies) == 0 {
 		emptyLabel := tview.NewTextView()
@@ -1436,6 +1436,8 @@ func addCookieRow(cookiesList *tview.Flex,
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 	footerUpdater func(),
+	app *tview.Application,
+	pages *tview.Pages,
 ) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
@@ -1539,16 +1541,22 @@ func addCookieRow(cookiesList *tview.Flex,
 	}
 
 	removeButton.SetSelectedFunc(func() {
-		for i, r := range currentCookieRows {
-			if r == cookieRow {
-				currentCookieRows = append(currentCookieRows[:i], currentCookieRows[i+1:]...)
-				refreshUI()
-				if saveCallback != nil {
-					saveCallback()
+		deleteCallback := func() {
+			for i, r := range currentCookieRows {
+				if r == cookieRow {
+					currentCookieRows = append(currentCookieRows[:i], currentCookieRows[i+1:]...)
+					refreshUI()
+					if saveCallback != nil {
+						saveCallback()
+					}
+					break
 				}
-				break
 			}
 		}
+		form := createDeleteCookieConfirm(app, pages, colors, "this cookie", deleteCallback)
+		modal := createModal(form, 40, 8, tcell.ColorDefault)
+		pages.AddPage("deleteCookie", modal, true, true)
+		app.SetFocus(form)
 	})
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
@@ -1590,6 +1598,8 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	saveCallback func(),
 	focusSetter func(tview.Primitive),
 	footerUpdater func(),
+	app *tview.Application,
+	pages *tview.Pages,
 ) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
@@ -1706,16 +1716,22 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	}
 
 	removeButton.SetSelectedFunc(func() {
-		for i, r := range currentCookieRows {
-			if r == cookieRow {
-				currentCookieRows = append(currentCookieRows[:i], currentCookieRows[i+1:]...)
-				refreshUI()
-				if saveCallback != nil {
-					saveCallback()
+		deleteCallback := func() {
+			for i, r := range currentCookieRows {
+				if r == cookieRow {
+					currentCookieRows = append(currentCookieRows[:i], currentCookieRows[i+1:]...)
+					refreshUI()
+					if saveCallback != nil {
+						saveCallback()
+					}
+					break
 				}
-				break
 			}
 		}
+		form := createDeleteCookieConfirm(app, pages, colors, name, deleteCallback)
+		modal := createModal(form, 40, 8, tcell.ColorDefault)
+		pages.AddPage("deleteCookie", modal, true, true)
+		app.SetFocus(form)
 	})
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)

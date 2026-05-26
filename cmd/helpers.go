@@ -30,9 +30,6 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 		// Sync query params from UI before saving
 		currentRequest.QueryParams = getQueryParamsFromUI()
 
-		// Sync cookies from UI before saving
-		syncCookiesFromUI(workspaceData)
-
 		// Sync body content based on content type
 		if currentRequest.ContentType == "Multipart" {
 			multipartBody := collectMultipartFieldsFromUI()

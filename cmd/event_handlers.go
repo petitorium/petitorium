@@ -1488,7 +1488,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				now := time.Now()
 				ui.LastResponse = resp
 				updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
-				RefreshCookiesTab(ui.WorkspaceData.CookieJar.Cookies, ui.Colors)
+				RefreshCookiesTab(ui.WorkspaceData.CookieJar.Cookies, ui.Colors, ui.App, ui.Pages)
 			})
 		}()
 	})

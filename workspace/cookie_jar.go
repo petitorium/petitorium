@@ -95,6 +95,7 @@ func (cj *CookieJar) addCookie(cookie *http.Cookie, u *url.URL) {
 		Secure:   secure,
 		HttpOnly: httpOnly,
 		SameSite: sameSite,
+		Enabled:  true,
 	}
 
 	for i, c := range cj.Cookies {
