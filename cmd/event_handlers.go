@@ -908,7 +908,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						StatusCode: lastResponse.StatusCode,
 						Status:     lastResponse.Status,
 						Headers:    lastResponse.Headers,
-						Cookies:    nil, // No cookies in stored history
+						Cookies:    convertCookies(lastResponse.Cookies),
 						Body:       lastResponse.Body,
 						Duration:   lastResponse.Duration,
 						Timestamp:  lastResponse.Timestamp,
@@ -1480,6 +1480,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						StatusCode: resp.StatusCode,
 						Status:     resp.Status,
 						Headers:    resp.Headers,
+						Cookies:    httpCookieToWorkspaceCookie(resp.Cookies),
 						Body:       body,
 						Duration:   resp.Duration,
 						Timestamp:  resp.Timestamp,
