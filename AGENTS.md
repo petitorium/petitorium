@@ -87,6 +87,7 @@ Group imports into three blocks separated by newlines:
 ### Performance
 
 - **QueueUpdateDraw**: Use `app.QueueUpdateDraw` for any UI updates triggered from background goroutines (like HTTP requests) to avoid race conditions and ensure thread safety.
+- **Never use app.Draw()**: Calling `app.Draw()` directly causes the application to hang (deadlock in the tview event/draw loop). Always rely on the normal draw cycle or `QueueUpdateDraw`.
 
 ## Common Patterns
 

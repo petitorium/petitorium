@@ -1326,6 +1326,7 @@ func createCookiesTabWithData(colors *ColorManager,
 			cookiesList.AddItem(emptyLabel, 1, 0, false)
 		}
 	}
+	refreshCookiesTab = refreshCookiesUI
 
 	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
 	buttonRow.SetBackgroundColor(colors.Background)
@@ -1386,7 +1387,7 @@ func RefreshCookiesTab(cookies []workspace.Cookie, colors *ColorManager, app *tv
 	currentCookieRows = nil
 	currentCookiesList.Clear()
 	for _, cookie := range cookies {
-		addCookieRowWithData(currentCookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, func() {}, nil, func(p tview.Primitive) {}, func() {}, app, pages)
+		addCookieRowWithData(currentCookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, refreshCookiesTab, nil, func(p tview.Primitive) {}, func() {}, app, pages)
 	}
 	if len(cookies) == 0 {
 		emptyLabel := tview.NewTextView()
