@@ -172,14 +172,14 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 	case event.Key() == tcell.KeyLeft:
 		// Wrap around from left
 		if isRequestPanel {
-			targetTabIndex = (ui.CurrentTabIndex - 1 + 4) % 4
+			targetTabIndex = (ui.CurrentTabIndex - 1 + len(RequestTabInternalNames)) % len(RequestTabInternalNames)
 		} else if isResponsePanel {
 			targetTabIndex = (ui.CurrentResponseTabIndex - 1 + 4) % 4
 		}
 	case event.Key() == tcell.KeyRight:
 		// Wrap around from right
 		if isRequestPanel {
-			targetTabIndex = (ui.CurrentTabIndex + 1) % 4
+			targetTabIndex = (ui.CurrentTabIndex + 1) % len(RequestTabInternalNames)
 		} else if isResponsePanel {
 			targetTabIndex = (ui.CurrentResponseTabIndex + 1) % 4
 		}
@@ -908,7 +908,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						StatusCode: lastResponse.StatusCode,
 						Status:     lastResponse.Status,
 						Headers:    lastResponse.Headers,
-						Cookies:    nil, // No cookies in stored history
+						Cookies:    convertCookies(lastResponse.Cookies),
 						Body:       lastResponse.Body,
 						Duration:   lastResponse.Duration,
 						Timestamp:  lastResponse.Timestamp,
@@ -1126,6 +1126,28 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.DeleteAllQueryParamsButton.Flash()
 		})
 	}
+	if ui.AddCookieButton != nil {
+		ui.AddCookieButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 4
+			ui.NavCurrentCookieRowElement = 0
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+			ui.AddCookieButton.Flash()
+		})
+	}
+	if ui.DeleteAllCookiesButton != nil {
+		ui.DeleteAllCookiesButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 4
+			ui.NavRequestInTabHeaders = false
+			ui.NavCurrentChild = 4
+			ui.NavCurrentCookieRowElement = 1
+			syncMainCycleWithExperimental(ui)
+			ui.UpdateFooter()
+			ui.DeleteAllCookiesButton.Flash()
+		})
+	}
 	if ui.ResponseHeadersPanel != nil {
 		// ResponseHeadersPanel is tview.Primitive, which has SetFocusFunc
 		// But we need to use a type assertion to a concrete type if we want to call SetFocusFunc?
@@ -1340,9 +1362,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.RequestInProgress = true
 		ui.SendButton.SetSending(true)
 
+		syncCookiesFromUI(ui.WorkspaceData)
+
 		// Send the request in a goroutine
 		go func() {
-			resp, err := SendRequest(method, url, body, contentType, headersStr, queryParamsStr)
+			resp, err := SendRequest(method, url, body, contentType, headersStr, queryParamsStr, &ui.WorkspaceData.CookieJar)
 
 			// Use QueueUpdateDraw to handle the response on the main thread
 			ui.App.QueueUpdateDraw(func() {
@@ -1456,6 +1480,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						StatusCode: resp.StatusCode,
 						Status:     resp.Status,
 						Headers:    resp.Headers,
+						Cookies:    httpCookieToWorkspaceCookie(resp.Cookies),
 						Body:       body,
 						Duration:   resp.Duration,
 						Timestamp:  resp.Timestamp,
@@ -1486,6 +1511,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				now := time.Now()
 				ui.LastResponse = resp
 				updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
+				RefreshCookiesTab(ui.WorkspaceData.CookieJar.Cookies, ui.Colors, ui.App, ui.Pages)
 			})
 		}()
 	})
@@ -1939,7 +1965,7 @@ func getMaxChildForContainer(container int) int {
 	case 3: // URLBar
 		return 3 // MethodDropdown (0), URLInput (1), SendButton (2), CurlButton (3)
 	case 4: // Request
-		return 3 // BodyTab (0), AuthTab (1), QueryTab (2), HeadersTab (3)
+		return 4 // BodyTab (0), AuthTab (1), QueryTab (2), HeadersTab (3), CookiesTab (4)
 	case 5: // Response
 		return 3 // PreviewTab (0), HeadersTab (1), CookiesTab (2), TimelineTab (3)
 	default:
@@ -2039,6 +2065,15 @@ func getMaxQueryParamRowElement(queryParamRow *QueryParamRow) int {
 
 	// Query param rows have: Key input (0), Value input (1), Checkbox (2), Delete button (3)
 	return 3
+}
+
+func getMaxCookieRowElement(cookieRow *CookieRow) int {
+	if cookieRow == nil {
+		return 0
+	}
+
+	// Cookie rows have: Domain (0), Name (1), Value (2), Path (3), Secure (4), HttpOnly (5), Checkbox (6), Delete button (7)
+	return 7
 }
 
 // getCurrentContentType returns the current content type from the dropdown
@@ -2620,6 +2655,142 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 					// Fallback to focusing on the tab container
 					ui.App.SetFocus(ui.RequestDataTabs)
 				}
+			case 4: // CookiesTab
+				// Focus cookies tab content
+				// Use NavCurrentCookieRowElement to determine which element to focus on:
+				// 0: Add Cookie button
+				// 1: Delete All button
+				// 2+: Cookie rows
+				// Note: Cookies button row layout is [addButton, nil-spacer, clearAllButton, nil-spacer]
+				//       so Delete All is at index 2, not 1 like Headers/Query.
+				if currentCookiesTab != nil {
+					// Get the button row (first child of cookies container)
+					buttonRow := currentCookiesTab.GetItem(0)
+					if buttonRow != nil {
+						buttonRowFlex, ok := buttonRow.(*tview.Flex)
+						if ok && buttonRowFlex != nil && buttonRowFlex.GetItemCount() > 2 {
+							// Determine which element to focus based on NavCurrentCookieRowElement
+							if ui.NavCurrentCookieRowElement < 2 {
+								// We're on a button (Add Cookie or Delete All)
+								switch ui.NavCurrentCookieRowElement {
+								case 0: // Add Cookie button
+									addButton := buttonRowFlex.GetItem(0)
+									if addButton != nil {
+										ui.App.SetFocus(addButton)
+									} else {
+										ui.App.SetFocus(currentCookiesTab)
+									}
+								case 1: // Delete All button
+									deleteAllButton := buttonRowFlex.GetItem(2)
+									if deleteAllButton != nil {
+										ui.App.SetFocus(deleteAllButton)
+									} else {
+										// Fallback to Add Cookie button
+										addButton := buttonRowFlex.GetItem(0)
+										if addButton != nil {
+											ui.App.SetFocus(addButton)
+										} else {
+											ui.App.SetFocus(currentCookiesTab)
+										}
+									}
+								}
+							} else {
+								// We're on a cookie row (NavCurrentCookieRowElement >= 2)
+								cookieRowIndex := ui.NavCurrentCookieRowElement - 2
+								if cookieRowIndex >= 0 && cookieRowIndex < len(currentCookieRows) {
+									cookieRow := currentCookieRows[cookieRowIndex]
+									if cookieRow != nil {
+										// Determine which element within the cookie row to focus
+										switch ui.NavCurrentCookieElement {
+										case 0: // Domain input
+											if cookieRow.DomainInput != nil {
+												ui.App.SetFocus(cookieRow.DomainInput)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										case 1: // Name input
+											if cookieRow.NameInput != nil {
+												ui.App.SetFocus(cookieRow.NameInput)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										case 2: // Value input
+											if cookieRow.ValueInput != nil {
+												ui.App.SetFocus(cookieRow.ValueInput)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										case 3: // Path input
+											if cookieRow.PathInput != nil {
+												ui.App.SetFocus(cookieRow.PathInput)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										case 4: // Secure input
+											if cookieRow.SecureInput != nil {
+												ui.App.SetFocus(cookieRow.SecureInput)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										case 5: // HttpOnly input
+											if cookieRow.HttpOnlyInput != nil {
+												ui.App.SetFocus(cookieRow.HttpOnlyInput)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										case 6: // Checkbox
+											if cookieRow.Checkbox != nil {
+												ui.App.SetFocus(cookieRow.Checkbox)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										case 7: // Delete button
+											if cookieRow.DeleteButton != nil {
+												ui.App.SetFocus(cookieRow.DeleteButton)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										default:
+											ui.NavCurrentCookieElement = 0
+											if cookieRow.DomainInput != nil {
+												ui.App.SetFocus(cookieRow.DomainInput)
+											} else {
+												ui.App.SetFocus(currentCookiesTab)
+											}
+										}
+									} else {
+										// Cookie row is nil, focus on Add Cookie button
+										ui.NavCurrentCookieRowElement = 0
+										ui.NavCurrentCookieElement = 0
+										addButton := buttonRowFlex.GetItem(0)
+										if addButton != nil {
+											ui.App.SetFocus(addButton)
+										} else {
+											ui.App.SetFocus(currentCookiesTab)
+										}
+									}
+								} else {
+									// Invalid cookie row index, focus on Add Cookie button
+									ui.NavCurrentCookieRowElement = 0
+									ui.NavCurrentCookieElement = 0
+									addButton := buttonRowFlex.GetItem(0)
+									if addButton != nil {
+										ui.App.SetFocus(addButton)
+									} else {
+										ui.App.SetFocus(currentCookiesTab)
+									}
+								}
+							}
+						} else {
+							ui.App.SetFocus(currentCookiesTab)
+						}
+					} else {
+						ui.App.SetFocus(currentCookiesTab)
+					}
+				} else {
+					// Fallback to focusing on the tab container
+					ui.App.SetFocus(ui.RequestDataTabs)
+				}
 			default:
 				// Fallback to first child
 				ui.NavCurrentChild = 0
@@ -2697,6 +2868,8 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 			ui.NavCurrentFieldRowElement = 0
 			ui.NavCurrentHeaderRowElement = 0
 			ui.NavCurrentHeaderElement = 0
+			ui.NavCurrentCookieRowElement = 0
+			ui.NavCurrentCookieElement = 0
 		} else {
 			// We're in tab content mode
 			// Navigation depends on which tab is active
@@ -2882,6 +3055,58 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					// Check exit (if no query params)
 					if ui.NavCurrentQueryParamRowElement == 2 {
 						if currentQueryRows == nil || len(currentQueryRows) == 0 {
+							// Exit to Response Panel
+							ui.NavCurrentContainer = 5
+							ui.NavResponseInTabHeaders = false
+							ui.NavRequestInTabHeaders = true // Reset for next entry
+						}
+					}
+				}
+
+			case 4: // Cookies Tab
+				// Cookies internal navigation
+				// 0: Add, 1: Delete All, 2+: Rows
+				if ui.NavCurrentCookieRowElement >= 2 {
+					cookieRowIndex := ui.NavCurrentCookieRowElement - 2
+					cookieRowValid := false
+					if cookieRowIndex >= 0 && cookieRowIndex < len(currentCookieRows) {
+						if currentCookieRows[cookieRowIndex] != nil {
+							cookieRowValid = true
+						}
+					}
+
+					maxCookieElement := 0
+					if cookieRowValid {
+						maxCookieElement = getMaxCookieRowElement(currentCookieRows[cookieRowIndex])
+					}
+
+					if cookieRowValid && ui.NavCurrentCookieElement < maxCookieElement {
+						ui.NavCurrentCookieElement++
+					} else {
+						// Next row
+						ui.NavCurrentCookieElement = 0
+						ui.NavCurrentCookieRowElement++
+
+						// Check exit
+						maxCookieRowElement := 2
+						if currentCookieRows != nil {
+							maxCookieRowElement = 2 + len(currentCookieRows)
+						}
+						if ui.NavCurrentCookieRowElement >= maxCookieRowElement {
+							// Exit to Response Panel
+							ui.NavCurrentContainer = 5
+							ui.NavResponseInTabHeaders = false
+							ui.NavRequestInTabHeaders = true // Reset for next entry
+						}
+					}
+				} else {
+					// Buttons
+					ui.NavCurrentCookieRowElement++ // 0 -> 1 or 1 -> 2
+					ui.NavCurrentCookieElement = 0
+
+					// Check exit (if no cookies)
+					if ui.NavCurrentCookieRowElement == 2 {
+						if currentCookieRows == nil || len(currentCookieRows) == 0 {
 							// Exit to Response Panel
 							ui.NavCurrentContainer = 5
 							ui.NavResponseInTabHeaders = false
@@ -3131,6 +3356,34 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// At start of Headers -> Go to Tab Headers
 					ui.NavRequestInTabHeaders = true
 				}
+			case 4: // Cookies
+				// Cookies back navigation
+				if ui.NavCurrentCookieRowElement > 0 {
+					if ui.NavCurrentCookieRowElement >= 2 {
+						// In row
+						if ui.NavCurrentCookieElement > 0 {
+							ui.NavCurrentCookieElement--
+						} else {
+							ui.NavCurrentCookieRowElement--
+							// Check if prev is row
+							if ui.NavCurrentCookieRowElement >= 2 {
+								idx := ui.NavCurrentCookieRowElement - 2
+								if idx >= 0 && idx < len(currentCookieRows) {
+									ui.NavCurrentCookieElement = getMaxCookieRowElement(currentCookieRows[idx])
+								}
+							} else {
+								ui.NavCurrentCookieElement = 0
+							}
+						}
+					} else {
+						// Buttons
+						ui.NavCurrentCookieRowElement--
+						ui.NavCurrentCookieElement = 0
+					}
+				} else {
+					// At start of Cookies -> Go to Tab Headers
+					ui.NavRequestInTabHeaders = true
+				}
 			default: // Auth/Query
 				// Go to Tab Headers
 				ui.NavRequestInTabHeaders = true
@@ -3214,6 +3467,26 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 				}
 			} else {
 				ui.NavCurrentHeaderElement = 0
+			}
+		case 4: // Cookies
+			// Set to last element
+			maxCookieRowElement := 2
+			if currentCookieRows != nil {
+				maxCookieRowElement = 2 + len(currentCookieRows)
+			}
+			if maxCookieRowElement > 0 {
+				ui.NavCurrentCookieRowElement = maxCookieRowElement - 1
+			} else {
+				ui.NavCurrentCookieRowElement = 0
+			}
+
+			if ui.NavCurrentCookieRowElement >= 2 {
+				idx := ui.NavCurrentCookieRowElement - 2
+				if idx >= 0 && idx < len(currentCookieRows) {
+					ui.NavCurrentCookieElement = getMaxCookieRowElement(currentCookieRows[idx])
+				}
+			} else {
+				ui.NavCurrentCookieElement = 0
 			}
 		default:
 			// Simple tabs, just enter content

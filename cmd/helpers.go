@@ -54,6 +54,46 @@ func saveCurrentRequest(currentRequest *workspace.Request, workspaceData *worksp
 	}
 }
 
+func syncCookiesFromUI(workspaceData *workspace.Workspace) {
+	if workspaceData == nil {
+		return
+	}
+
+	workspaceData.CookieJar.Cookies = nil
+
+	for _, row := range currentCookieRows {
+		domain := row.DomainInput.GetText()
+		name := row.NameInput.GetText()
+		value := row.ValueInput.GetText()
+		path := row.PathInput.GetText()
+		secureStr := row.SecureInput.GetText()
+		httpOnlyStr := row.HttpOnlyInput.GetText()
+		enabled := row.Checkbox.IsEnabled()
+
+		secure := secureStr == "true"
+		httpOnly := httpOnlyStr == "true"
+
+		cookie := workspace.Cookie{
+			Name:     name,
+			Value:    value,
+			Domain:   domain,
+			Path:     path,
+			Secure:   secure,
+			HttpOnly: httpOnly,
+			Enabled:  enabled,
+		}
+
+		workspaceData.CookieJar.Cookies = append(workspaceData.CookieJar.Cookies, cookie)
+	}
+}
+
+func SaveCookies(workspaceData *workspace.Workspace) {
+	if workspaceData == nil {
+		return
+	}
+	workspace.SaveWorkspace(workspaceData)
+}
+
 // syncMethodDropdown syncs the method dropdown with the current request's method
 func syncMethodDropdown(currentRequest *workspace.Request, methodDropdown *tview.DropDown, programmaticallyUpdatingMethod *bool) {
 	if currentRequest != nil {

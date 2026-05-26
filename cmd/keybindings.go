@@ -1124,7 +1124,7 @@ func enterInsertMode(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 
 func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.PanelIndices.Request && !ui.BodyEditMode {
-		ui.CurrentTabIndex = (ui.CurrentTabIndex - 1 + 4) % 4
+		ui.CurrentTabIndex = (ui.CurrentTabIndex - 1 + len(RequestTabInternalNames)) % len(RequestTabInternalNames)
 		tabNames := RequestTabInternalNames
 		ui.TabPages.SwitchToPage(tabNames[ui.CurrentTabIndex])
 		updateTabHeader(RequestTabDisplayNames, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
@@ -1139,6 +1139,12 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 		case 3: // Headers tab
 			if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
 				ui.App.SetFocus(currentHeaderRows[0].KeyInput)
+			} else {
+				ui.App.SetFocus(ui.RequestDataTabs)
+			}
+		case 4: // Cookies tab
+			if len(currentCookieRows) > 0 && currentCookieRows[0].DomainInput != nil {
+				ui.App.SetFocus(currentCookieRows[0].DomainInput)
 			} else {
 				ui.App.SetFocus(ui.RequestDataTabs)
 			}
@@ -1160,7 +1166,7 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 
 func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.PanelIndices.Request && !ui.BodyEditMode {
-		ui.CurrentTabIndex = (ui.CurrentTabIndex + 1) % 4
+		ui.CurrentTabIndex = (ui.CurrentTabIndex + 1) % len(RequestTabInternalNames)
 		ui.TabPages.SwitchToPage(RequestTabInternalNames[ui.CurrentTabIndex])
 		updateTabHeader(RequestTabDisplayNames, ui.TabHeader, ui.CurrentTabIndex, ui.Colors)
 		// Focus the appropriate tab content
@@ -1174,6 +1180,12 @@ func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		case 3: // Headers tab
 			if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
 				ui.App.SetFocus(currentHeaderRows[0].KeyInput)
+			} else {
+				ui.App.SetFocus(ui.RequestDataTabs)
+			}
+		case 4: // Cookies tab
+			if len(currentCookieRows) > 0 && currentCookieRows[0].DomainInput != nil {
+				ui.App.SetFocus(currentCookieRows[0].DomainInput)
 			} else {
 				ui.App.SetFocus(ui.RequestDataTabs)
 			}

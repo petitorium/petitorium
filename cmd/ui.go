@@ -20,9 +20,9 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
-var RequestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers"}
+var RequestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers", "Cookies"}
 
-var RequestTabInternalNames = []string{"body", "auth", "query", "headers"}
+var RequestTabInternalNames = []string{"body", "auth", "query", "headers", "cookies"}
 
 var responseTabDisplayNames = []string{"Preview", "Headers", "Cookies", "Timeline"}
 
@@ -817,7 +817,7 @@ func addQueryParamRow(queryList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -918,7 +918,7 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetText(key)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -1061,6 +1061,14 @@ var currentEnvRows []*EnvVarRow
 
 var currentEnvVarsList *tview.Flex
 
+var currentCookies []workspace.Cookie
+
+var currentCookiesList *tview.Flex
+
+var currentCookiesTab *tview.Flex
+
+var refreshCookiesTab func()
+
 var rowHeight int = 1
 
 const headerInputWidth = 30
@@ -1081,6 +1089,25 @@ type QueryParamRow struct {
 	DeleteButton *tview.Button
 	Row          *tview.Flex
 }
+
+type CookieRow struct {
+	DomainInput   *HeaderKeyInput
+	NameInput     *HeaderKeyInput
+	ValueInput    *HeaderValueInput
+	PathInput     *HeaderKeyInput
+	SecureInput   *HeaderKeyInput
+	HttpOnlyInput *HeaderKeyInput
+	Checkbox      *CheckboxPrimitive
+	DeleteButton  *tview.Button
+	Row           *tview.Flex
+	FooterUpdater func()
+}
+
+var currentCookieRows []*CookieRow
+
+var currentAddCookieButton *CustomButton
+
+var currentDeleteAllCookiesButton *CustomButton
 
 // EnvVarRow represents a single environment variable key-value pair in the UI
 type EnvVarRow struct {
@@ -1200,6 +1227,542 @@ func createHeadersTabWithData(colors *ColorManager,
 	return headersContainer
 }
 
+func createCookiesTableHeader(colors *ColorManager) *tview.Flex {
+	headerRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	headerRow.SetBackgroundColor(colors.Background)
+
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+
+	domainLabel := tview.NewTextView()
+	domainLabel.SetText("Domain")
+	domainLabel.SetTextColor(colors.Foreground)
+	domainLabel.SetBackgroundColor(colors.Background)
+	domainLabel.SetTextAlign(tview.AlignLeft)
+
+	nameLabel := tview.NewTextView()
+	nameLabel.SetText("Name")
+	nameLabel.SetTextColor(colors.Foreground)
+	nameLabel.SetBackgroundColor(colors.Background)
+	nameLabel.SetTextAlign(tview.AlignLeft)
+
+	valueLabel := tview.NewTextView()
+	valueLabel.SetText("Value")
+	valueLabel.SetTextColor(colors.Foreground)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignLeft)
+
+	pathLabel := tview.NewTextView()
+	pathLabel.SetText("Path")
+	pathLabel.SetTextColor(colors.Foreground)
+	pathLabel.SetBackgroundColor(colors.Background)
+	pathLabel.SetTextAlign(tview.AlignLeft)
+
+	secureLabel := tview.NewTextView()
+	secureLabel.SetText("Secure")
+	secureLabel.SetTextColor(colors.Foreground)
+	secureLabel.SetBackgroundColor(colors.Background)
+	secureLabel.SetTextAlign(tview.AlignLeft)
+
+	httpOnlyLabel := tview.NewTextView()
+	httpOnlyLabel.SetText("HttpOnly")
+	httpOnlyLabel.SetTextColor(colors.Foreground)
+	httpOnlyLabel.SetBackgroundColor(colors.Background)
+	httpOnlyLabel.SetTextAlign(tview.AlignLeft)
+
+	headerRow.AddItem(domainLabel, 15, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nameLabel, 15, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(valueLabel, 15, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(pathLabel, 8, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(secureLabel, 9, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(httpOnlyLabel, 9, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+
+	return headerRow
+}
+
+func createCookiesTabWithData(colors *ColorManager,
+	initialCookies []workspace.Cookie,
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+	app *tview.Application,
+	pages *tview.Pages,
+	footerUpdater func(),
+	cookieJar *workspace.CookieJar,
+) *tview.Flex {
+	cookiesContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	cookiesContainer.SetBackgroundColor(colors.Background)
+	cookiesContainer.SetBorder(true)
+	cookiesContainer.SetBorderColor(colors.Background)
+	cookiesContainer.SetTitleColor(colors.Title)
+	cookiesContainer.SetBackgroundColor(colors.Background)
+
+	cookiesList := tview.NewFlex().SetDirection(tview.FlexRow)
+	cookiesList.SetBackgroundColor(colors.Background)
+
+	currentCookieRows = nil
+	currentCookiesList = cookiesList
+	currentCookiesTab = cookiesContainer
+
+	var refreshCookiesUI func()
+	refreshCookiesUI = func() {
+		cookiesList.Clear()
+		for _, cookieRow := range currentCookieRows {
+			cookiesList.AddItem(cookieRow.Row, rowHeight, 0, false)
+			separator := tview.NewBox().SetBackgroundColor(colors.Background)
+			separator.SetBorder(false)
+			cookiesList.AddItem(separator, 1, 0, false)
+		}
+		if len(currentCookieRows) == 0 {
+			emptyLabel := tview.NewTextView()
+			emptyLabel.SetText("No cookies in jar")
+			emptyLabel.SetTextColor(colors.Foreground)
+			emptyLabel.SetBackgroundColor(colors.Background)
+			emptyLabel.SetTextAlign(tview.AlignCenter)
+			cookiesList.AddItem(emptyLabel, 1, 0, false)
+		}
+	}
+	refreshCookiesTab = refreshCookiesUI
+
+	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonRow.SetBackgroundColor(colors.Background)
+
+	addButton := createThemedButton(" Add Cookie ", colors)
+	currentAddCookieButton = addButton
+	addButton.SetSelectedFunc(func() {
+		addCookieRow(cookiesList, colors, refreshCookiesUI, saveCallback, focusSetter, footerUpdater, app, pages)
+		if footerUpdater != nil {
+			footerUpdater()
+		}
+	})
+
+	clearAllButton := createThemedButton(" Clear All ", colors)
+	currentDeleteAllCookiesButton = clearAllButton
+	clearAllButton.SetSelectedFunc(func() {
+		clearCallback := func() {
+			currentCookieRows = nil
+			cookieJar.ClearAll()
+			refreshCookiesUI()
+			if saveCallback != nil {
+				saveCallback()
+			}
+		}
+		form := createDeleteAllCookiesConfirm(app, pages, colors, clearCallback)
+		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		pages.AddPage("clearAllCookies", modal, true, true)
+		app.SetFocus(form)
+	})
+
+	buttonRow.AddItem(addButton, 15, 0, false)
+	buttonRow.AddItem(nil, 1, 0, false)
+	buttonRow.AddItem(clearAllButton, 15, 0, false)
+	buttonRow.AddItem(nil, 0, 1, false)
+
+	cookiesContainer.AddItem(buttonRow, 1, 0, false)
+
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	cookiesContainer.AddItem(spacer, 1, 0, false)
+
+	headerRow := createCookiesTableHeader(colors)
+	cookiesContainer.AddItem(headerRow, 1, 0, false)
+	cookiesContainer.AddItem(cookiesList, 0, 1, false)
+
+	for _, cookie := range initialCookies {
+		addCookieRowWithData(cookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, refreshCookiesUI, saveCallback, focusSetter, footerUpdater, app, pages)
+	}
+
+	refreshCookiesUI()
+
+	return cookiesContainer
+}
+
+func RefreshCookiesTab(cookies []workspace.Cookie, colors *ColorManager, app *tview.Application, pages *tview.Pages) {
+	if currentCookiesList == nil {
+		return
+	}
+	currentCookieRows = nil
+	currentCookiesList.Clear()
+	for _, cookie := range cookies {
+		addCookieRowWithData(currentCookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, refreshCookiesTab, nil, func(p tview.Primitive) {}, func() {}, app, pages)
+	}
+	if len(cookies) == 0 {
+		emptyLabel := tview.NewTextView()
+		emptyLabel.SetText("No cookies in jar")
+		emptyLabel.SetTextColor(colors.Foreground)
+		emptyLabel.SetBackgroundColor(colors.Background)
+		emptyLabel.SetTextAlign(tview.AlignCenter)
+		currentCookiesList.AddItem(emptyLabel, 1, 0, false)
+	}
+}
+
+func createCookieDisplayRow(cookie workspace.Cookie, colors *ColorManager) *tview.Flex {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+	row.SetBorder(true)
+	row.SetBorderColor(colors.Border)
+
+	nameText := tview.NewTextView()
+	nameText.SetText(fmt.Sprintf("Name: %s", cookie.Name))
+	nameText.SetTextColor(colors.Foreground)
+	nameText.SetBackgroundColor(colors.Background)
+	nameText.SetWordWrap(true)
+
+	valueText := tview.NewTextView()
+	valueText.SetText(fmt.Sprintf("Value: %s", cookie.Value))
+	valueText.SetTextColor(colors.Foreground)
+	valueText.SetBackgroundColor(colors.Background)
+	valueText.SetWordWrap(true)
+
+	detailsText := fmt.Sprintf("Domain: %s | Path: %s | Secure: %t | HttpOnly: %t", cookie.Domain, cookie.Path, cookie.Secure, cookie.HttpOnly)
+	detailsView := tview.NewTextView()
+	detailsView.SetText(detailsText)
+	detailsView.SetTextColor(colors.Foreground)
+	detailsView.SetBackgroundColor(colors.Background)
+	detailsView.SetWordWrap(true)
+
+	row.AddItem(nameText, 0, 1, false)
+	row.AddItem(valueText, 0, 1, false)
+	row.AddItem(detailsView, 0, 1, false)
+
+	return row
+}
+
+func addCookieRow(cookiesList *tview.Flex,
+	colors *ColorManager,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+	footerUpdater func(),
+	app *tview.Application,
+	pages *tview.Pages,
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+
+	domainInput := AppInputDualMode(colors)
+	domainInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	domainInput.onModeChange = footerUpdater
+
+	nameInput := AppInputDualMode(colors)
+	nameInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	nameInput.onModeChange = footerUpdater
+
+	valueInput := NewHeaderValueInput(colors)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.onModeChange = footerUpdater
+
+	pathInput := AppInputDualMode(colors)
+	pathInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	pathInput.onModeChange = footerUpdater
+
+	secureInput := AppInputDualMode(colors)
+	secureInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	secureInput.onModeChange = footerUpdater
+	secureInput.SetTitleAlign(tview.AlignCenter)
+
+	httpOnlyInput := AppInputDualMode(colors)
+	httpOnlyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	httpOnlyInput.onModeChange = footerUpdater
+
+	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, true, colors)
+	checkbox.SetEnabled(true)
+	checkbox.SetChangedFunc(func(enabled bool) {
+		if enabled {
+			domainInput.SetBackgroundColor(colors.InputBackground)
+			nameInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+			pathInput.SetBackgroundColor(colors.InputBackground)
+			secureInput.SetBackgroundColor(colors.InputBackground)
+			httpOnlyInput.SetBackgroundColor(colors.InputBackground)
+		} else {
+			domainInput.SetBackgroundColor(colors.Selection)
+			nameInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+			pathInput.SetBackgroundColor(colors.Selection)
+			secureInput.SetBackgroundColor(colors.Selection)
+			httpOnlyInput.SetBackgroundColor(colors.Selection)
+		}
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+
+	removeButton.SetFocusFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+		removeButton.SetActivatedStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+	})
+	removeButton.SetBlurFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+	})
+
+	cookieRow := &CookieRow{
+		DomainInput:   domainInput,
+		NameInput:     nameInput,
+		ValueInput:    valueInput,
+		PathInput:     pathInput,
+		SecureInput:   secureInput,
+		HttpOnlyInput: httpOnlyInput,
+		Checkbox:      checkbox,
+		DeleteButton:  removeButton,
+		Row:           row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		deleteCallback := func() {
+			for i, r := range currentCookieRows {
+				if r == cookieRow {
+					currentCookieRows = append(currentCookieRows[:i], currentCookieRows[i+1:]...)
+					refreshUI()
+					if saveCallback != nil {
+						saveCallback()
+					}
+					break
+				}
+			}
+		}
+		form := createDeleteCookieConfirm(app, pages, colors, "this cookie", deleteCallback)
+		modal := createModal(form, 40, 8, tcell.ColorDefault)
+		pages.AddPage("deleteCookie", modal, true, true)
+		app.SetFocus(form)
+	})
+
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	row.AddItem(domainInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(nameInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(valueInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(pathInput, 8, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(secureInput, 9, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(httpOnlyInput, 9, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(checkbox, 3, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(removeButton, 3, 0, false)
+
+	currentCookieRows = append(currentCookieRows, cookieRow)
+	cookiesList.AddItem(row, rowHeight, 0, false)
+
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
+	separator.SetBorder(false)
+	cookiesList.AddItem(separator, 1, 0, false)
+}
+
+// addCookieRowWithData adds a cookie row with pre-filled data
+func addCookieRowWithData(cookiesList *tview.Flex,
+	colors *ColorManager,
+	domain string,
+	name string,
+	value string,
+	path string,
+	secure bool,
+	httpOnly bool,
+	enabled bool,
+	refreshUI func(),
+	saveCallback func(),
+	focusSetter func(tview.Primitive),
+	footerUpdater func(),
+	app *tview.Application,
+	pages *tview.Pages,
+) {
+	row := tview.NewFlex().SetDirection(tview.FlexColumn)
+	row.SetBackgroundColor(colors.Background)
+
+	domainInput := AppInputDualMode(colors)
+	domainInput.SetText(domain)
+	domainInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	domainInput.onModeChange = footerUpdater
+
+	nameInput := AppInputDualMode(colors)
+	nameInput.SetText(name)
+	nameInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	nameInput.onModeChange = footerUpdater
+
+	valueInput := NewHeaderValueInput(colors)
+	valueInput.SetText(value)
+	valueInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	valueInput.onModeChange = footerUpdater
+
+	pathInput := AppInputDualMode(colors)
+	pathInput.SetText(path)
+	pathInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	pathInput.onModeChange = footerUpdater
+
+	secureInput := AppInputDualMode(colors)
+	secureInput.SetText(fmt.Sprintf("%t", secure))
+	secureInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	secureInput.onModeChange = footerUpdater
+	secureInput.SetTitleAlign(tview.AlignRight)
+
+	httpOnlyInput := AppInputDualMode(colors)
+	httpOnlyInput.SetText(fmt.Sprintf("%t", httpOnly))
+	httpOnlyInput.SetChangedFunc(func(text string) {
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	httpOnlyInput.onModeChange = footerUpdater
+
+	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
+	checkbox.SetChangedFunc(func(enabled bool) {
+		if enabled {
+			domainInput.SetBackgroundColor(colors.InputBackground)
+			nameInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+			pathInput.SetBackgroundColor(colors.InputBackground)
+			secureInput.SetBackgroundColor(colors.InputBackground)
+			httpOnlyInput.SetBackgroundColor(colors.InputBackground)
+		} else {
+			domainInput.SetBackgroundColor(colors.Selection)
+			nameInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+			pathInput.SetBackgroundColor(colors.Selection)
+			secureInput.SetBackgroundColor(colors.Selection)
+			httpOnlyInput.SetBackgroundColor(colors.Selection)
+		}
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	if !enabled {
+		domainInput.SetBackgroundColor(colors.Selection)
+		nameInput.SetBackgroundColor(colors.Selection)
+		valueInput.SetBackgroundColor(colors.Selection)
+		pathInput.SetBackgroundColor(colors.Selection)
+		secureInput.SetBackgroundColor(colors.Selection)
+		httpOnlyInput.SetBackgroundColor(colors.Selection)
+	}
+
+	removeButton := tview.NewButton(config.C.UI.HeaderRemoveIcon)
+	removeButton.SetBackgroundColor(colors.Background)
+	removeButton.SetLabelColor(colors.Foreground)
+	removeButton.SetBorder(false)
+	removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+
+	removeButton.SetFocusFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+		removeButton.SetActivatedStyle(tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.Error))
+	})
+	removeButton.SetBlurFunc(func() {
+		removeButton.SetStyle(tcell.StyleDefault.Background(colors.Background).Foreground(colors.Error))
+	})
+
+	cookieRow := &CookieRow{
+		DomainInput:   domainInput,
+		NameInput:     nameInput,
+		ValueInput:    valueInput,
+		PathInput:     pathInput,
+		SecureInput:   secureInput,
+		HttpOnlyInput: httpOnlyInput,
+		Checkbox:      checkbox,
+		DeleteButton:  removeButton,
+		Row:           row,
+	}
+
+	removeButton.SetSelectedFunc(func() {
+		deleteCallback := func() {
+			for i, r := range currentCookieRows {
+				if r == cookieRow {
+					currentCookieRows = append(currentCookieRows[:i], currentCookieRows[i+1:]...)
+					refreshUI()
+					if saveCallback != nil {
+						saveCallback()
+					}
+					break
+				}
+			}
+		}
+		form := createDeleteCookieConfirm(app, pages, colors, name, deleteCallback)
+		modal := createModal(form, 40, 8, tcell.ColorDefault)
+		pages.AddPage("deleteCookie", modal, true, true)
+		app.SetFocus(form)
+	})
+
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+	row.AddItem(domainInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(nameInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(valueInput, 15, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(pathInput, 8, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(secureInput, 9, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(httpOnlyInput, 9, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(checkbox, 3, 0, false)
+	row.AddItem(spacer, 1, 0, false)
+	row.AddItem(removeButton, 3, 0, false)
+
+	currentCookieRows = append(currentCookieRows, cookieRow)
+	cookiesList.AddItem(row, rowHeight, 0, false)
+
+	separator := tview.NewBox().SetBackgroundColor(colors.Background)
+	separator.SetBorder(false)
+	cookiesList.AddItem(separator, 1, 0, false)
+}
+
 // addHeaderRow adds a new key-value header input row to the headers list
 func addHeaderRow(headersList *tview.Flex,
 	colors *ColorManager,
@@ -1211,7 +1774,7 @@ func addHeaderRow(headersList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
@@ -1315,7 +1878,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	keyInput := NewHeaderKeyInput(colors)
+	keyInput := AppInputDualMode(colors)
 	keyInput.SetText(key)
 	keyInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
@@ -2012,7 +2575,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.Flex, *tview.Flex, *tview.DropDown, *tview.Flex, func()) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request, cookieJar *workspace.CookieJar) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.Flex, *tview.Flex, *tview.Flex, *tview.DropDown, *tview.Flex, func()) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -2057,10 +2620,18 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	// Create headers tab
 	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages, footerUpdater)
 
+	// Create cookies tab
+	var initialCookies []workspace.Cookie
+	if cookieJar != nil {
+		initialCookies = cookieJar.Cookies
+	}
+	cookiesTab := createCookiesTabWithData(colors, initialCookies, saveCallback, focusSetter, app, pages, footerUpdater, cookieJar)
+
 	tabPages.AddPage(RequestTabInternalNames[0], bodyContainer, true, true)
 	tabPages.AddPage(RequestTabInternalNames[1], authTab, true, false)
 	tabPages.AddPage(RequestTabInternalNames[2], queryTab, true, false)
 	tabPages.AddPage(RequestTabInternalNames[3], headersTab, true, false)
+	tabPages.AddPage(RequestTabInternalNames[4], cookiesTab, true, false)
 
 	callback := func(index int) {
 		if tabIndexSetter != nil {
@@ -2082,7 +2653,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	requestDataTabs.AddItem(topRow, 1, 0, false)
 	requestDataTabs.AddItem(tabPages, 0, 1, true)
 
-	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI
+	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, cookiesTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI
 }
 
 // createResponseTabs creates the response tabs interface
@@ -2717,270 +3288,6 @@ func (h *HeaderValueInput) SetInputCapture(capture func(*tcell.EventKey) *tcell.
 
 // IsEditMode returns true if the component is in edit mode
 func (h *HeaderValueInput) IsEditMode() bool {
-	return h.currentMode == "edit"
-}
-
-// HeaderKeyInput is a dual-mode input component for header keys (similar to HeaderValueInput but with variable highlighting)
-type HeaderKeyInput struct {
-	*tview.Pages
-	viewMode      *tview.TextView
-	editMode      *tview.InputField
-	currentMode   string // "view" or "edit"
-	rawText       string // The actual text
-	onChanged     func(string)
-	onModeChange  func()
-	colors        *ColorManager
-	variableRegex *regexp.Regexp
-	lastWidth     int
-}
-
-// NewHeaderKeyInput creates a new dual-mode header key input component
-func NewHeaderKeyInput(colors *ColorManager) *HeaderKeyInput {
-	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
-
-	viewMode := tview.NewTextView().
-		SetDynamicColors(true).
-		SetWordWrap(false).
-		SetScrollable(false)
-
-	viewMode.SetBackgroundColor(colors.InputBackground)
-	viewMode.SetTextColor(colors.Foreground)
-	viewMode.SetBorderPadding(0, 0, 0, 0)
-
-	editMode := tview.NewInputField()
-	editMode.SetBackgroundColor(colors.Background)
-	editMode.SetFieldBackgroundColor(colors.InputBackground)
-	editMode.SetFieldTextColor(colors.Foreground)
-	editMode.SetBorder(false)
-
-	editMode.SetFocusFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.Error)
-	})
-
-	editMode.SetBlurFunc(func() {
-		editMode.SetFieldBackgroundColor(colors.InputBackground)
-	})
-
-	pages := tview.NewPages()
-	pages.SetBackgroundColor(colors.Background)
-	pages.AddPage("view", viewMode, true, true)
-	pages.AddPage("edit", editMode, true, false)
-
-	input := &HeaderKeyInput{
-		Pages:         pages,
-		viewMode:      viewMode,
-		editMode:      editMode,
-		currentMode:   "view",
-		rawText:       "",
-		colors:        colors,
-		variableRegex: variableRegex,
-	}
-
-	editMode.SetChangedFunc(func(text string) {
-		input.rawText = text
-		if input.onChanged != nil {
-			input.onChanged(text)
-		}
-	})
-
-	editMode.SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEsc {
-			input.switchToViewMode()
-		}
-	})
-
-	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Rune() == 'i' {
-			input.switchToEditMode()
-			return nil
-		}
-		return event
-	})
-
-	viewMode.SetFocusFunc(func() {
-		viewMode.SetBackgroundColor(colors.SelectedBackground)
-		viewMode.SetTextColor(colors.SelectedForeground)
-	})
-
-	viewMode.SetBlurFunc(func() {
-		viewMode.SetBackgroundColor(colors.InputBackground)
-		viewMode.SetTextColor(colors.Foreground)
-	})
-
-	return input
-}
-
-// switchToViewMode switches to view mode, showing the text
-func (h *HeaderKeyInput) switchToViewMode() {
-	h.currentMode = "view"
-	h.viewMode.SetBackgroundColor(h.colors.InputBackground)
-	h.Pages.SwitchToPage("view")
-	h.updateViewMode()
-	if h.onModeChange != nil {
-		h.onModeChange()
-	}
-}
-
-// switchToEditMode switches to edit mode, showing raw text
-func (h *HeaderKeyInput) switchToEditMode() {
-	h.currentMode = "edit"
-	h.editMode.SetBackgroundColor(h.colors.Background)
-	h.editMode.SetFieldBackgroundColor(h.colors.InputBackground)
-	h.editMode.SetText(h.rawText)
-	h.Pages.SwitchToPage("edit")
-	if h.onModeChange != nil {
-		h.onModeChange()
-	}
-}
-
-// Focus delegates focus to the appropriate child component
-func (h *HeaderKeyInput) Focus(delegate func(p tview.Primitive)) {
-	// Let the Pages container handle focus for the visible page
-	h.Pages.Focus(delegate)
-}
-
-// Draw overrides the default Draw method to handle truncation in view mode
-func (h *HeaderKeyInput) Draw(screen tcell.Screen) {
-	if h.currentMode == "view" {
-		_, _, width, _ := h.viewMode.GetInnerRect()
-		if width > 0 && width != h.lastWidth {
-			h.lastWidth = width
-			h.updateViewModeWithWidth(width)
-		}
-	}
-	h.Pages.Draw(screen)
-}
-
-// HasFocus returns whether the component or its children have focus
-
-func (h *HeaderKeyInput) HasFocus() bool {
-	if h.currentMode == "edit" {
-		return h.editMode.HasFocus()
-	}
-	return h.viewMode.HasFocus()
-}
-
-// InputHandler handles input for the component
-func (h *HeaderKeyInput) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-		// Handle 'i' key to switch to edit mode when in view mode
-		if event.Rune() == 'i' && h.currentMode == "view" {
-			h.switchToEditMode()
-			// Focus the edit field
-			setFocus(h.editMode)
-			return
-		}
-
-		// For Tab/Backtab events, let them bubble up to parent navigation
-		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
-			// Return to let parent handle it
-			return
-		}
-		// For other events, delegate to the Pages component
-		if h.Pages.InputHandler() != nil {
-			h.Pages.InputHandler()(event, setFocus)
-		}
-	}
-}
-
-// MouseHandler delegates to the Pages container
-func (h *HeaderKeyInput) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
-	return h.Pages.MouseHandler()
-}
-
-// updateViewMode renders the text with variables highlighted in view mode
-func (h *HeaderKeyInput) updateViewMode() {
-	h.lastWidth = 0
-	h.updateViewModeWithWidth(0)
-}
-
-// updateViewModeWithWidth renders the text with variables highlighted and optional truncation
-func (h *HeaderKeyInput) updateViewModeWithWidth(width int) {
-	if h.rawText == "" {
-		h.viewMode.SetText("")
-		return
-	}
-
-	// Find all variable positions
-	matches := h.variableRegex.FindAllStringIndex(h.rawText, -1)
-	if len(matches) == 0 {
-		text := h.rawText
-		if width > 0 {
-			text = TruncateTaggedString(text, width)
-		}
-		h.viewMode.SetText(text)
-		return
-	}
-
-	// Build result with proper spacing
-	var result strings.Builder
-	lastEnd := 0
-
-	for i, match := range matches {
-		start, end := match[0], match[1]
-
-		// Add text before this variable
-		result.WriteString(h.rawText[lastEnd:start])
-
-		// Extract variable name (remove {{ and }})
-		varName := h.rawText[start+2 : end-2]
-
-		// Render variable with background color (same as URL component)
-		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
-			config.C.Theme.DropdownFocusedBackground,
-			config.C.Theme.BorderFocusColor,
-			varName))
-
-		// Add space only if next character is another variable (no text between)
-		if i < len(matches)-1 && end == matches[i+1][0] {
-			result.WriteString(" ")
-		}
-
-		lastEnd = end
-	}
-
-	// Add remaining text after last variable
-	result.WriteString(h.rawText[lastEnd:])
-
-	renderedText := result.String()
-	if width > 0 {
-		renderedText = TruncateTaggedString(renderedText, width)
-	}
-
-	h.viewMode.SetText(renderedText)
-}
-
-// SetText sets the text content
-func (h *HeaderKeyInput) SetText(text string) {
-	h.rawText = text
-	if h.currentMode == "view" {
-		h.updateViewMode()
-	} else {
-		h.editMode.SetText(text)
-	}
-	if h.onChanged != nil {
-		h.onChanged(text)
-	}
-}
-
-// GetText returns the current text
-func (h *HeaderKeyInput) GetText() string {
-	return h.rawText
-}
-
-// SetChangedFunc sets the callback for when text changes
-func (h *HeaderKeyInput) SetChangedFunc(callback func(string)) {
-	h.onChanged = callback
-}
-
-// SetInputCapture sets input capture for the component
-func (h *HeaderKeyInput) SetInputCapture(capture func(*tcell.EventKey) *tcell.EventKey) {
-	h.viewMode.SetInputCapture(capture)
-	h.editMode.SetInputCapture(capture)
-}
-
-// IsEditMode returns true if the component is in edit mode
-func (h *HeaderKeyInput) IsEditMode() bool {
 	return h.currentMode == "edit"
 }
 

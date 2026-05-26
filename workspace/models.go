@@ -18,12 +18,29 @@ var HTTPMethods = []string{
 	http.MethodOptions,
 }
 
+type Cookie struct {
+	Name     string `yaml:"name"`
+	Value    string `yaml:"value"`
+	Domain   string `yaml:"domain,omitempty"`
+	Path     string `yaml:"path,omitempty"`
+	Expires  string `yaml:"expires,omitempty"`
+	Secure   bool   `yaml:"secure"`
+	HttpOnly bool   `yaml:"http_only"`
+	SameSite string `yaml:"same_site,omitempty"`
+	Enabled  bool   `yaml:"enabled"`
+}
+
+type CookieJar struct {
+	Cookies []Cookie `yaml:"cookies,omitempty"`
+}
+
 // HTTPResponse represents a stored HTTP response
 // This is a simplified version for storage purposes
 type HTTPResponse struct {
 	StatusCode int                 `yaml:"status_code"`
 	Status     string              `yaml:"status"`
 	Headers    map[string][]string `yaml:"headers,omitempty"`
+	Cookies    []Cookie            `yaml:"cookies,omitempty"`
 	Body       string              `yaml:"body,omitempty"`
 	Duration   time.Duration       `yaml:"duration"`
 	Timestamp  time.Time           `yaml:"timestamp"`
@@ -64,6 +81,7 @@ type Request struct {
 	URL             string           `yaml:"url"`
 	QueryParams     map[string]Entry `yaml:"query_params,omitempty"`
 	Headers         map[string]Entry `yaml:"headers,omitempty"`
+	Cookies         []Cookie         `yaml:"cookies,omitempty"`
 	ContentType     string           `yaml:"content_type,omitempty"`
 	Body            string           `yaml:"body,omitempty"`
 	ResponseHistory []HTTPResponse   `yaml:"response_history,omitempty"`
@@ -97,6 +115,7 @@ type Collection struct {
 type Workspace struct {
 	Name                string        `yaml:"name"`
 	Description         string        `yaml:"description,omitempty"`
+	CookieJar           CookieJar     `yaml:"cookie_jar,omitempty"`
 	Collections         []Collection  `yaml:"collections,omitempty"`
 	Environments        []Environment `yaml:"environments,omitempty"`
 	SelectedEnvironment string        `yaml:"selected_environment,omitempty"`

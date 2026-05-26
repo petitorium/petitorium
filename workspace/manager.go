@@ -769,6 +769,7 @@ func CreateWorkspace(name string) (*Workspace, error) {
 	newWorkspace := &Workspace{
 		Name:                name,
 		Description:         "",
+		CookieJar:           CookieJar{Cookies: []Cookie{}},
 		CreatedAt:           now,
 		UpdatedAt:           now,
 		SelectedEnvironment: "",

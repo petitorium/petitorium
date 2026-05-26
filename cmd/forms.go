@@ -1631,6 +1631,85 @@ func createDeleteAllHeadersConfirm(
 	return form
 }
 
+func createDeleteCookieConfirm(
+	app *tview.Application,
+	pages *tview.Pages,
+	colors *ColorManager,
+	cookieName string,
+	deleteCallback func(),
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("", "Delete cookie '"+cookieName+"'?", 0, 1, false, false)
+
+	form.AddButton("Delete", func() {
+		deleteCallback()
+		pages.RemovePage("deleteCookie")
+	})
+
+	cancelFunc := func() {
+		pages.RemovePage("deleteCookie")
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancelFunc()
+			return nil
+		}
+		return event
+	})
+
+	form.SetBorder(true).SetTitle(" Delete Cookie ")
+	return form
+}
+
+func createDeleteAllCookiesConfirm(
+	app *tview.Application,
+	pages *tview.Pages,
+	colors *ColorManager,
+	deleteCallback func(),
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("", "Are you sure you want to clear all cookies?", 0, 1, false, false)
+
+	form.AddButton("Delete", func() {
+		deleteCallback()
+		pages.RemovePage("clearAllCookies")
+	})
+
+	cancelFunc := func() {
+		pages.RemovePage("clearAllCookies")
+	}
+
+	form.AddButton("Cancel", cancelFunc)
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancelFunc()
+			return nil
+		}
+		return event
+	})
+
+	form.SetBorder(true).SetTitle(" Clear All Cookies ")
+	return form
+}
+
 func createDeleteAllQueryParamsConfirm(
 	app *tview.Application,
 	pages *tview.Pages,

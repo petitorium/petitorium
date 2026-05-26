@@ -33,49 +33,86 @@ type HTTPResponse struct {
 	BodySize   int
 }
 
-// SendRequest sends an HTTP request with the given parameters
-func SendRequest(method, urlStr, body string, contentType string, headers map[string]string, queryParams map[string]string) (*HTTPResponse, error) {
-	// Append query parameters to URL
-	if len(queryParams) > 0 {
-		u, err := url.Parse(urlStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse URL: %v", err)
+func convertCookies(jarCookies []workspace.Cookie) []*http.Cookie {
+	result := make([]*http.Cookie, 0, len(jarCookies))
+	for _, c := range jarCookies {
+		result = append(result, c.ToHttpCookie())
+	}
+	return result
+}
+
+func httpCookieToWorkspaceCookie(cookies []*http.Cookie) []workspace.Cookie {
+	result := make([]workspace.Cookie, 0, len(cookies))
+	for _, c := range cookies {
+		expires := ""
+		if !c.Expires.IsZero() {
+			expires = c.Expires.Format(time.RFC3339)
 		}
-		q := u.Query()
+		sameSite := ""
+		switch c.SameSite {
+		case http.SameSiteNoneMode:
+			sameSite = "none"
+		case http.SameSiteLaxMode:
+			sameSite = "lax"
+		case http.SameSiteStrictMode:
+			sameSite = "strict"
+		}
+		result = append(result, workspace.Cookie{
+			Name:     c.Name,
+			Value:    c.Value,
+			Domain:   c.Domain,
+			Path:     c.Path,
+			Expires:  expires,
+			Secure:   c.Secure,
+			HttpOnly: c.HttpOnly,
+			SameSite: sameSite,
+		})
+	}
+	return result
+}
+
+// SendRequest sends an HTTP request with the given parameters
+func SendRequest(method, urlStr, body string, contentType string, headers map[string]string, queryParams map[string]string, jar *workspace.CookieJar) (*HTTPResponse, error) {
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %v", err)
+	}
+
+	if len(queryParams) > 0 {
+		q := parsedURL.Query()
 		for key, value := range queryParams {
 			q.Set(key, value)
 		}
-		u.RawQuery = q.Encode()
-		urlStr = u.String()
+		parsedURL.RawQuery = q.Encode()
+		urlStr = parsedURL.String()
 	}
 
-	// Create HTTP client with configurable timeout
 	timeoutVal := config.C.RequestTimeout
 	if timeoutVal <= 0 {
-		timeoutVal = 60 // Default to 60 seconds if not configured or 0
+		timeoutVal = 60
 	}
 	timeout := time.Duration(timeoutVal) * time.Second
+
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
-	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Create request body
 	var bodyReader io.Reader
 	var multipartWriter *multipart.Writer
 	if body != "" {
 		if contentType == "Multipart" {
-			// Parse multipart fields from body string (temporary format: name1=value1&name2=file:/path/to/file)
 			var b bytes.Buffer
 			multipartWriter = multipart.NewWriter(&b)
 			err := createMultipartBodyWithWriter(body, multipartWriter)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create multipart body: %v", err)
 			}
-			// Close the writer to write the final boundary
 			multipartWriter.Close()
 			bodyReader = &b
 		} else {
@@ -83,22 +120,18 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 		}
 	}
 
-	// Create HTTP request with context
 	req, err := http.NewRequestWithContext(ctx, method, urlStr, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
-	// Set headers
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
 
-	// Set default Content-Type for methods that typically have a body
 	if body != "" && req.Header.Get("Content-Type") == "" {
 		switch method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
-			// Use explicit content type if provided, otherwise auto-detect
 			if contentType != "" {
 				switch contentType {
 				case "JSON":
@@ -111,7 +144,6 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 					}
 				}
 			} else {
-				// Fallback to auto-detection for backward compatibility
 				if strings.TrimSpace(body) != "" {
 					if strings.HasPrefix(strings.TrimSpace(body), "{") && strings.HasSuffix(strings.TrimSpace(body), "}") {
 						req.Header.Set("Content-Type", "application/json")
@@ -121,38 +153,85 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 		}
 	}
 
-	// Set User-Agent if not provided
 	if req.Header.Get("User-Agent") == "" {
 		req.Header.Set("User-Agent", "Petitorium/1.0")
 	}
 
-	// Execute request and measure duration
+	if jar != nil {
+		cookies := jar.GetCookies(parsedURL)
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+	}
+
 	startTime := time.Now()
-	resp, err := client.Do(req)
+	finalURL := parsedURL
+	var lastResp *http.Response
+	capturedCookies := []*http.Cookie{}
+
+	for redirectCount := 0; redirectCount < 10; redirectCount++ {
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		lastResp = resp
+
+		if jar != nil {
+			cookies := resp.Cookies()
+			capturedCookies = append(capturedCookies, cookies...)
+			if len(cookies) > 0 {
+				jar.SetCookies(finalURL, cookies)
+			}
+		}
+
+		if resp.StatusCode < 300 || resp.StatusCode > 399 {
+			break
+		}
+
+		locHeader := resp.Header.Get("Location")
+		if locHeader == "" {
+			break
+		}
+
+		locURL, err := finalURL.Parse(locHeader)
+		if err != nil {
+			break
+		}
+		finalURL = locURL
+
+		bodyReader = nil
+		req, err = http.NewRequestWithContext(ctx, method, finalURL.String(), nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create redirect request: %v", err)
+		}
+
+		if jar != nil {
+			cookies := jar.GetCookies(finalURL)
+			for _, c := range cookies {
+				req.AddCookie(c)
+			}
+		}
+	}
+
 	duration := time.Since(startTime)
 
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(lastResp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	// Convert headers to map for easier display
 	headersMap := make(map[string][]string)
-	for key, values := range resp.Header {
+	for key, values := range lastResp.Header {
 		headersMap[key] = values
 	}
 
 	result := &HTTPResponse{
-		StatusCode: resp.StatusCode,
-		Status:     resp.Status,
+		StatusCode: lastResp.StatusCode,
+		Status:     lastResp.Status,
 		Headers:    headersMap,
-		Cookies:    resp.Cookies(),
+		Cookies:    capturedCookies,
 		Body:       string(respBody),
 		BodyBytes:  respBody,
 		Duration:   duration,
