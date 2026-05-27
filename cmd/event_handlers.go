@@ -2540,7 +2540,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 					buttonRow := currentHeadersTab.GetItem(0)
 					if buttonRow != nil {
 						buttonRowFlex, ok := buttonRow.(*tview.Flex)
-						if ok && buttonRowFlex != nil && buttonRowFlex.GetItemCount() > 1 {
+						if ok && buttonRowFlex != nil && buttonRowFlex.GetItemCount() > 2 {
 							// Determine which element to focus based on NavCurrentHeaderRowElement
 							if ui.NavCurrentHeaderRowElement < 2 {
 								// We're on a button (Add Header or Delete All)
@@ -2553,7 +2553,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 										ui.App.SetFocus(currentHeadersTab)
 									}
 								case 1: // Delete All button
-									deleteAllButton := buttonRowFlex.GetItem(1)
+									deleteAllButton := buttonRowFlex.GetItem(2)
 									if deleteAllButton != nil {
 										ui.App.SetFocus(deleteAllButton)
 									} else {

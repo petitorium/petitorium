@@ -1173,8 +1173,6 @@ func createHeadersTabWithData(colors *ColorManager,
 	// Delete all button
 	deleteAllButton := createThemedButton(" Delete All ", colors)
 	currentDeleteAllHeadersButton = deleteAllButton
-	// deleteAllButton.SetBackgroundColor(colors.Error)
-	// deleteAllButton.SetBackgroundColorActivated(colors.Error)
 	deleteAllButton.SetSelectedFunc(func() {
 		deleteCallback := func() {
 			// Clear all header rows
@@ -1191,40 +1189,49 @@ func createHeadersTabWithData(colors *ColorManager,
 	})
 
 	buttonRow.AddItem(addButton, 15, 0, false)
+	buttonRow.AddItem(nil, 1, 0, false)
 	buttonRow.AddItem(deleteAllButton, 15, 0, false)
 	buttonRow.AddItem(nil, 0, 1, false)
 
 	headersContainer.AddItem(buttonRow, 1, 0, false)
 
-	// TODO: improve this
-	// Add header row with labels
-	// headerLabelsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
-	// headerLabelsRow.SetBackgroundColor(colors.Background)
-	//
-	// nameLabel := tview.NewTextView()
-	// nameLabel.SetText("Name")
-	// nameLabel.SetTextColor(colors.BorderFocus)
-	// nameLabel.SetBackgroundColor(colors.Background)
-	//
-	// valueLabel := tview.NewTextView()
-	// valueLabel.SetText("Value")
-	// valueLabel.SetTextColor(colors.BorderFocus)
-	// valueLabel.SetBackgroundColor(colors.Background)
-	//
-	// headerLabelsRow.AddItem(nameLabel, 25, 0, false)
-	// headerLabelsRow.AddItem(valueLabel, 50, 0, false)
-	// headerLabelsRow.AddItem(nil, 4, 0, false)
-	// headerLabelsRow.AddItem(nil, 0, 1, false)
-	//
-	// headersContainer.AddItem(headerLabelsRow, 1, 0, false)
-
-	// Add visual spacing between buttons and headers
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	headersContainer.AddItem(spacer, 1, 0, false)
 
+	headerRow := createHeadersTableHeader(colors)
+	headersContainer.AddItem(headerRow, 1, 0, false)
 	headersContainer.AddItem(headersList, 0, 1, false)
 
 	return headersContainer
+}
+
+func createHeadersTableHeader(colors *ColorManager) *tview.Flex {
+	headerRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	headerRow.SetBackgroundColor(colors.Background)
+
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+
+	keyLabel := tview.NewTextView()
+	keyLabel.SetText("Key")
+	keyLabel.SetTextColor(colors.Foreground)
+	keyLabel.SetBackgroundColor(colors.Background)
+	keyLabel.SetTextAlign(tview.AlignLeft)
+
+	valueLabel := tview.NewTextView()
+	valueLabel.SetText("Value")
+	valueLabel.SetTextColor(colors.Foreground)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignLeft)
+
+	headerRow.AddItem(keyLabel, headerInputWidth, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(valueLabel, headerInputWidth, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+
+	return headerRow
 }
 
 func createCookiesTableHeader(colors *ColorManager) *tview.Flex {
@@ -1843,7 +1850,7 @@ func addHeaderRow(headersList *tview.Flex,
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
@@ -1981,7 +1988,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
@@ -1991,7 +1998,6 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	currentHeaderRows = append(currentHeaderRows, headerRow)
 	headersList.AddItem(row, rowHeight, 0, false)
 
-	// Add separator line between rows
 	separator := tview.NewBox().SetBackgroundColor(colors.Background)
 	separator.SetBorder(false)
 	headersList.AddItem(separator, 1, 0, false)
