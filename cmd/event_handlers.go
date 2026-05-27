@@ -2444,7 +2444,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 										ui.App.SetFocus(currentQueryParamsTab)
 									}
 								case 1: // Delete All button
-									deleteAllButton := buttonRowFlex.GetItem(1)
+									deleteAllButton := buttonRowFlex.GetItem(2)
 									if deleteAllButton != nil {
 										ui.App.SetFocus(deleteAllButton)
 									} else {

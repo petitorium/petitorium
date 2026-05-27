@@ -768,7 +768,7 @@ func createQueryParamsTabWithData(colors *ColorManager,
 	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
 	buttonRow.SetBackgroundColor(colors.Background)
 
-	addButton := createThemedButton(" Add Param ", colors)
+	addButton := createThemedButton(" Add Param  ", colors)
 	currentAddQueryParamButton = addButton
 	addButton.SetSelectedFunc(func() {
 		addQueryParamRow(queryList, colors, refreshQueryParamsUI, saveCallback, focusSetter, footerUpdater)
@@ -792,15 +792,17 @@ func createQueryParamsTabWithData(colors *ColorManager,
 	})
 
 	buttonRow.AddItem(addButton, 15, 0, false)
+	buttonRow.AddItem(nil, 1, 0, false)
 	buttonRow.AddItem(deleteAllButton, 15, 0, false)
 	buttonRow.AddItem(nil, 0, 1, false)
 
 	queryContainer.AddItem(buttonRow, 1, 0, false)
 
-	// Add visual spacing between buttons and params
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	queryContainer.AddItem(spacer, 1, 0, false)
 
+	headerRow := createQueryParamsTableHeader(colors)
+	queryContainer.AddItem(headerRow, 1, 0, false)
 	queryContainer.AddItem(queryList, 0, 1, false)
 
 	return queryContainer
@@ -885,7 +887,7 @@ func addQueryParamRow(queryList *tview.Flex,
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
@@ -1015,7 +1017,7 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	row.AddItem(keyInput, headerInputWidth, 0, false)
-	row.AddItem(spacer, 2, 0, false)
+	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(valueInput, headerInputWidth, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(checkbox, 3, 0, false)
@@ -1203,6 +1205,35 @@ func createHeadersTabWithData(colors *ColorManager,
 	headersContainer.AddItem(headersList, 0, 1, false)
 
 	return headersContainer
+}
+
+func createQueryParamsTableHeader(colors *ColorManager) *tview.Flex {
+	headerRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	headerRow.SetBackgroundColor(colors.Background)
+
+	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
+
+	keyLabel := tview.NewTextView()
+	keyLabel.SetText("Key")
+	keyLabel.SetTextColor(colors.Foreground)
+	keyLabel.SetBackgroundColor(colors.Background)
+	keyLabel.SetTextAlign(tview.AlignLeft)
+
+	valueLabel := tview.NewTextView()
+	valueLabel.SetText("Value")
+	valueLabel.SetTextColor(colors.Foreground)
+	valueLabel.SetBackgroundColor(colors.Background)
+	valueLabel.SetTextAlign(tview.AlignLeft)
+
+	headerRow.AddItem(keyLabel, headerInputWidth, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(valueLabel, headerInputWidth, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(spacer, 1, 0, false)
+	headerRow.AddItem(nil, 3, 0, false)
+
+	return headerRow
 }
 
 func createHeadersTableHeader(colors *ColorManager) *tview.Flex {
