@@ -41,7 +41,7 @@ func AppInputDualMode(colors *ColorManager, primitiveComponent ...tview.Primitiv
 		vm.SetBackgroundColor(colors.InputBackground)
 		vm.SetTextColor(colors.Foreground)
 		vm.SetBorderPadding(0, 0, 0, 0)
-		vm.SetTextAlign(tview.AlignCenter)
+		vm.SetTextAlign(tview.AlignLeft)
 
 		vm.SetFocusFunc(func() {
 			vm.SetBackgroundColor(colors.SelectedBackground)

@@ -1381,7 +1381,7 @@ func createCookiesTabWithData(colors *ColorManager,
 		}
 	})
 
-	clearAllButton := createThemedButton(" Clear All ", colors)
+	clearAllButton := createThemedButton(" Delete All ", colors)
 	currentDeleteAllCookiesButton = clearAllButton
 	clearAllButton.SetSelectedFunc(func() {
 		clearCallback := func() {
