@@ -3010,7 +3010,7 @@ func (u *URLVariableInput) updateViewModeWithWidth(width int) {
 		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
 			config.C.Theme.DropdownFocusedBackground,
 			config.C.Theme.BorderFocusColor,
-			varName))
+			getVariableDisplayLabel(varName)))
 
 		// Add space only if next character is another variable (no text between)
 		if i < len(matches)-1 && end == matches[i+1][0] {
@@ -3272,7 +3272,7 @@ func (h *HeaderValueInput) updateViewModeWithWidth(width int) {
 		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
 			config.C.Theme.DropdownFocusedBackground,
 			config.C.Theme.BorderFocusColor,
-			varName))
+			getVariableDisplayLabel(varName)))
 
 		// Add space only if next character is another variable (no text between)
 		if i < len(matches)-1 && end == matches[i+1][0] {

@@ -156,6 +156,15 @@ func FormatBodyContentWithVariables(content string) string {
 	return formatBodyContent(content)
 }
 
+// getVariableDisplayLabel returns a short display label for a template variable.
+// Plugin tags like "command-runner command=..." are shortened to just the plugin name.
+func getVariableDisplayLabel(inner string) string {
+	if strings.HasPrefix(inner, "command-runner ") {
+		return "command-runner"
+	}
+	return inner
+}
+
 // highlightEnvironmentVariables highlights {{variable}} patterns with special background colors
 func highlightEnvironmentVariables(content string) string {
 	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
@@ -183,7 +192,7 @@ func highlightEnvironmentVariables(content string) string {
 		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
 			config.C.Theme.DropdownFocusedBackground,
 			config.C.Theme.BorderFocusColor,
-			varName))
+			getVariableDisplayLabel(varName)))
 
 		// Add space only if next character is another variable (no text between)
 		if i < len(matches)-1 && end == matches[i+1][0] {
