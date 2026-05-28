@@ -113,6 +113,7 @@ type ShortcutsConfig struct {
 	SendRequest       string `mapstructure:"sendRequest"`
 	CopyResponse      string `mapstructure:"copyResponse"`
 	SaveResponse      string `mapstructure:"saveResponse"`
+	OpenCommandRunner string `mapstructure:"openCommandRunner"`
 }
 
 var C AppConfig
@@ -296,6 +297,9 @@ func LoadConfig() error {
 	}
 	if C.Shortcuts.SaveResponse == "" {
 		C.Shortcuts.SaveResponse = "s"
+	}
+	if C.Shortcuts.OpenCommandRunner == "" {
+		C.Shortcuts.OpenCommandRunner = "ctrl+m"
 	}
 
 	return nil

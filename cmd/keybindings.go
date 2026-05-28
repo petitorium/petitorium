@@ -541,6 +541,18 @@ func NewKeyBindingManager() *KeyBindingManager {
 		})
 	}
 
+	if config.C.Shortcuts.OpenCommandRunner != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.OpenCommandRunner)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      showCommandRunnerModalAction,
+			Description: "Open command runner tag modal",
+			Context:     "global",
+		})
+	}
+
 	return manager
 }
 
@@ -763,6 +775,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"renameEnvironment",
 		"renameWorkspace",
 		"workspaceModal",
+		"commandRunnerModal",
 	}
 
 	for _, popup := range formPopups {
@@ -1624,6 +1637,33 @@ func saveResponseAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	ui.ShowMarketplace()
 	return nil
+}
+
+func showCommandRunnerModalAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+	showCommandRunnerModal(ui)
+	return nil
+}
+
+// isCommandRunnerEvent reports whether event matches the configured
+// OpenCommandRunner shortcut.
+func isCommandRunnerEvent(event *tcell.EventKey) bool {
+	if config.C.Shortcuts.OpenCommandRunner == "" {
+		return false
+	}
+	key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.OpenCommandRunner)
+	if key != 0 && event.Key() == key {
+		if modifiers == 0 && event.Modifiers() == tcell.ModCtrl {
+			return true
+		}
+		return event.Modifiers() == modifiers
+	}
+	if keyRune != 0 && event.Rune() == keyRune {
+		return event.Modifiers() == modifiers
+	}
+	return false
 }
 
 func parseShortcut(shortcut string) (tcell.Key, rune, tcell.ModMask) {

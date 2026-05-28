@@ -1686,8 +1686,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		// When in body edit mode and focused on bodyEditPanel, pass all input through to allow pasting
+		// except for the command runner shortcut
 		if ui.BodyEditMode && ui.App.GetFocus() == ui.BodyEditPanel {
-			return event
+			if !isCommandRunnerEvent(event) {
+				return event
+			}
 		}
 
 		// Allow URLVariableInput to handle its own Enter key events
@@ -1714,14 +1717,16 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		focus := ui.App.GetFocus()
 
 		// If we're in a form input field, don't handle collection shortcuts
-		// BUT allow Tab and Backtab to pass through for navigation
+		// BUT allow Tab, Backtab, and the command runner shortcut to pass through
 		if _, isInput := focus.(*tview.InputField); isInput {
-			if event.Key() != tcell.KeyTab && event.Key() != tcell.KeyBacktab {
+			if event.Key() != tcell.KeyTab && event.Key() != tcell.KeyBacktab && !isCommandRunnerEvent(event) {
 				return event // Let input fields handle their own keys
 			}
 		}
 		if _, isTextArea := focus.(*tview.TextArea); isTextArea {
-			return event // Let text areas handle their own keys
+			if !isCommandRunnerEvent(event) {
+				return event // Let text areas handle their own keys
+			}
 		}
 
 		// Check if we're in a form popup - do this BEFORE checking global keybindings
@@ -1779,6 +1784,24 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// First check if this is a global keybinding
 		if result := ui.KeyManager.HandleKeyEvent(ui, event, "global"); result != event {
 			return result
+		}
+
+		// Open command-runner tag editor when pressing 'e' while focused on a view-mode
+		// input that contains a command-runner tag.  Don't intercept in editable fields
+		// (InputField / TextArea) where 'e' is a normal character.
+		if event.Rune() == 'e' {
+			focus := ui.App.GetFocus()
+			if _, isInput := focus.(*tview.InputField); isInput {
+				return event
+			}
+			if _, isTextArea := focus.(*tview.TextArea); isTextArea {
+				return event
+			}
+			target := findActiveTextInput(ui)
+			if target != nil && strings.Contains(target.getText(), "{{command-runner") {
+				showCommandRunnerModal(ui)
+				return nil
+			}
 		}
 
 		// If we're in any modal, don't handle tab navigation
