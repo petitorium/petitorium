@@ -1298,11 +1298,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Substitute environment variables in URL, body, headers, and query params
-		url = substituteVariables(url, envVars)
-		body = substituteVariables(body, envVars)
+		workspaceName := "Default"
+		if ui.WorkspaceData != nil {
+			workspaceName = ui.WorkspaceData.Name
+		}
 
-		// Filter out disabled headers before substitution
+		// Filter out disabled headers before hooks and substitution
 		filteredHeaders := make(map[string]workspace.Entry)
 		for key, entry := range headers {
 			if entry.Enabled {
@@ -1310,9 +1311,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 		headersStr := entriesToStringMap(filteredHeaders)
-		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 
-		// Filter out disabled query params before substitution
+		// Filter out disabled query params before hooks and substitution
 		filteredParams := make(map[string]workspace.Entry)
 		for key, entry := range queryParams {
 			if entry.Enabled {
@@ -1320,6 +1320,37 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 		queryParamsStr := entriesToStringMap(filteredParams)
+
+		// Pre-variable-substitution hook: plugins can resolve custom tags before env vars are substituted
+		preContext := &plugins.HookContext{
+			Request: &plugins.RequestData{
+				Method:      method,
+				URL:         url,
+				Headers:     headersStr,
+				Body:        body,
+				Collection:  collection,
+				RequestName: requestName,
+			},
+			Environment: envVars,
+			Config:      config.C.Plugins.Config,
+			Workspace:   workspaceName,
+		}
+		if preContext.Config == nil {
+			preContext.Config = config.C.Plugins.Config
+		}
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, preContext)
+		}
+
+		// Update local variables from hook modifications
+		url = preContext.Request.URL
+		body = preContext.Request.Body
+		headersStr = preContext.Request.Headers
+
+		// Substitute environment variables in URL, body, headers, and query params
+		url = substituteVariables(url, envVars)
+		body = substituteVariables(body, envVars)
+		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
 
 		requestData := &plugins.RequestData{
@@ -1329,11 +1360,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			Body:        body,
 			Collection:  collection,
 			RequestName: requestName,
-		}
-
-		workspaceName := "Default"
-		if ui.WorkspaceData != nil {
-			workspaceName = ui.WorkspaceData.Name
 		}
 
 		context := &plugins.HookContext{
@@ -1549,11 +1575,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Substitute environment variables in URL, body, headers, and query params
-		url = substituteVariables(url, envVars)
-		body = substituteVariables(body, envVars)
+		workspaceName := "Default"
+		if ui.WorkspaceData != nil {
+			workspaceName = ui.WorkspaceData.Name
+		}
 
-		// Filter out disabled headers before substitution
+		// Filter out disabled headers before hooks and substitution
 		filteredHeaders := make(map[string]workspace.Entry)
 		for key, entry := range headers {
 			if entry.Enabled {
@@ -1561,9 +1588,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 		headersStr := entriesToStringMap(filteredHeaders)
-		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 
-		// Filter out disabled query params before substitution
+		// Filter out disabled query params before hooks and substitution
 		filteredParams := make(map[string]workspace.Entry)
 		for key, entry := range queryParams {
 			if entry.Enabled {
@@ -1571,6 +1597,37 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 		queryParamsStr := entriesToStringMap(filteredParams)
+
+		// Pre-variable-substitution hook
+		preContext := &plugins.HookContext{
+			Request: &plugins.RequestData{
+				Method:      method,
+				URL:         url,
+				Headers:     headersStr,
+				Body:        body,
+				Collection:  "",
+				RequestName: "",
+			},
+			Environment: envVars,
+			Config:      config.C.Plugins.Config,
+			Workspace:   workspaceName,
+		}
+		if preContext.Config == nil {
+			preContext.Config = config.C.Plugins.Config
+		}
+		if ui.PluginManager != nil {
+			ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, preContext)
+		}
+
+		// Update local variables from hook modifications
+		url = preContext.Request.URL
+		body = preContext.Request.Body
+		headersStr = preContext.Request.Headers
+
+		// Substitute environment variables in URL, body, headers, and query params
+		url = substituteVariables(url, envVars)
+		body = substituteVariables(body, envVars)
+		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
 
 		curlCommand := generateCurlCommand(method, url, headersStr, body, contentType, queryParamsStr)
