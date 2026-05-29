@@ -1789,7 +1789,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Open command-runner tag editor when pressing 'e' while focused on a view-mode
 		// input that contains a command-runner tag.  Don't intercept in editable fields
 		// (InputField / TextArea) where 'e' is a normal character.
-		if event.Rune() == 'e' {
+		if event.Rune() == 'e' { // TODO: Change to another key
 			focus := ui.App.GetFocus()
 			if _, isInput := focus.(*tview.InputField); isInput {
 				return event
@@ -1798,7 +1798,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				return event
 			}
 			target := findActiveTextInput(ui)
-			if target != nil && strings.Contains(target.getText(), "{{command-runner") {
+			if target != nil && hasEditableTag(target.getText()) {
 				showCommandRunnerModal(ui)
 				return nil
 			}
