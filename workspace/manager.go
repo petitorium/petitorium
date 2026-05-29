@@ -202,9 +202,11 @@ func LoadWorkspace() (*Workspace, error) {
 }
 
 // migrateWorkspaceContentTypes sets default content types for requests that don't have them
-func migrateWorkspaceContentTypes(workspace *Workspace) {
+// and migrates legacy tag formats.  It returns true if any data was modified.
+func migrateWorkspaceContentTypes(workspace *Workspace) bool {
 	migrateCollectionsContentTypes(workspace.Collections)
 	trimResponseHistory(workspace.Collections)
+	return migrateOldCommandRunnerTags(workspace.Collections)
 }
 
 // migrateCollectionsContentTypes recursively migrates content types for all collections
@@ -220,6 +222,50 @@ func migrateCollectionsContentTypes(collections []Collection) {
 		// Recursively migrate nested collections
 		migrateCollectionsContentTypes(collections[i].Collections)
 	}
+}
+
+// migrateOldCommandRunnerTags converts legacy {{command-runner ...}} tags to the
+// new namespace format {{command-runner:run ...}} across all requests.
+func migrateOldCommandRunnerTags(collections []Collection) bool {
+	modified := false
+	oldPrefix := "{{command-runner "
+	newPrefix := "{{command-runner:run "
+
+	for i := range collections {
+		for j := range collections[i].Requests {
+			req := &collections[i].Requests[j]
+			if strings.Contains(req.URL, oldPrefix) {
+				req.URL = strings.ReplaceAll(req.URL, oldPrefix, newPrefix)
+				modified = true
+			}
+			if strings.Contains(req.Body, oldPrefix) {
+				req.Body = strings.ReplaceAll(req.Body, oldPrefix, newPrefix)
+				modified = true
+			}
+			for k, e := range req.Headers {
+				if strings.Contains(e.Value, oldPrefix) {
+					req.Headers[k] = Entry{
+						Value:   strings.ReplaceAll(e.Value, oldPrefix, newPrefix),
+						Enabled: e.Enabled,
+					}
+					modified = true
+				}
+			}
+			for k, e := range req.QueryParams {
+				if strings.Contains(e.Value, oldPrefix) {
+					req.QueryParams[k] = Entry{
+						Value:   strings.ReplaceAll(e.Value, oldPrefix, newPrefix),
+						Enabled: e.Enabled,
+					}
+					modified = true
+				}
+			}
+		}
+		if migrateOldCommandRunnerTags(collections[i].Collections) {
+			modified = true
+		}
+	}
+	return modified
 }
 
 const maxResponseBodySize = 1024 * 1024
@@ -306,8 +352,16 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 			if err := LoadExpansionState(&workspace.Collections); err != nil {
 				// Not critical
 			}
-			// Migrate existing requests to have default content types
-			migrateWorkspaceContentTypes(workspace)
+			// Migrate existing requests to have default content types and tag formats
+			if migrateWorkspaceContentTypes(workspace) {
+				if updatedData, err := yaml.Marshal(workspace); err == nil {
+					os.WriteFile(workspacePath, updatedData, 0o644)
+				}
+				collectionsPath := filepath.Join(workspaceDir, "collections.yaml")
+				if collectionsData, err := yaml.Marshal(workspace.Collections); err == nil {
+					os.WriteFile(collectionsPath, collectionsData, 0o644)
+				}
+			}
 			return workspace, nil
 		}
 	}
@@ -351,8 +405,15 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 		// Not critical
 	}
 
-	// Migrate existing requests to have default content types
-	migrateWorkspaceContentTypes(workspace)
+	// Migrate existing requests to have default content types and tag formats
+	if migrateWorkspaceContentTypes(workspace) {
+		if updatedData, err := yaml.Marshal(workspace); err == nil {
+			os.WriteFile(workspacePath, updatedData, 0o644)
+		}
+		if collectionsData, err := yaml.Marshal(workspace.Collections); err == nil {
+			os.WriteFile(collectionsPath, collectionsData, 0o644)
+		}
+	}
 
 	return workspace, nil
 }

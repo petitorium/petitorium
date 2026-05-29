@@ -83,10 +83,10 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 	return nil
 }
 
-// parseExistingCommandRunnerTag scans text for the first {{command-runner ...}} tag and
+// parseExistingCommandRunnerTag scans text for the first {{command-runner:run ...}} tag and
 // returns its parameters. If no tag is found, all return values are empty.
 func parseExistingCommandRunnerTag(text string) (command, outputType, jsonPath string) {
-	idx := strings.Index(text, "{{command-runner ")
+	idx := strings.Index(text, "{{command-runner:run ")
 	if idx == -1 {
 		return "", "", ""
 	}
@@ -259,7 +259,7 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 			outputTypeStr = "json"
 		}
 		jsonPath := jsonPathInput.GetText()
-		return fmt.Sprintf(`{{command-runner command="%s" type="%s" jsonPath="%s"}}`,
+		return fmt.Sprintf(`{{command-runner:run command="%s" type="%s" jsonPath="%s"}}`,
 			cmdText, outputTypeStr, jsonPath)
 	}
 
@@ -275,7 +275,7 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 
 		if isEditing {
 			// Replace the first existing tag
-			idx := strings.Index(current, "{{command-runner ")
+			idx := strings.Index(current, "{{command-runner:run ")
 			end := strings.Index(current[idx:], "}}")
 			if idx != -1 && end != -1 {
 				end += idx + 2
