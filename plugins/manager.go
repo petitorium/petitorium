@@ -229,3 +229,9 @@ func (pm *PluginManager) DisablePlugin(name string) error {
 func (pm *PluginManager) GetEnabledPlugins() []string {
 	return pm.config.Enabled
 }
+
+// GetPlugin returns a loaded plugin by name, or (nil, false) if not loaded.
+func (pm *PluginManager) GetPlugin(name string) (Plugin, bool) {
+	p, ok := pm.plugins[name]
+	return p, ok
+}

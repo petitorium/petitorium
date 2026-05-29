@@ -94,14 +94,14 @@ func openTagEditorForField(ui *UIOrchestrator) {
 	switch len(tags) {
 	case 0:
 		// No existing tag — open editor for a new tag insertion.
-		showCommandRunnerModal(ui)
+		showTagEditorModal(ui, target, nil)
 	case 1:
 		// Exactly one tag — edit it directly.
-		showCommandRunnerModalForTag(ui, target, tags[0])
+		showTagEditorModal(ui, target, &tags[0])
 	default:
 		// Multiple tags — show picker first.
 		showTagPickerModal(ui, tags, func(tag DetectedTag) {
-			showCommandRunnerModalForTag(ui, target, tag)
+			showTagEditorModal(ui, target, &tag)
 		})
 	}
 }

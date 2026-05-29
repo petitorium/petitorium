@@ -777,6 +777,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"workspaceModal",
 		"commandRunnerModal",
 		"tagPickerModal",
+		"tagEditorModal",
 	}
 
 	for _, popup := range formPopups {
