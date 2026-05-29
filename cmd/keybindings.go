@@ -776,6 +776,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"renameWorkspace",
 		"workspaceModal",
 		"commandRunnerModal",
+		"tagPickerModal",
 	}
 
 	for _, popup := range formPopups {
@@ -1643,7 +1644,7 @@ func showCommandRunnerModalAction(ui *UIOrchestrator, event *tcell.EventKey) *tc
 	if isInFormPopup(ui) {
 		return event
 	}
-	showCommandRunnerModal(ui)
+	openTagEditorForField(ui)
 	return nil
 }
 

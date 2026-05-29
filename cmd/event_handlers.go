@@ -1799,7 +1799,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 			target := findActiveTextInput(ui)
 			if target != nil && hasEditableTag(target.getText()) {
-				showCommandRunnerModal(ui)
+				openTagEditorForField(ui)
 				return nil
 			}
 		}
