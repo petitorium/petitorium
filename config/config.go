@@ -230,6 +230,7 @@ shortcuts:
   sendRequest: "ctrl+j"
   copyResponse: "c"
   saveResponse: "s"
+  openCommandRunner: ctrl+m
 `
 
 func LoadConfig() error {

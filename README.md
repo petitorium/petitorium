@@ -23,6 +23,7 @@ A powerful Terminal API Testing Client
 - `Ctrl+b` - Jump to request panel
 - `Ctrl+s` - Jump to response panel
 - `Ctrl+p` - Open plugin marketplace
+- `Alt+r` (configurable) - Open tag editor for plugin variables
 - `q` / `Q` - Quit application
 
 ### Collections Panel
@@ -116,6 +117,39 @@ petitorium
 - Press `i` to open body in external editor for editing (main interface)
 - Press `F4` to open body in external editor (main interface or when creating new requests)
 - The external editor provides full support for pasting, complex editing, and syntax highlighting
+
+### Plugin Tag Editor
+
+Petitorium supports editable template variables via plugins. The built-in **command-runner** plugin lets you execute shell commands and inject their output directly into requests.
+
+**Tag syntax:**
+```
+{{command-runner:run command="date +%s" type="string" jsonPath=""}}
+```
+
+**Keybindings:**
+- `crtl+m` (configurable via `shortcuts.openCommandRunner`) — Open the tag editor
+
+**Editor behavior:**
+- If the focused field contains **no tags**, a new tag insertion dialog opens.
+- If it contains **one tag**, the editor opens directly for that tag.
+- If it contains **multiple tags**, a picker modal appears first so you can choose which one to edit.
+
+**Supported field types:**
+- `text` — Single-line input
+- `textarea` — Wide single-line input
+- `dropdown` — Selection list
+- `checkbox` — Boolean toggle
+
+Fields can have **dependencies** (e.g., the JSONPath field is only enabled when Type is set to `json`).
+
+**Configuring the shortcut:**
+
+Edit `~/.config/petitorium/config.yaml`:
+```yaml
+shortcuts:
+  openCommandRunner: "ctrl+m"  # or "ctrl+shift+r", "f5", etc.
+```
 
 ## Themes
 
