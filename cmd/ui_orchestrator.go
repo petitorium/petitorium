@@ -156,53 +156,56 @@ type UIOrchestrator struct {
 	NavCurrentHeaderElement             int // For navigation within a header row (0: Key input, 1: Value input, 2: Delete button)
 	NavCurrentQueryParamRowElement      int // For navigation within query params (0: Add Param, 1: Delete All, 2+: param rows)
 	NavCurrentQueryParamElement         int // For navigation within a query param row (0: Key input, 1: Value input, 2: Delete button)
-	NavCurrentCookieRowElement          int // For navigation within cookies (0: Add Cookie, 1: Delete All, 2+: cookie rows)
-	NavCurrentCookieElement             int // For navigation within a cookie row (0: Domain, 1: Name, 2: Value, 3: Path, 4: Secure, 5: HttpOnly, 6: Checkbox, 7: Delete button)
-	NavPreviousContainer                int
-	NavRequestInTabHeaders              bool // True when in Request panel tab headers
-	NavResponseInTabHeaders             bool // True when in Response panel tab headers
-	RequestDataTabs                     *tview.Flex
-	MainCycle                           *MainCycle
-	HeadersCycle                        *HeadersCycle
-	QueryParamsCycle                    *QueryParamsCycle
-	URLBarCycle                         *URLBarCycle
-	EnvironmentsCycle                   *EnvironmentsCycle
-	WorkspaceCycle                      *WorkspaceCycle
-	LastSelectedRequestNode             *tview.TreeNode
-	BodyEditMode                        bool
-	CurrentBodyContent                  string
-	LastJSONBodyContent                 string // Store last JSON body when switching to No Body
-	JSONBodyContent                     string // Store JSON body when switching away from JSON
-	MultipartBodyContent                string // Store multipart fields when switching away from Multipart
-	RequestPanel                        *tview.Flex
-	RightSide                           *tview.Flex
-	LeftSide                            *tview.Flex
-	CurrentFocus                        int
-	SetPanelFocus                       func(int, bool)
-	SetActiveBorder                     func(element tview.Primitive)
-	SetInactiveBorder                   func(element tview.Primitive)
-	SyncBodyContent                     func(content string)
-	SwitchBodyMode                      func()
-	SwitchWorkspace                     func(string)
-	RefreshMultipartFieldsUI            func()
-	UpdateFooter                        func()
-	CopyResponse                        func()
-	SaveResponse                        func()
-	Suspend                             func(func()) bool
-	WorkspaceSelectorIndex              int
-	WorkspaceConfigButtonIndex          int
-	EnvironmentSelectorIndex            int
-	EnvironmentConfigButtonIndex        int
-	URLBarSelectorIndex                 int
-	URLBarInputIndex                    int
-	URLBarSendButtonIndex               int
-	URLBarCurlButtonIndex               int
-	RPBodyTabIndex                      int
-	RPAuthTabIndex                      int
-	RPQueryTabIndex                     int
-	RPHeadersTabIndex                   int
-	EnterModal                          func()
-	ExitModal                           func()
+
+	// Modal state (nil when no modal is open)
+	EnvModalEditor               *tview.TextArea
+	NavCurrentCookieRowElement   int // For navigation within cookies (0: Add Cookie, 1: Delete All, 2+: cookie rows)
+	NavCurrentCookieElement      int // For navigation within a cookie row (0: Domain, 1: Name, 2: Value, 3: Path, 4: Secure, 5: HttpOnly, 6: Checkbox, 7: Delete button)
+	NavPreviousContainer         int
+	NavRequestInTabHeaders       bool // True when in Request panel tab headers
+	NavResponseInTabHeaders      bool // True when in Response panel tab headers
+	RequestDataTabs              *tview.Flex
+	MainCycle                    *MainCycle
+	HeadersCycle                 *HeadersCycle
+	QueryParamsCycle             *QueryParamsCycle
+	URLBarCycle                  *URLBarCycle
+	EnvironmentsCycle            *EnvironmentsCycle
+	WorkspaceCycle               *WorkspaceCycle
+	LastSelectedRequestNode      *tview.TreeNode
+	BodyEditMode                 bool
+	CurrentBodyContent           string
+	LastJSONBodyContent          string // Store last JSON body when switching to No Body
+	JSONBodyContent              string // Store JSON body when switching away from JSON
+	MultipartBodyContent         string // Store multipart fields when switching away from Multipart
+	RequestPanel                 *tview.Flex
+	RightSide                    *tview.Flex
+	LeftSide                     *tview.Flex
+	CurrentFocus                 int
+	SetPanelFocus                func(int, bool)
+	SetActiveBorder              func(element tview.Primitive)
+	SetInactiveBorder            func(element tview.Primitive)
+	SyncBodyContent              func(content string)
+	SwitchBodyMode               func()
+	SwitchWorkspace              func(string)
+	RefreshMultipartFieldsUI     func()
+	UpdateFooter                 func()
+	CopyResponse                 func()
+	SaveResponse                 func()
+	Suspend                      func(func()) bool
+	WorkspaceSelectorIndex       int
+	WorkspaceConfigButtonIndex   int
+	EnvironmentSelectorIndex     int
+	EnvironmentConfigButtonIndex int
+	URLBarSelectorIndex          int
+	URLBarInputIndex             int
+	URLBarSendButtonIndex        int
+	URLBarCurlButtonIndex        int
+	RPBodyTabIndex               int
+	RPAuthTabIndex               int
+	RPQueryTabIndex              int
+	RPHeadersTabIndex            int
+	EnterModal                   func()
+	ExitModal                    func()
 }
 
 // switchBodyContent switches the body container content based on content type

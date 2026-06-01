@@ -1662,9 +1662,6 @@ func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 }
 
 func showCommandRunnerModalAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if isInFormPopup(ui) {
-		return event
-	}
 	// Only consume the event when an editable text input actually has focus.
 	// If focus is on a button (e.g. SendButton), let the button handle Enter.
 	if findActiveTextInput(ui) == nil {

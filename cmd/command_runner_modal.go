@@ -43,6 +43,14 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 		}
 	}
 
+	// Environment modal JSON editor
+	if ui.EnvModalEditor != nil && ui.EnvModalEditor == focus {
+		return &textInputTarget{
+			getText: ui.EnvModalEditor.GetText,
+			setText: func(s string) { ui.EnvModalEditor.SetText(s, false) },
+		}
+	}
+
 	// Header rows
 	for _, row := range currentHeaderRows {
 		if row.KeyInput != nil && hasDescendant(row.KeyInput, focus) {

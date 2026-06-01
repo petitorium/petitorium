@@ -140,6 +140,7 @@ func showEnvironmentModal(
 		}
 
 		// 3. Close modal
+		ui.EnvModalEditor = nil
 		ui.Pages.RemovePage("envVariables")
 		ui.App.SetFocus(ui.EnvConfigButton)
 	}
@@ -256,6 +257,7 @@ func showEnvironmentModal(
 		})
 
 		modal := createModal(content, 120, 40, ui.Colors.Background)
+		ui.EnvModalEditor = nil
 		ui.Pages.RemovePage("envVariables")
 		ui.Pages.AddPage("envVariables", modal, true, true)
 		ui.UpdateFooter()
@@ -331,6 +333,7 @@ func showEnvironmentModal(
 				return nil
 			}
 
+			ui.EnvModalEditor = nil
 			ui.Pages.RemovePage("envVariables")
 			ui.App.SetFocus(ui.EnvConfigButton)
 			return nil
@@ -344,6 +347,7 @@ func showEnvironmentModal(
 				return nil
 			}
 
+			ui.EnvModalEditor = nil
 			ui.Pages.RemovePage("envVariables")
 			ui.App.SetFocus(ui.EnvConfigButton)
 			return nil
@@ -361,6 +365,7 @@ func showEnvironmentModal(
 
 	modal := createModal(content, 120, 40, ui.Colors.Background)
 	ui.Pages.AddPage("envVariables", modal, true, true)
+	ui.EnvModalEditor = jsonEditor
 	ui.UpdateFooter()
 	ui.App.SetFocus(leftPanel)
 }
