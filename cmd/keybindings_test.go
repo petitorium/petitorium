@@ -84,3 +84,22 @@ func TestHandleFxKey(t *testing.T) {
 		t.Error("KeyBindingManager failed to match 'f' key event for response view")
 	}
 }
+
+func TestShowCommandRunnerModalActionPassesThroughOnButton(t *testing.T) {
+	app := tview.NewApplication()
+	btn := createThemedButton(" Send ", &ColorManager{})
+	app.SetFocus(btn)
+
+	ui := &UIOrchestrator{
+		App:        app,
+		SendButton: btn,
+		Pages:      tview.NewPages(),
+	}
+
+	event := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+	result := showCommandRunnerModalAction(ui, event)
+
+	if result != event {
+		t.Error("showCommandRunnerModalAction should return the event when focus is on a button")
+	}
+}

@@ -230,7 +230,7 @@ shortcuts:
   sendRequest: "ctrl+j"
   copyResponse: "c"
   saveResponse: "s"
-  openCommandRunner: ctrl+m
+  openCommandRunner: f6
 `
 
 func LoadConfig() error {
@@ -300,8 +300,14 @@ func LoadConfig() error {
 		C.Shortcuts.SaveResponse = "s"
 	}
 	if C.Shortcuts.OpenCommandRunner == "" {
-		C.Shortcuts.OpenCommandRunner = "ctrl+m"
+		C.Shortcuts.OpenCommandRunner = "f6"
 	}
+	// Warn if openCommandRunner is set to ctrl+m, which terminals cannot
+	// distinguish from plain Enter (carriage return).
+	// if C.Shortcuts.OpenCommandRunner == "ctrl+m" {
+	// 	fmt.Println("Warning: shortcut 'openCommandRunner: ctrl+m' conflicts with the Enter key in terminals.")
+	// 	fmt.Println("         Please change it to a different shortcut (e.g., 'f6') in your config.")
+	// }
 
 	return nil
 }

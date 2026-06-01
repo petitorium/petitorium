@@ -344,6 +344,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "tree_view",
 		},
 		{
+			Key:         tcell.KeyEnter,
+			Action:      selectRequestInTree,
+			Description: "Select request in tree",
+			Context:     "tree_view",
+		},
+		{
 			Key:         tcell.KeyLeft,
 			Action:      collapseOrMoveToParentArrow,
 			Description: "Collapse or move to parent (arrow)",
@@ -1432,12 +1438,26 @@ func expandOrSelectRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 				return nil
 			}
 		} else if _, ok := node.GetReference().(workspace.Request); ok {
-			// 'l' on a request opens/selects it (trigger the selection function)
-			// Simulate pressing Enter on the request to open it
-			return tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+			// 'l' on a request opens/selects it
+			if ui.TreeSelectionHandler != nil {
+				ui.TreeSelectionHandler(node)
+			}
+			return nil
 		}
 	}
 	return event
+}
+
+func selectRequestInTree(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	node := ui.CollectionsTreeView.GetCurrentNode()
+	if node != nil {
+		if _, ok := node.GetReference().(workspace.Request); ok {
+			if ui.TreeSelectionHandler != nil {
+				ui.TreeSelectionHandler(node)
+			}
+		}
+	}
+	return nil
 }
 
 func collapseOrMoveToParentArrow(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
@@ -1643,6 +1663,11 @@ func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 
 func showCommandRunnerModalAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if isInFormPopup(ui) {
+		return event
+	}
+	// Only consume the event when an editable text input actually has focus.
+	// If focus is on a button (e.g. SendButton), let the button handle Enter.
+	if findActiveTextInput(ui) == nil {
 		return event
 	}
 	openTagEditorForField(ui)

@@ -1654,6 +1654,17 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 	// Set up main application input capture for navigation and shortcuts
 	ui.App.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// When focus is on the collections tree, let Enter pass through to the
+		// TreeView-specific input capture so request selection works.  Some
+		// global shortcuts (e.g. ctrl+m) are indistinguishable from Enter in
+		// terminals, so we must pass Enter through explicitly here.
+		if (event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyLF) &&
+			ui.App.GetFocus() == ui.CollectionsTreeView {
+			currentPage, _ := ui.Pages.GetFrontPage()
+			if currentPage == "main" {
+				return event
+			}
+		}
 		// Handle 'q' to quit or close modals, but disable when focused on an input
 		if event.Rune() == 'q' || event.Rune() == 'Q' {
 			focus := ui.App.GetFocus()

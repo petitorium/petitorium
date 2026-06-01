@@ -849,7 +849,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.PanelIndices.Environment:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select Environment | (Tab) Next Panel | (q) Quit") // Environment
 		case uiOrchestrator.PanelIndices.Collections:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(N) New Collection | (n) New Request | (r) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
+			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select Request | (N) New Collection | (n) New Request | (r) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
 		case uiOrchestrator.PanelIndices.URLBar:
 			focused := uiOrchestrator.App.GetFocus()
 			if focused == uiOrchestrator.MethodDropdown {

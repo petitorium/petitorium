@@ -33,7 +33,7 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 	}
 
 	// URL input (URLVariableInput embeds Pages → TextView/InputField)
-	if hasDescendant(ui.URLInput, focus) {
+	if ui.URLInput != nil && hasDescendant(ui.URLInput, focus) {
 		return &textInputTarget{
 			getText: ui.URLInput.GetText,
 			setText: ui.URLInput.SetText,
@@ -41,7 +41,7 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 	}
 
 	// Body edit panel
-	if ui.BodyEditPanel == focus {
+	if ui.BodyEditPanel != nil && ui.BodyEditPanel == focus {
 		return &textInputTarget{
 			getText: ui.BodyEditPanel.GetText,
 			setText: func(s string) { ui.BodyEditPanel.SetText(s, false) },
