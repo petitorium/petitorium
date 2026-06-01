@@ -513,30 +513,68 @@ func createDefaultEnvironments() []Environment {
 }
 
 // GetEffectiveVariables returns the effective variables for an environment,
-// merging with base environment variables if specified
+// merging with base environment variables if specified and resolving
+// {{key}} references among the merged values.
 func (e *Environment) GetEffectiveVariables(environments []Environment) map[string]string {
-	effective := make(map[string]string)
+	effective := e.getRawVariables(environments)
+	resolveVariableReferences(effective)
+	return effective
+}
 
-	// First, inherit from base environment if specified
+// getRawVariables merges this environment's variables with its base
+// environments without resolving {{key}} placeholders.
+func (e *Environment) getRawVariables(environments []Environment) map[string]string {
+	raw := make(map[string]string)
+
 	if e.Base != "" {
 		for _, env := range environments {
 			if env.Name == e.Base {
-				// Recursively get base variables (to handle multiple levels of inheritance)
-				baseVars := env.GetEffectiveVariables(environments)
+				baseVars := env.getRawVariables(environments)
 				for k, v := range baseVars {
-					effective[k] = v
+					raw[k] = v
 				}
 				break
 			}
 		}
 	}
 
-	// Then override with this environment's variables
 	for k, v := range e.Variables {
-		effective[k] = v
+		raw[k] = v
 	}
 
-	return effective
+	return raw
+}
+
+// resolveVariableReferences performs iterative in-place substitution of
+// {{key}} placeholders using other values in the same map.
+// It runs at most len(vars) passes, stopping early when no changes occur.
+func resolveVariableReferences(vars map[string]string) {
+	n := len(vars)
+	if n == 0 {
+		return
+	}
+
+	for i := 0; i < n; i++ {
+		changed := false
+		next := make(map[string]string, n)
+		for key, value := range vars {
+			resolved := value
+			for otherKey, otherValue := range vars {
+				placeholder := "{{" + otherKey + "}}"
+				resolved = strings.ReplaceAll(resolved, placeholder, otherValue)
+			}
+			next[key] = resolved
+			if resolved != value {
+				changed = true
+			}
+		}
+		for k, v := range next {
+			vars[k] = v
+		}
+		if !changed {
+			break
+		}
+	}
 }
 
 func LoadEnvironments() ([]Environment, error) {
