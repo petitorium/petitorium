@@ -92,6 +92,7 @@ func TestGetEffectiveVariablesResolvesReferences(t *testing.T) {
 
 	env := &envs[0]
 	effective := env.GetEffectiveVariables(envs)
+	ResolveVariableReferences(effective)
 
 	if effective["ipAddress"] != "111.222.333.444" {
 		t.Errorf("ipAddress = %q, want %q", effective["ipAddress"], "111.222.333.444")
@@ -118,6 +119,7 @@ func TestGetEffectiveVariablesMultiLevelChaining(t *testing.T) {
 
 	env := &envs[0]
 	effective := env.GetEffectiveVariables(envs)
+	ResolveVariableReferences(effective)
 
 	if effective["a"] != "final" {
 		t.Errorf("a = %q, want %q", effective["a"], "final")
@@ -144,6 +146,7 @@ func TestGetEffectiveVariablesCircularReferences(t *testing.T) {
 
 	go func() {
 		effective = env.GetEffectiveVariables(envs)
+		ResolveVariableReferences(effective)
 		close(done)
 	}()
 
@@ -183,6 +186,7 @@ func TestGetEffectiveVariablesWithBaseInheritance(t *testing.T) {
 
 	dev := &envs[1]
 	effective := dev.GetEffectiveVariables(envs)
+	ResolveVariableReferences(effective)
 
 	if effective["host"] != "dev.example.com" {
 		t.Errorf("host = %q, want %q", effective["host"], "dev.example.com")

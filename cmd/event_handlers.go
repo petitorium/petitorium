@@ -1287,6 +1287,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			for _, env := range *ui.EnvironmentsData {
 				if env.Name == "Base" {
 					envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+					workspace.ResolveVariableReferences(envVars)
 					break
 				}
 			}
@@ -1295,6 +1296,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
 				env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
 				envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+				workspace.ResolveVariableReferences(envVars)
 			}
 		}
 
@@ -1564,6 +1566,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			for _, env := range *ui.EnvironmentsData {
 				if env.Name == "Base" {
 					envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+					workspace.ResolveVariableReferences(envVars)
 					break
 				}
 			}
@@ -1572,6 +1575,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
 				env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
 				envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
+				workspace.ResolveVariableReferences(envVars)
 			}
 		}
 

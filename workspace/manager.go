@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -513,12 +514,11 @@ func createDefaultEnvironments() []Environment {
 }
 
 // GetEffectiveVariables returns the effective variables for an environment,
-// merging with base environment variables if specified and resolving
-// {{key}} references among the merged values.
+// merging with base environment variables if specified.
+// {{key}} cross-references among the merged values are NOT resolved here;
+// callers should run ResolveVariableReferences afterwards when needed.
 func (e *Environment) GetEffectiveVariables(environments []Environment) map[string]string {
-	effective := e.getRawVariables(environments)
-	resolveVariableReferences(effective)
-	return effective
+	return e.getRawVariables(environments)
 }
 
 // getRawVariables merges this environment's variables with its base
@@ -545,31 +545,37 @@ func (e *Environment) getRawVariables(environments []Environment) map[string]str
 	return raw
 }
 
-// resolveVariableReferences performs iterative in-place substitution of
+// ResolveVariableReferences performs iterative in-place substitution of
 // {{key}} placeholders using other values in the same map.
 // It runs at most len(vars) passes, stopping early when no changes occur.
-func resolveVariableReferences(vars map[string]string) {
+func ResolveVariableReferences(vars map[string]string) {
 	n := len(vars)
 	if n == 0 {
 		return
 	}
 
+	keys := make([]string, 0, n)
+	for k := range vars {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	for i := 0; i < n; i++ {
 		changed := false
 		next := make(map[string]string, n)
-		for key, value := range vars {
-			resolved := value
-			for otherKey, otherValue := range vars {
+		for _, key := range keys {
+			resolved := vars[key]
+			for _, otherKey := range keys {
 				placeholder := "{{" + otherKey + "}}"
-				resolved = strings.ReplaceAll(resolved, placeholder, otherValue)
+				resolved = strings.ReplaceAll(resolved, placeholder, vars[otherKey])
 			}
 			next[key] = resolved
-			if resolved != value {
+			if resolved != vars[key] {
 				changed = true
 			}
 		}
-		for k, v := range next {
-			vars[k] = v
+		for _, key := range keys {
+			vars[key] = next[key]
 		}
 		if !changed {
 			break
