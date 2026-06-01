@@ -233,7 +233,7 @@ func showCommandRunnerModalForTag(ui *UIOrchestrator, target *textInputTarget, d
 		jsonPath := jsonPathInput.GetText()
 
 		go func() {
-			output, err := runCommandForPreview(cmdText)
+			output, err := RunShellCommand(cmdText)
 			if err != nil {
 				app.QueueUpdateDraw(func() {
 					previewText.SetText(fmt.Sprintf("[red]Error: %v[-]", err))
@@ -241,7 +241,6 @@ func showCommandRunnerModalForTag(ui *UIOrchestrator, target *textInputTarget, d
 				return
 			}
 
-			output = strings.TrimSpace(output)
 			if outputTypeStr == "json" && jsonPath != "" {
 				result := gjson.Get(output, jsonPath)
 				output = result.String()

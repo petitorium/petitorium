@@ -1,14 +1,9 @@
 package cmd
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"os/exec"
 	"regexp"
-	"runtime"
 	"strings"
-	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -226,7 +221,7 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 		jsonPath := jsonPathInput.GetText()
 
 		go func() {
-			output, err := runCommandForPreview(cmdText)
+			output, err := RunShellCommand(cmdText)
 			if err != nil {
 				app.QueueUpdateDraw(func() {
 					previewText.SetText(fmt.Sprintf("[red]Error: %v[-]", err))
@@ -234,7 +229,6 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 				return
 			}
 
-			output = strings.TrimSpace(output)
 			if outputTypeStr == "json" && jsonPath != "" {
 				result := gjson.Get(output, jsonPath)
 				output = result.String()
@@ -321,29 +315,4 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 	modal := createModal(layout, 80, 25, colors.Background)
 	pages.AddPage("commandRunnerModal", modal, true, true)
 	app.SetFocus(form)
-}
-
-// runCommandForPreview executes a shell command with a timeout for the live preview.
-func runCommandForPreview(command string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, "cmd", "/c", command)
-	} else {
-		cmd = exec.CommandContext(ctx, "sh", "-c", command)
-	}
-
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
-	}
-
-	return out.String(), nil
 }
