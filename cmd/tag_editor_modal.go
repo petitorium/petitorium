@@ -67,6 +67,10 @@ func showTagEditorModal(ui *UIOrchestrator, target *textInputTarget, dt *Detecte
 	formItems := make(map[string]tview.FormItem)
 	fieldMap := make(map[string]types.TagField)
 
+	// Track disabled states to avoid redundant SetDisabled calls, which in
+	// tview trigger a finished callback and can steal focus.
+	disabledStates := make(map[string]bool)
+
 	// Helper to evaluate dependencies for all fields.
 	refreshDependencies := func() {}
 
@@ -159,13 +163,19 @@ func showTagEditorModal(ui *UIOrchestrator, target *textInputTarget, dt *Detecte
 			}
 
 			enabled := currentValue == f.DependsValue
+			shouldDisable := !enabled
+			if disabledStates[key] == shouldDisable {
+				continue
+			}
+			disabledStates[key] = shouldDisable
+
 			switch w := item.(type) {
 			case *tview.InputField:
-				w.SetDisabled(!enabled)
+				w.SetDisabled(shouldDisable)
 			case *tview.DropDown:
-				w.SetDisabled(!enabled)
+				w.SetDisabled(shouldDisable)
 			case *tview.Checkbox:
-				w.SetDisabled(!enabled)
+				w.SetDisabled(shouldDisable)
 			}
 		}
 	}
