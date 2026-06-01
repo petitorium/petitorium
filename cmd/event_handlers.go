@@ -1279,31 +1279,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// TODO: find collection name
 		}
 
-		// Get current environment variables
-		var envVars map[string]string
-		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
-		if currentEnvIndex == 0 {
-			// Base Environment selected - find and use the "Base" environment
-			for _, env := range *ui.EnvironmentsData {
-				if env.Name == "Base" {
-					envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
-					workspace.ResolveVariableReferences(envVars)
-					break
-				}
-			}
-		} else {
-			// Specific environment selected
-			if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
-				env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
-				envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
-				workspace.ResolveVariableReferences(envVars)
-			}
-		}
-
 		workspaceName := "Default"
 		if ui.WorkspaceData != nil {
 			workspaceName = ui.WorkspaceData.Name
 		}
+
+		// Get current environment variables
+		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
+		envVars := resolveEnvVarsFromIndex(currentEnvIndex, *ui.EnvironmentsData, ui.PluginManager, workspaceName, config.C.Plugins.Config)
 
 		// Filter out disabled headers before hooks and substitution
 		filteredHeaders := make(map[string]workspace.Entry)
@@ -1558,31 +1541,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		headers := getHeadersFromUI()
 		queryParams := getQueryParamsFromUI()
 
-		// Get current environment variables
-		var envVars map[string]string
-		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
-		if currentEnvIndex == 0 {
-			// Base Environment selected - find and use the "Base" environment
-			for _, env := range *ui.EnvironmentsData {
-				if env.Name == "Base" {
-					envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
-					workspace.ResolveVariableReferences(envVars)
-					break
-				}
-			}
-		} else {
-			// Specific environment selected
-			if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
-				env := &(*ui.EnvironmentsData)[currentEnvIndex-1]
-				envVars = env.GetEffectiveVariables(*ui.EnvironmentsData)
-				workspace.ResolveVariableReferences(envVars)
-			}
-		}
-
 		workspaceName := "Default"
 		if ui.WorkspaceData != nil {
 			workspaceName = ui.WorkspaceData.Name
 		}
+
+		// Get current environment variables
+		currentEnvIndex, _ := ui.EnvDropdown.GetCurrentOption()
+		envVars := resolveEnvVarsFromIndex(currentEnvIndex, *ui.EnvironmentsData, ui.PluginManager, workspaceName, config.C.Plugins.Config)
 
 		// Filter out disabled headers before hooks and substitution
 		filteredHeaders := make(map[string]workspace.Entry)
