@@ -3,6 +3,8 @@ module github.com/petitorium/petitorium
 
 go 1.24.0
 
+replace github.com/petitorium/petitorium-plugin-sdk => ./sdk
+
 require (
 	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/dustin/go-humanize v1.0.1
