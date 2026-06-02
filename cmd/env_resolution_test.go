@@ -165,3 +165,46 @@ func TestGetResolvedEnvironmentVariables_CommandRunnerAndCrossRef(t *testing.T) 
 		t.Errorf("url = %q, want %q", got["url"], "localhost/api?t=12345")
 	}
 }
+
+func TestSavePluginEnvironmentChanges_PreservesTags(t *testing.T) {
+	envs := []workspace.Environment{
+		{Name: "Base", Variables: map[string]string{
+			"timestamp": `{{command-runner:run command="echo 12345" type="string"}}`,
+			"static":    "old",
+		}},
+	}
+
+	// Simulate resolved env being passed back
+	resolvedEnv := map[string]string{
+		"timestamp": "12345", // resolved — should NOT be saved
+		"static":    "new",   // genuinely changed — should be saved
+	}
+
+	savePluginEnvironmentChanges(resolvedEnv, 0, &envs)
+
+	if envs[0].Variables["timestamp"] != `{{command-runner:run command="echo 12345" type="string"}}` {
+		t.Errorf("timestamp was overwritten: %q", envs[0].Variables["timestamp"])
+	}
+	if envs[0].Variables["static"] != "new" {
+		t.Errorf("static was not updated: %q", envs[0].Variables["static"])
+	}
+}
+
+func TestSavePluginEnvironmentChanges_SavesPluginAdditions(t *testing.T) {
+	envs := []workspace.Environment{
+		{Name: "Base", Variables: map[string]string{
+			"existing": "val",
+		}},
+	}
+
+	resolvedEnv := map[string]string{
+		"existing":  "val",
+		"pluginKey": "pluginValue",
+	}
+
+	savePluginEnvironmentChanges(resolvedEnv, 0, &envs)
+
+	if envs[0].Variables["pluginKey"] != "pluginValue" {
+		t.Errorf("pluginKey was not added: %q", envs[0].Variables["pluginKey"])
+	}
+}

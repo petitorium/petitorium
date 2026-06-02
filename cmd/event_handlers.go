@@ -262,7 +262,11 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 	return true
 }
 
-// savePluginEnvironmentChanges saves plugin-modified environment variables back to the current environment
+// savePluginEnvironmentChanges saves plugin-modified environment variables back
+// to the current environment.  It skips keys whose original workspace value
+// contains a {{...}} tag but whose resolved value does not, so that dynamic
+// tags (command-runner and cross-references) are not overwritten with static
+// text after each request.
 func savePluginEnvironmentChanges(pluginEnv map[string]string, currentEnvIndex int, environmentsData *[]workspace.Environment) {
 	if pluginEnv == nil || len(pluginEnv) == 0 || environmentsData == nil {
 		return
@@ -291,9 +295,15 @@ func savePluginEnvironmentChanges(pluginEnv map[string]string, currentEnvIndex i
 		currentEnv.Variables = make(map[string]string)
 	}
 
-	// Add or update variables in the current environment
-	for key, value := range pluginEnv {
-		currentEnv.Variables[key] = value
+	// Only persist keys that were genuinely modified by plugins.
+	// If the original value contained a {{...}} tag and the resolved value
+	// does not, we assume it was mechanically resolved and skip it.
+	for key, resolvedValue := range pluginEnv {
+		originalValue, exists := currentEnv.Variables[key]
+		if exists && strings.Contains(originalValue, "{{") && !strings.Contains(resolvedValue, "{{") {
+			continue
+		}
+		currentEnv.Variables[key] = resolvedValue
 	}
 }
 
