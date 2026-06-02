@@ -218,3 +218,35 @@ func TestSavePluginEnvironmentChanges_SavesPluginAdditions(t *testing.T) {
 		t.Errorf("pluginKey was not added: %q", envs[0].Variables["pluginKey"])
 	}
 }
+
+func TestFindVariableTags_NestedCommandRunner(t *testing.T) {
+	text := `{"the_sign": "{{command-runner:run command="echo -n {{ssign}} | sha1sum | awk '{print $1}'" type="string"}}"}`
+	matches := findVariableTags(text)
+	if len(matches) != 1 {
+		t.Fatalf("expected 1 match, got %d: %v", len(matches), matches)
+	}
+	got := text[matches[0][0]:matches[0][1]]
+	want := `{{command-runner:run command="echo -n {{ssign}} | sha1sum | awk '{print $1}'" type="string"}}`
+	if got != want {
+		t.Errorf("match = %q, want %q", got, want)
+	}
+}
+
+func TestFindVariableTags_MixedPlainAndCommandRunner(t *testing.T) {
+	text := `before {{tstamp}} middle {{command-runner:run command="date +%s" type="string"}} after {{host}} end`
+	matches := findVariableTags(text)
+	if len(matches) != 3 {
+		t.Fatalf("expected 3 matches, got %d: %v", len(matches), matches)
+	}
+	wants := []string{
+		"{{tstamp}}",
+		`{{command-runner:run command="date +%s" type="string"}}`,
+		"{{host}}",
+	}
+	for i, want := range wants {
+		got := text[matches[i][0]:matches[i][1]]
+		if got != want {
+			t.Errorf("match %d = %q, want %q", i, got, want)
+		}
+	}
+}

@@ -7,7 +7,6 @@ import (
 	netURL "net/url"
 	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -165,36 +164,29 @@ func getVariableDisplayLabel(inner string) string {
 	return inner
 }
 
-// highlightEnvironmentVariables highlights {{variable}} patterns with special background colors
+// highlightEnvironmentVariables highlights {{variable}} patterns with special
+// background colors.  It correctly handles command-runner tags that contain
+// nested {{...}} references or single-quoted strings with } characters.
 func highlightEnvironmentVariables(content string) string {
-	variableRegex := regexp.MustCompile(`\{\{[^}]+\}\}`)
-
-	// Find all variable positions
-	matches := variableRegex.FindAllStringIndex(content, -1)
+	matches := findVariableTags(content)
 	if len(matches) == 0 {
 		return content
 	}
 
-	// Build result with proper spacing
 	var result strings.Builder
 	lastEnd := 0
 
-	for i, match := range matches {
-		start, end := match[0], match[1]
+	for i, m := range matches {
+		start, end := m[0], m[1]
 
-		// Add text before this variable
 		result.WriteString(content[lastEnd:start])
 
-		// Extract variable name (remove {{ and }})
 		varName := content[start+2 : end-2]
-
-		// Render variable with background color (same as URL component)
 		result.WriteString(fmt.Sprintf("[%s:%s:-]%s[-:-:-]",
 			config.C.Theme.DropdownFocusedBackground,
 			config.C.Theme.BorderFocusColor,
 			getVariableDisplayLabel(varName)))
 
-		// Add space only if next character is another variable (no text between)
 		if i < len(matches)-1 && end == matches[i+1][0] {
 			result.WriteString(" ")
 		}
@@ -202,10 +194,46 @@ func highlightEnvironmentVariables(content string) string {
 		lastEnd = end
 	}
 
-	// Add remaining text after last variable
 	result.WriteString(content[lastEnd:])
-
 	return result.String()
+}
+
+// findVariableTags scans text and returns [start, end) byte-offset pairs for
+// every {{...}} tag.  It uses a proper state machine so that inner }} inside
+// a command-runner tag (e.g. {{ssign}} or awk '{print $1}') does not
+// terminate the outer tag prematurely.
+func findVariableTags(text string) [][2]int {
+	var matches [][2]int
+	i := 0
+	for i < len(text)-1 {
+		if text[i] != '{' || text[i+1] != '{' {
+			i++
+			continue
+		}
+		start := i
+		i += 2
+
+		// Check if this is a command-runner tag (may contain nested {{}}).
+		if strings.HasPrefix(text[i:], "command-runner:run") {
+			end := findCommandRunnerTagEnd(text, start)
+			if end != -1 {
+				matches = append(matches, [2]int{start, end})
+				i = end
+				continue
+			}
+		}
+
+		// Plain {{variable}} — find the next "}}".
+		for i < len(text)-1 {
+			if text[i] == '}' && text[i+1] == '}' {
+				matches = append(matches, [2]int{start, i + 2})
+				i += 2
+				break
+			}
+			i++
+		}
+	}
+	return matches
 }
 
 // formatBodyContent formats body content with syntax highlighting using Chroma
