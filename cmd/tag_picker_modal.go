@@ -116,6 +116,7 @@ func showCommandRunnerModalForTag(ui *UIOrchestrator, target *textInputTarget, d
 	colors := ui.Colors
 	app := ui.App
 	pages := ui.Pages
+	forEnvJSON := ui.EnvModalEditor != nil
 
 	// Pre-fill from the detected tag's inner params.
 	matches := paramRegex.FindAllStringSubmatch(dt.Inner, -1)
@@ -265,8 +266,12 @@ func showCommandRunnerModalForTag(ui *UIOrchestrator, target *textInputTarget, d
 			outputTypeStr = "json"
 		}
 		jsonPath := jsonPathInput.GetText()
-		return fmt.Sprintf(`{{command-runner:run command="%s" type="%s" jsonPath="%s"}}`,
+		tag := fmt.Sprintf(`{{command-runner:run command="%s" type="%s" jsonPath="%s"}}`,
 			cmdText, outputTypeStr, jsonPath)
+		if forEnvJSON {
+			tag = strings.ReplaceAll(tag, `"`, `\"`)
+		}
+		return tag
 	}
 
 	// Helper to insert or replace the exact tag in the target input
@@ -278,6 +283,18 @@ func showCommandRunnerModalForTag(ui *UIOrchestrator, target *textInputTarget, d
 
 		tag := buildTag()
 		current := target.getText()
+
+		if forEnvJSON {
+			if isEditing {
+				ui.EnvModalEditor.Replace(dt.Start, dt.End, tag)
+			} else {
+				row, col, _, _ := ui.EnvModalEditor.GetCursor()
+				offset := cursorByteOffset(current, row, col)
+				ui.EnvModalEditor.Replace(offset, offset, tag)
+			}
+			closeModalFunc()
+			return
+		}
 
 		if isEditing {
 			// Replace the exact tag using precise byte offsets.

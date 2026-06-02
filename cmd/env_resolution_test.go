@@ -87,6 +87,62 @@ func TestResolveEnvVarsFromIndex_NotFound(t *testing.T) {
 	}
 }
 
+func TestParseExistingCommandRunnerTag_JSONEscapedQuotes(t *testing.T) {
+	// Tag as it appears inside a JSON string (quotes escaped)
+	text := `{"pass": "{{command-runner:run command=\"echo secret\" type=\"string\"}}"}`
+	cmd, outType, jsonPath := parseExistingCommandRunnerTag(text)
+	if cmd != "echo secret" {
+		t.Errorf("command = %q, want %q", cmd, "echo secret")
+	}
+	if outType != "string" {
+		t.Errorf("type = %q, want %q", outType, "string")
+	}
+	if jsonPath != "" {
+		t.Errorf("jsonPath = %q, want empty", jsonPath)
+	}
+}
+
+func TestSanitizeCommandRunnerTagsInJSON(t *testing.T) {
+	text := `{"pass": "{{command-runner:run command="echo secret" type="string"}}"}`
+	got := sanitizeCommandRunnerTagsInJSON(text)
+	want := `{"pass": "{{command-runner:run command=\"echo secret\" type=\"string\"}}"}`
+	if got != want {
+		t.Errorf("sanitizeCommandRunnerTagsInJSON(%q) = %q, want %q", text, got, want)
+	}
+}
+
+func TestSanitizeCommandRunnerTagsInJSON_AlreadyEscaped(t *testing.T) {
+	text := `{"pass": "{{command-runner:run command=\"echo secret\" type=\"string\"}}"}`
+	got := sanitizeCommandRunnerTagsInJSON(text)
+	if got != text {
+		t.Errorf("sanitizeCommandRunnerTagsInJSON should not double-escape: got %q", got)
+	}
+}
+
+func TestSanitizeCommandRunnerTagsInJSON_NoTag(t *testing.T) {
+	text := `{"pass": "simple value"}`
+	got := sanitizeCommandRunnerTagsInJSON(text)
+	if got != text {
+		t.Errorf("sanitizeCommandRunnerTagsInJSON should passthrough: got %q", got)
+	}
+}
+
+func TestCursorByteOffset(t *testing.T) {
+	text := "line1\nline2\nline3"
+	if cursorByteOffset(text, 0, 0) != 0 {
+		t.Errorf("cursorByteOffset(row=0, col=0) = %d, want 0", cursorByteOffset(text, 0, 0))
+	}
+	if cursorByteOffset(text, 1, 0) != 6 {
+		t.Errorf("cursorByteOffset(row=1, col=0) = %d, want 6", cursorByteOffset(text, 1, 0))
+	}
+	if cursorByteOffset(text, 1, 3) != 9 {
+		t.Errorf("cursorByteOffset(row=1, col=3) = %d, want 9", cursorByteOffset(text, 1, 3))
+	}
+	if cursorByteOffset(text, 2, 5) != 17 {
+		t.Errorf("cursorByteOffset(row=2, col=5) = %d, want 17", cursorByteOffset(text, 2, 5))
+	}
+}
+
 func TestGetResolvedEnvironmentVariables_CommandRunnerAndCrossRef(t *testing.T) {
 	envs := []workspace.Environment{
 		{

@@ -86,9 +86,33 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 	return nil
 }
 
+// cursorByteOffset converts a (row, col) position from tview.TextArea.GetCursor
+// into a byte offset within the text. It assumes newlines are '\n'.
+func cursorByteOffset(text string, row, col int) int {
+	lines := strings.Split(text, "\n")
+	offset := 0
+	for i := 0; i < row && i < len(lines); i++ {
+		offset += len(lines[i]) + 1 // +1 for '\n'
+	}
+	if row < len(lines) {
+		line := lines[row]
+		runes := []rune(line)
+		if col > len(runes) {
+			col = len(runes)
+		}
+		offset += len(string(runes[:col]))
+	}
+	return offset
+}
+
 // parseExistingCommandRunnerTag scans text for the first {{command-runner:run ...}} tag and
 // returns its parameters. If no tag is found, all return values are empty.
+// It transparently handles JSON-escaped quotes (\" -> ") so the same parser
+// works for tags stored inside a JSON editor.
 func parseExistingCommandRunnerTag(text string) (command, outputType, jsonPath string) {
+	// Unescape JSON-style escaped quotes so we can parse tags inside JSON strings.
+	text = strings.ReplaceAll(text, `\"`, `"`)
+
 	idx := strings.Index(text, "{{command-runner:run ")
 	if idx == -1 {
 		return "", "", ""
@@ -121,6 +145,7 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 	if target == nil {
 		return
 	}
+	forEnvJSON := ui.EnvModalEditor != nil
 
 	// Check if the target already contains a command-runner tag
 	existingCommand, existingType, existingJSONPath := parseExistingCommandRunnerTag(target.getText())
@@ -261,8 +286,12 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 			outputTypeStr = "json"
 		}
 		jsonPath := jsonPathInput.GetText()
-		return fmt.Sprintf(`{{command-runner:run command="%s" type="%s" jsonPath="%s"}}`,
+		tag := fmt.Sprintf(`{{command-runner:run command="%s" type="%s" jsonPath="%s"}}`,
 			cmdText, outputTypeStr, jsonPath)
+		if forEnvJSON {
+			tag = strings.ReplaceAll(tag, `"`, `\"`)
+		}
+		return tag
 	}
 
 	// Helper to insert or replace the tag into the target input
@@ -274,6 +303,28 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 
 		tag := buildTag()
 		current := target.getText()
+
+		if forEnvJSON {
+			if isEditing {
+				// Replace the first existing tag using precise byte offsets.
+				idx := strings.Index(current, "{{command-runner:run ")
+				if idx != -1 {
+					end := strings.Index(current[idx:], "}}")
+					if end != -1 {
+						end += idx + 2
+						ui.EnvModalEditor.Replace(idx, end, tag)
+						closeModalFunc()
+						return
+					}
+				}
+			}
+			// New insertion: place at cursor position.
+			row, col, _, _ := ui.EnvModalEditor.GetCursor()
+			offset := cursorByteOffset(current, row, col)
+			ui.EnvModalEditor.Replace(offset, offset, tag)
+			closeModalFunc()
+			return
+		}
 
 		if isEditing {
 			// Replace the first existing tag

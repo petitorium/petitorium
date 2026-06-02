@@ -51,6 +51,7 @@ func showEnvironmentModal(
 
 	// Create JSON editor
 	jsonEditor := createTextArea(" Environment Variables (JSON) ", ui.Colors.Background, ui.Colors.Border, ui.Colors.Title, ui.Colors.Foreground)
+	jsonEditor.SetWordWrap(false)
 	jsonEditor.SetText(string(jsonBytes), false)
 
 	// Create error display
@@ -105,7 +106,7 @@ func showEnvironmentModal(
 			return fmt.Errorf("no environment selected to save")
 		}
 
-		jsonText := jsonEditor.GetText()
+		jsonText := sanitizeCommandRunnerTagsInJSON(jsonEditor.GetText())
 		var newVars map[string]string
 		if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
 			return fmt.Errorf("invalid JSON: %v", err)

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/tidwall/gjson"
 
 	"github.com/petitorium/petitorium/plugins"
@@ -128,4 +130,73 @@ func processCommandRunnerTags(text string) string {
 	}
 
 	return result
+}
+
+// sanitizeCommandRunnerTagsInJSON scans text for {{command-runner:run ...}} tags
+// and escapes any unescaped double quotes inside them so the surrounding JSON
+// remains valid. It is used as a safety net in the env modal save handler.
+func sanitizeCommandRunnerTagsInJSON(text string) string {
+	prefix := "{{command-runner:run"
+	result := text
+	offset := 0
+	for {
+		idx := strings.Index(result[offset:], prefix)
+		if idx == -1 {
+			break
+		}
+		start := offset + idx
+		end := findCommandRunnerTagEnd(result, start)
+		if end == -1 {
+			break
+		}
+		tag := result[start:end]
+		sanitizedTag := escapeUnescapedQuotes(tag)
+		result = result[:start] + sanitizedTag + result[end:]
+		offset = start + len(sanitizedTag)
+	}
+	return result
+}
+
+// findCommandRunnerTagEnd scans forward from start (which points at the
+// opening "{{command-runner:run") and returns the byte offset just after the
+// matching "}}". It tracks whether we're inside a quoted string so that "}}"
+// inside a command does not terminate the tag prematurely.
+func findCommandRunnerTagEnd(text string, start int) int {
+	i := start + len("{{command-runner:run")
+	inQuotes := false
+	for i < len(text)-1 {
+		if text[i] == '\\' && i+1 < len(text) && text[i+1] == '"' {
+			i += 2
+			continue
+		}
+		if text[i] == '"' {
+			inQuotes = !inQuotes
+			i++
+			continue
+		}
+		if !inQuotes && text[i] == '}' && text[i+1] == '}' {
+			return i + 2
+		}
+		i++
+	}
+	return -1
+}
+
+// escapeUnescapedQuotes returns a copy of s where every unescaped double quote
+// is replaced by an escaped one (\"). Quotes that are already escaped are left
+// untouched.
+func escapeUnescapedQuotes(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '"' {
+			if i > 0 && s[i-1] == '\\' {
+				b.WriteByte('"')
+			} else {
+				b.WriteString("\\\"")
+			}
+		} else {
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
 }
