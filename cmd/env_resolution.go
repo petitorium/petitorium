@@ -36,12 +36,16 @@ func getResolvedEnvironmentVariables(
 		effective = ctx.Environment
 	}
 
+	// Resolve {{key}} cross-references so command-runner commands see
+	// fully resolved values when they reference other env vars.
+	workspace.ResolveVariableReferences(effective)
+
 	// Execute command-runner tags in every value
 	for k, v := range effective {
-		effective[k] = processCommandRunnerTags(v)
+		effective[k] = processCommandRunnerTags(v, effective)
 	}
 
-	// Resolve {{key}} cross-references
+	// Resolve any new {{key}} cross-references introduced by command outputs.
 	workspace.ResolveVariableReferences(effective)
 
 	// Post-resolution plugin hooks
@@ -86,9 +90,12 @@ func resolveEnvVarsFromIndex(
 
 // processCommandRunnerTags scans text for {{command-runner:run ...}} tags,
 // executes each command, and replaces the tag with the trimmed output.
+// Before execution, any {{key}} placeholders inside the command attribute are
+// resolved using the provided variables map, so command-runner tags can
+// reference other environment variables.
 // On error the original tag is left untouched.  Tags are processed right-to-left
 // so byte offsets remain valid.
-func processCommandRunnerTags(text string) string {
+func processCommandRunnerTags(text string, vars map[string]string) string {
 	tags := scanTags(text)
 	if len(tags) == 0 {
 		return text
@@ -115,6 +122,9 @@ func processCommandRunnerTags(text string) string {
 		if command == "" {
 			continue
 		}
+
+		// Resolve {{key}} placeholders inside the command string using other env vars.
+		command = substituteVariables(command, vars)
 
 		output, err := RunShellCommand(command)
 		if err != nil {

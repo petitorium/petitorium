@@ -8,7 +8,7 @@ import (
 
 func TestProcessCommandRunnerTags_Simple(t *testing.T) {
 	tag := `{{command-runner:run command="echo hello" type="string"}}`
-	got := processCommandRunnerTags(tag)
+	got := processCommandRunnerTags(tag, nil)
 	if got != "hello" {
 		t.Errorf("processCommandRunnerTags(%q) = %q, want %q", tag, got, "hello")
 	}
@@ -17,7 +17,7 @@ func TestProcessCommandRunnerTags_Simple(t *testing.T) {
 func TestProcessCommandRunnerTags_JSONPath(t *testing.T) {
 	// Use octal escapes (\042) so the command itself contains no double quotes.
 	tag := `{{command-runner:run command="printf '{\042name\042:\042alice\042}'" type="json" jsonPath="name"}}`
-	got := processCommandRunnerTags(tag)
+	got := processCommandRunnerTags(tag, nil)
 	if got != "alice" {
 		t.Errorf("processCommandRunnerTags(%q) = %q, want %q", tag, got, "alice")
 	}
@@ -25,7 +25,7 @@ func TestProcessCommandRunnerTags_JSONPath(t *testing.T) {
 
 func TestProcessCommandRunnerTags_Passthrough(t *testing.T) {
 	text := "no tags here"
-	got := processCommandRunnerTags(text)
+	got := processCommandRunnerTags(text, nil)
 	if got != text {
 		t.Errorf("processCommandRunnerTags(%q) = %q, want %q", text, got, text)
 	}
@@ -33,7 +33,7 @@ func TestProcessCommandRunnerTags_Passthrough(t *testing.T) {
 
 func TestProcessCommandRunnerTags_CommandError(t *testing.T) {
 	tag := `{{command-runner:run command="exit 1" type="string"}}`
-	got := processCommandRunnerTags(tag)
+	got := processCommandRunnerTags(tag, nil)
 	if got != tag {
 		t.Errorf("processCommandRunnerTags(%q) = %q, want original tag preserved", tag, got)
 	}
@@ -41,10 +41,20 @@ func TestProcessCommandRunnerTags_CommandError(t *testing.T) {
 
 func TestProcessCommandRunnerTags_Multiple(t *testing.T) {
 	text := `before {{command-runner:run command="echo first" type="string"}} middle {{command-runner:run command="echo second" type="string"}} after`
-	got := processCommandRunnerTags(text)
+	got := processCommandRunnerTags(text, nil)
 	want := "before first middle second after"
 	if got != want {
 		t.Errorf("processCommandRunnerTags(%q) = %q, want %q", text, got, want)
+	}
+}
+
+func TestProcessCommandRunnerTags_ResolvesVariablesInCommand(t *testing.T) {
+	// A command-runner tag whose command references another env var.
+	text := `{{command-runner:run command="echo -n {{the_pass}}" type="string"}}`
+	vars := map[string]string{"the_pass": "1234567890b"}
+	got := processCommandRunnerTags(text, vars)
+	if got != "1234567890b" {
+		t.Errorf("processCommandRunnerTags(%q) = %q, want %q", text, got, "1234567890b")
 	}
 }
 

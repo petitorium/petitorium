@@ -1348,6 +1348,17 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
 
+		// Execute any command-runner tags that were substituted into the request
+		// fields or written directly in the body / URL / headers.
+		url = processCommandRunnerTags(url, envVars)
+		body = processCommandRunnerTags(body, envVars)
+		for k, v := range headersStr {
+			headersStr[k] = processCommandRunnerTags(v, envVars)
+		}
+		for k, v := range queryParamsStr {
+			queryParamsStr[k] = processCommandRunnerTags(v, envVars)
+		}
+
 		requestData := &plugins.RequestData{
 			Method:      method,
 			URL:         url,
@@ -1609,6 +1620,17 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		body = substituteVariables(body, envVars)
 		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
+
+		// Execute any command-runner tags that were substituted into the request
+		// fields or written directly in the body / URL / headers.
+		url = processCommandRunnerTags(url, envVars)
+		body = processCommandRunnerTags(body, envVars)
+		for k, v := range headersStr {
+			headersStr[k] = processCommandRunnerTags(v, envVars)
+		}
+		for k, v := range queryParamsStr {
+			queryParamsStr[k] = processCommandRunnerTags(v, envVars)
+		}
 
 		curlCommand := generateCurlCommand(method, url, headersStr, body, contentType, queryParamsStr)
 
