@@ -78,7 +78,19 @@ Group imports into three blocks separated by newlines:
 
 - **Focus Cycles**: New components must be added to the appropriate focus cycle in `cmd/cycles.go`.
 - **Tab/Shift+Tab**: Ensure `Tab` cycles forward and `Shift+Tab` cycles backward through all interactive elements.
-- **Focus Restoration**: When opening modals (especially save/download dialogs), capture the current focus with `app.GetFocus()` before opening the modal. Use `showSuccessModalWithFocus`/`showErrorModalWithFocus` to restore focus when the modal closes. Failing to restore focus causes UI corruption (e.g., j/k keys move the entire app inside the terminal).
+- **Focus Restoration**: When opening modals (especially save/download dialogs or tag/command-runner modals), capture the current focus with `app.GetFocus()` before opening the modal. Use `showSuccessModalWithFocus`/`showErrorModalWithFocus` to restore focus when the modal closes, or call `app.SetFocus(previousFocus)` directly in the modal's `closeModalFunc`. Failing to restore focus causes UI corruption (e.g., j/k keys move the entire app inside the terminal).
+
+  Example pattern for tag/command-runner modals:
+  ```go
+  previousFocus := app.GetFocus()
+  closeModalFunc := func() {
+      pages.RemovePage("modalName")
+      pages.SwitchToPage("main")
+      if previousFocus != nil {
+          app.SetFocus(previousFocus)
+      }
+  }
+  ```
 
 ### Vim Bindings
 

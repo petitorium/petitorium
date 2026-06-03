@@ -231,9 +231,13 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 	layout.AddItem(form, 0, 1, true)
 	layout.AddItem(previewText, 8, 0, false)
 
+	previousFocus := app.GetFocus()
 	closeModalFunc := func() {
 		pages.RemovePage("commandRunnerModal")
 		pages.SwitchToPage("main")
+		if previousFocus != nil {
+			app.SetFocus(previousFocus)
+		}
 	}
 
 	// Helper to run command for live preview

@@ -35,9 +35,13 @@ func showTagPickerModal(ui *UIOrchestrator, tags []DetectedTag, onSelect func(ta
 		list.AddItem(label, preview, rune('0'+i+1), nil)
 	}
 
+	previousFocus := app.GetFocus()
 	closeModalFunc := func() {
 		pages.RemovePage("tagPickerModal")
 		pages.SwitchToPage("main")
+		if previousFocus != nil {
+			app.SetFocus(previousFocus)
+		}
 	}
 
 	list.SetSelectedFunc(func(idx int, mainText string, secondaryText string, shortcut rune) {

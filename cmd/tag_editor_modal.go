@@ -207,9 +207,13 @@ func showTagEditorModal(ui *UIOrchestrator, target *textInputTarget, dt *Detecte
 	// Run once to set initial disabled states.
 	refreshDependencies()
 
+	previousFocus := app.GetFocus()
 	closeModalFunc := func() {
 		pages.RemovePage("tagEditorModal")
 		pages.SwitchToPage("main")
+		if previousFocus != nil {
+			app.SetFocus(previousFocus)
+		}
 	}
 
 	// Collect current form values into a map.
