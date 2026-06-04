@@ -22,15 +22,16 @@ import (
 
 // HTTPResponse represents the response from an HTTP request
 type HTTPResponse struct {
-	StatusCode int
-	Status     string
-	Headers    map[string][]string
-	Cookies    []*http.Cookie
-	Body       string
-	BodyBytes  []byte
-	Duration   time.Duration
-	Timestamp  time.Time
-	BodySize   int
+	StatusCode     int
+	Status         string
+	Headers        map[string][]string
+	Cookies        []*http.Cookie
+	Body           string
+	BodyBytes      []byte
+	Duration       time.Duration
+	TotalDuration  time.Duration
+	Timestamp      time.Time
+	BodySize       int
 }
 
 func convertCookies(jarCookies []workspace.Cookie) []*http.Cookie {
@@ -228,15 +229,16 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 	}
 
 	result := &HTTPResponse{
-		StatusCode: lastResp.StatusCode,
-		Status:     lastResp.Status,
-		Headers:    headersMap,
-		Cookies:    capturedCookies,
-		Body:       string(respBody),
-		BodyBytes:  respBody,
-		Duration:   duration,
-		Timestamp:  time.Now(),
-		BodySize:   len(respBody),
+		StatusCode:    lastResp.StatusCode,
+		Status:        lastResp.Status,
+		Headers:       headersMap,
+		Cookies:       capturedCookies,
+		Body:          string(respBody),
+		BodyBytes:     respBody,
+		Duration:      duration,
+		TotalDuration: duration,
+		Timestamp:     time.Now(),
+		BodySize:      len(respBody),
 	}
 
 	return result, nil

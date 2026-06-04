@@ -2574,6 +2574,9 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 	durationStr := " -"
 	if resp.Duration > 0 {
 		durationStr = fmt.Sprintf(" %v", resp.Duration.Round(time.Millisecond))
+		if resp.TotalDuration > resp.Duration {
+			durationStr = fmt.Sprintf(" %v / %v total", resp.Duration.Round(time.Millisecond), resp.TotalDuration.Round(time.Millisecond))
+		}
 	}
 	durationText.SetText(durationStr)
 	durationText.SetTextAlign(tview.AlignCenter)

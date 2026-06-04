@@ -93,13 +93,15 @@ func (pm *PluginManager) RegisterPlugin(p Plugin) error {
 	return nil
 }
 
-// ExecuteHooks executes all hooks of the given type with timeout and error isolation
+// ExecuteHooks executes all hooks of the given type with timeout and error isolation.
+// It returns a combined error if any plugin timed out or panicked.
 func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error {
 	plugins, exists := pm.hooks[hookType]
 	if !exists {
 		return nil // No hooks for this type
 	}
 
+	var errs []error
 	for _, p := range plugins {
 		done := make(chan error, 1)
 		var updatedCtx *types.HookContext
@@ -121,8 +123,11 @@ func (pm *PluginManager) ExecuteHooks(hookType HookType, ctx *HookContext) error
 				*ctx = *updatedCtx
 			}
 		case <-time.After(5 * time.Second):
-			// Timeout, continue
+			errs = append(errs, fmt.Errorf("plugin %s hook timed out after 5s", p.Name()))
 		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("plugin hook errors: %v", errs)
 	}
 	return nil
 }

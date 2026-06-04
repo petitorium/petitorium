@@ -32,7 +32,9 @@ func getResolvedEnvironmentVariables(
 			Config:      pluginConfig,
 			Workspace:   workspaceName,
 		}
-		pluginManager.ExecuteHooks(plugins.PreEnvironmentResolution, ctx)
+		if err := pluginManager.ExecuteHooks(plugins.PreEnvironmentResolution, ctx); err != nil {
+			debugLog("PreEnvironmentResolution hook error: %v", err)
+		}
 		effective = ctx.Environment
 	}
 
@@ -55,7 +57,9 @@ func getResolvedEnvironmentVariables(
 			Config:      pluginConfig,
 			Workspace:   workspaceName,
 		}
-		pluginManager.ExecuteHooks(plugins.PostEnvironmentResolution, ctx)
+		if err := pluginManager.ExecuteHooks(plugins.PostEnvironmentResolution, ctx); err != nil {
+			debugLog("PostEnvironmentResolution hook error: %v", err)
+		}
 		effective = ctx.Environment
 	}
 

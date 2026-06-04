@@ -1252,6 +1252,9 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return
 		}
 
+		sendStartTime := time.Now()
+		var pluginWarnings []string
+
 		// Get current request data from UI
 		_, method := ui.MethodDropdown.GetCurrentOption()
 		url := ui.URLInput.GetText()
@@ -1334,7 +1337,9 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			preContext.Config = config.C.Plugins.Config
 		}
 		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, preContext)
+			if err := ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, preContext); err != nil {
+				pluginWarnings = append(pluginWarnings, err.Error())
+			}
 		}
 
 		// Update local variables from hook modifications
@@ -1348,15 +1353,23 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
 
-		// Execute any command-runner tags that were substituted into the request
-		// fields or written directly in the body / URL / headers.
-		url = processCommandRunnerTags(url, envVars)
-		body = processCommandRunnerTags(body, envVars)
-		for k, v := range headersStr {
-			headersStr[k] = processCommandRunnerTags(v, envVars)
+		// Skip built-in command-runner resolution when the external plugin is
+		// loaded to avoid double execution (DRY).
+		hasExternalCommandRunner := false
+		if ui.PluginManager != nil {
+			_, hasExternalCommandRunner = ui.PluginManager.GetPlugin("command-runner")
 		}
-		for k, v := range queryParamsStr {
-			queryParamsStr[k] = processCommandRunnerTags(v, envVars)
+		if !hasExternalCommandRunner {
+			// Execute any command-runner tags that were substituted into the request
+			// fields or written directly in the body / URL / headers.
+			url = processCommandRunnerTags(url, envVars)
+			body = processCommandRunnerTags(body, envVars)
+			for k, v := range headersStr {
+				headersStr[k] = processCommandRunnerTags(v, envVars)
+			}
+			for k, v := range queryParamsStr {
+				queryParamsStr[k] = processCommandRunnerTags(v, envVars)
+			}
 		}
 
 		requestData := &plugins.RequestData{
@@ -1381,7 +1394,9 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PreSend, context)
+			if err := ui.PluginManager.ExecuteHooks(plugins.PreSend, context); err != nil {
+				pluginWarnings = append(pluginWarnings, err.Error())
+			}
 		}
 
 		// Update headers from context (plugins may have modified them)
@@ -1410,12 +1425,20 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				if err != nil {
 					if ui.PluginManager != nil {
-						ui.PluginManager.ExecuteHooks(plugins.OnError, context)
+						if hookErr := ui.PluginManager.ExecuteHooks(plugins.OnError, context); hookErr != nil {
+							pluginWarnings = append(pluginWarnings, hookErr.Error())
+						}
 					}
 					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
-					ui.ResponsePreviewPanel.SetText(fmt.Sprintf("[red]Error: %v[-]", err))
+					errText := fmt.Sprintf("[red]Error: %v[-]", err)
+					if len(pluginWarnings) > 0 {
+						errText = "[yellow]⚠ Plugin warnings:\n" + strings.Join(pluginWarnings, "\n") + "[-]\n\n" + errText
+					}
+					ui.ResponsePreviewPanel.SetText(errText)
 					return
 				}
+
+				resp.TotalDuration = time.Since(sendStartTime)
 
 				context.Response = &plugins.ResponseData{
 					StatusCode: resp.StatusCode,
@@ -1432,9 +1455,15 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				// Run plugin hooks that might modify data but not UI
 				if ui.PluginManager != nil {
-					ui.PluginManager.ExecuteHooks(plugins.PostReceive, context)
-					ui.PluginManager.ExecuteHooks(plugins.ResponseValidation, context)
-					ui.PluginManager.ExecuteHooks(plugins.ResponseTransform, context)
+					if err := ui.PluginManager.ExecuteHooks(plugins.PostReceive, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
+					if err := ui.PluginManager.ExecuteHooks(plugins.ResponseValidation, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
+					if err := ui.PluginManager.ExecuteHooks(plugins.ResponseTransform, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
 				}
 
 				// Check if response is binary and needs download
@@ -1532,11 +1561,27 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				}
 
 				if ui.PluginManager != nil {
-					ui.PluginManager.ExecuteHooks(plugins.PostSave, context)
-					ui.PluginManager.ExecuteHooks(plugins.PostRequest, context)
-					ui.PluginManager.ExecuteHooks(plugins.PreUIUpdate, context)
-					ui.PluginManager.ExecuteHooks(plugins.PostUIUpdate, context)
-					ui.PluginManager.ExecuteHooks(plugins.PreSave, context)
+					if err := ui.PluginManager.ExecuteHooks(plugins.PostSave, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
+					if err := ui.PluginManager.ExecuteHooks(plugins.PostRequest, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
+					if err := ui.PluginManager.ExecuteHooks(plugins.PreUIUpdate, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
+					if err := ui.PluginManager.ExecuteHooks(plugins.PostUIUpdate, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
+					if err := ui.PluginManager.ExecuteHooks(plugins.PreSave, context); err != nil {
+						pluginWarnings = append(pluginWarnings, err.Error())
+					}
+				}
+
+				// Prepend plugin timeout warnings to the response body preview
+				if len(pluginWarnings) > 0 {
+					warningText := "[yellow]⚠ Plugin warnings:\n" + strings.Join(pluginWarnings, "\n") + "[-]\n\n"
+					resp.Body = warningText + resp.Body
 				}
 
 				// Update the response tabs with the new response
@@ -1607,7 +1652,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			preContext.Config = config.C.Plugins.Config
 		}
 		if ui.PluginManager != nil {
-			ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, preContext)
+			_ = ui.PluginManager.ExecuteHooks(plugins.PreVariableSubstitution, preContext)
 		}
 
 		// Update local variables from hook modifications
@@ -1621,15 +1666,22 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		headersStr = substituteVariablesInHeaders(headersStr, envVars)
 		queryParamsStr = substituteVariablesInHeaders(queryParamsStr, envVars)
 
-		// Execute any command-runner tags that were substituted into the request
-		// fields or written directly in the body / URL / headers.
-		url = processCommandRunnerTags(url, envVars)
-		body = processCommandRunnerTags(body, envVars)
-		for k, v := range headersStr {
-			headersStr[k] = processCommandRunnerTags(v, envVars)
+		// Skip built-in command-runner resolution when the external plugin is loaded.
+		hasExternalCommandRunnerCurl := false
+		if ui.PluginManager != nil {
+			_, hasExternalCommandRunnerCurl = ui.PluginManager.GetPlugin("command-runner")
 		}
-		for k, v := range queryParamsStr {
-			queryParamsStr[k] = processCommandRunnerTags(v, envVars)
+		if !hasExternalCommandRunnerCurl {
+			// Execute any command-runner tags that were substituted into the request
+			// fields or written directly in the body / URL / headers.
+			url = processCommandRunnerTags(url, envVars)
+			body = processCommandRunnerTags(body, envVars)
+			for k, v := range headersStr {
+				headersStr[k] = processCommandRunnerTags(v, envVars)
+			}
+			for k, v := range queryParamsStr {
+				queryParamsStr[k] = processCommandRunnerTags(v, envVars)
+			}
 		}
 
 		curlCommand := generateCurlCommand(method, url, headersStr, body, contentType, queryParamsStr)

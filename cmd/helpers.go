@@ -270,7 +270,8 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 		}{
 			{"Request sent", resp.Timestamp.Format("2006-01-02 15:04:05")},
 			{"Response received", resp.Timestamp.Add(resp.Duration).Format("2006-01-02 15:04:05")},
-			{"Total duration", resp.Duration.Round(time.Millisecond).String()},
+			{"HTTP duration", resp.Duration.Round(time.Millisecond).String()},
+			{"Total duration (incl. prep)", resp.TotalDuration.Round(time.Millisecond).String()},
 			{"Response size", fmt.Sprintf("%d bytes", resp.BodySize)},
 		}
 
