@@ -271,9 +271,17 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 			{"Request sent", resp.Timestamp.Format("2006-01-02 15:04:05")},
 			{"Response received", resp.Timestamp.Add(resp.Duration).Format("2006-01-02 15:04:05")},
 			{"HTTP duration", resp.Duration.Round(time.Millisecond).String()},
-			{"Total duration (incl. prep)", resp.TotalDuration.Round(time.Millisecond).String()},
-			{"Response size", fmt.Sprintf("%d bytes", resp.BodySize)},
 		}
+		if config.C.ShowPreparationTime {
+			timelineData = append(timelineData, struct {
+				field string
+				value string
+			}{"Total duration (incl. prep)", resp.TotalDuration.Round(time.Millisecond).String()})
+		}
+		timelineData = append(timelineData, struct {
+			field string
+			value string
+		}{"Response size", fmt.Sprintf("%d bytes", resp.BodySize)})
 
 		for i, item := range timelineData {
 			timelineTable.SetCell(i+1, 0,

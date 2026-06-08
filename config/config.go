@@ -26,6 +26,7 @@ type AppConfig struct {
 	Plugins             plugins.PluginConfig `mapstructure:"plugins"`
 	Shortcuts           ShortcutsConfig      `mapstructure:"shortcuts"`
 	DisableVersionCheck bool                 `mapstructure:"disableVersionCheck"` // Disable latest version check
+	ShowPreparationTime bool                 `mapstructure:"showPreparationTime"` // Show total preparation time alongside HTTP duration in response panel
 }
 
 type ThemeConfig struct {
@@ -191,6 +192,9 @@ maxResponseHistory: 25
 
 # Disable latest version check
 disableVersionCheck: false
+
+# Show total preparation time (env resolution + plugin hooks) alongside HTTP duration in response panel
+showPreparationTime: false
 
 plugins:
   registry_url: "http://localhost:8080"
