@@ -1282,8 +1282,7 @@ func createRenameWorkspaceForm(
 
 	nameInput := tview.NewInputField().
 		SetLabel("New Name: ").
-		SetText(currentName).
-		SetFieldWidth(30)
+		SetText(currentName)
 
 	form.AddFormItem(nameInput)
 
