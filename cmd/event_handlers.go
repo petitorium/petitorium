@@ -1289,7 +1289,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		requestName := ""
 		if ui.CurrentRequest != nil {
 			requestName = ui.CurrentRequest.Name
-			// TODO: find collection name
+			if ui.WorkspaceData != nil {
+				if parent := findParentCollectionOfRequest(&ui.WorkspaceData.Collections, requestName, method, url); parent != nil {
+					collection = parent.Name
+				}
+			}
 		}
 
 		workspaceName := "Default"
@@ -1399,10 +1403,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
-		// Update headers from context (plugins may have modified them)
+		// Update request fields from context (plugins may have modified them)
+		url = context.Request.URL
+		body = context.Request.Body
 		headersStr = context.Request.Headers
 
-		// Also update the request data in context to reflect the final headers for logging
+		// Also update the request data in context to reflect the final fields for logging
+		context.Request.URL = url
+		context.Request.Body = body
 		context.Request.Headers = headersStr
 
 		// Mark request as in progress and update UI

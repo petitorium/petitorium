@@ -156,10 +156,20 @@ func FormatBodyContentWithVariables(content string) string {
 }
 
 // getVariableDisplayLabel returns a short display label for a template variable.
-// Plugin tags like "command-runner:run command=..." are shortened to just the plugin name.
+// Plugin tags like "command-runner:run command=..." are shortened to just the
+// plugin name. Other namespaced tags (e.g. "response-reference:ref ...") are
+// shortened to "plugin:action".
 func getVariableDisplayLabel(inner string) string {
-	if strings.HasPrefix(inner, "command-runner:run ") || strings.HasPrefix(inner, "command-runner ") {
+	switch {
+	case strings.HasPrefix(inner, "command-runner:run ") || strings.HasPrefix(inner, "command-runner "):
 		return "command-runner"
+	}
+	// Generic namespaced plugin tags: "plugin:action params..." -> "plugin:action"
+	if idx := strings.Index(inner, " "); idx > 0 {
+		candidate := inner[:idx]
+		if strings.Contains(candidate, ":") {
+			return candidate
+		}
 	}
 	return inner
 }

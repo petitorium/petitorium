@@ -32,7 +32,11 @@ func showTagEditorModal(ui *UIOrchestrator, target *textInputTarget, dt *Detecte
 		if plg, ok := ui.PluginManager.GetPlugin(pluginName); ok {
 			if capable, ok := plg.(types.TagEditorCapable); ok {
 				ctx := detectFieldContext(ui, target)
-				res, err := capable.GetTagDetails(rawTag, ctx)
+				workspace := ""
+				if ui.WorkspaceData != nil {
+					workspace = ui.WorkspaceData.Name
+				}
+				res, err := capable.GetTagDetails(rawTag, ctx, workspace)
 				if err == nil && res != nil {
 					displayLabel = res.DisplayLabel
 					schema = res.Schema

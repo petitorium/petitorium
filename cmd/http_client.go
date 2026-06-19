@@ -22,16 +22,16 @@ import (
 
 // HTTPResponse represents the response from an HTTP request
 type HTTPResponse struct {
-	StatusCode     int
-	Status         string
-	Headers        map[string][]string
-	Cookies        []*http.Cookie
-	Body           string
-	BodyBytes      []byte
-	Duration       time.Duration
-	TotalDuration  time.Duration
-	Timestamp      time.Time
-	BodySize       int
+	StatusCode    int
+	Status        string
+	Headers       map[string][]string
+	Cookies       []*http.Cookie
+	Body          string
+	BodyBytes     []byte
+	Duration      time.Duration
+	TotalDuration time.Duration
+	Timestamp     time.Time
+	BodySize      int
 }
 
 func convertCookies(jarCookies []workspace.Cookie) []*http.Cookie {
