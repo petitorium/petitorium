@@ -3,8 +3,6 @@ module github.com/petitorium/petitorium
 
 go 1.24.0
 
-replace github.com/petitorium/petitorium-plugin-sdk => ./sdk
-
 require (
 	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/dustin/go-humanize v1.0.1
@@ -12,7 +10,7 @@ require (
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/petitorium/petitorium-plugin-sdk v1.4.0
+	github.com/petitorium/petitorium-plugin-sdk v1.5.0
 	github.com/rivo/tview v0.0.0-20250625164341-a4a78f1e05cb
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1

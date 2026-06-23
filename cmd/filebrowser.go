@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -64,6 +63,7 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 	fb.tree.SetGraphics(false)
 
 	fb.setRoot(startPath)
+	fb.tree.SetCurrentNode(fb.root)
 
 	// Pre-select the target file or directory if it was provided
 	if targetPath != "" {
@@ -75,86 +75,119 @@ func createFileBrowser(startPath string, colors *ColorManager, onSelect func(str
 		}
 	}
 
-	// Handle selection logic
+	// Handle selection logic (mouse clicks / direct selection)
 	fb.tree.SetSelectedFunc(fb.handleSelect)
+
+	// Shared action handler for Enter and 'l'
+	handleAction := func() {
+		node := fb.tree.GetCurrentNode()
+		if node == nil {
+			return
+		}
+		reference := node.GetReference()
+		if reference == nil {
+			return
+		}
+		path := reference.(string)
+
+		// If it's the ".." entry, handle rerooting
+		if node.GetText() == ".." {
+			oldPath := fb.current
+			fb.setRoot(path)
+			// Focus the child representing the directory we came from
+			for _, child := range fb.root.GetChildren() {
+				if child.GetReference() == oldPath {
+					fb.tree.SetCurrentNode(child)
+					return
+				}
+			}
+			// Fallback to ".." if available
+			for _, child := range fb.root.GetChildren() {
+				if child.GetText() == ".." {
+					fb.tree.SetCurrentNode(child)
+					return
+				}
+			}
+			fb.tree.SetCurrentNode(fb.root)
+			return
+		}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			return
+		}
+
+		if info.IsDir() {
+			if node.IsExpanded() {
+				node.SetExpanded(false)
+				node.ClearChildren()
+				dummy := tview.NewTreeNode("").
+					SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
+				node.AddChild(dummy) // Restore dummy
+				// Update icon to closed folder
+				text := node.GetText()
+				node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderExpandedIcon, config.C.UI.FileBrowserFolderIcon, 1))
+			} else {
+				node.SetExpanded(true)
+				node.ClearChildren() // Remove dummy
+				fb.addNodes(node, path)
+				// Update icon to open folder
+				text := node.GetText()
+				node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderIcon, config.C.UI.FileBrowserFolderExpandedIcon, 1))
+			}
+			return
+		}
+
+		// For files, trigger selection
+		if fb.onSelect != nil {
+			fb.onSelect(path)
+		}
+	}
+
+	// Shared handler for 'h' / Left arrow
+	handleBack := func() {
+		node := fb.tree.GetCurrentNode()
+		if node == nil {
+			return
+		}
+		if node.IsExpanded() {
+			node.SetExpanded(false)
+			node.ClearChildren()
+			dummy := tview.NewTreeNode("").
+				SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
+			node.AddChild(dummy)
+			text := node.GetText()
+			node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderExpandedIcon, config.C.UI.FileBrowserFolderIcon, 1))
+		} else {
+			parent := fb.findParentNode(fb.tree.GetRoot(), node)
+			if parent != nil {
+				fb.tree.SetCurrentNode(parent)
+			}
+		}
+	}
 
 	// Set up keyboard navigation
 	fb.tree.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
 			if fb.onEnter != nil {
 				fb.onEnter()
+				return nil
 			}
+			handleAction()
 			return nil
 		}
 
-		if event.Rune() == 'l' {
-			node := fb.tree.GetCurrentNode()
-			if node != nil {
-				reference := node.GetReference()
-				if reference != nil {
-					path := reference.(string)
-					// If it's the ".." entry, handle rerooting
-					if node.GetText() == ".." {
-						fb.setRoot(path)
-						return nil
-					}
+		if event.Rune() == 'l' || event.Key() == tcell.KeyRight {
+			handleAction()
+			return nil
+		}
 
-					info, err := os.Stat(path)
-					if err == nil && info.IsDir() {
-						if node.IsExpanded() {
-							node.SetExpanded(false)
-							node.ClearChildren()
-							dummy := tview.NewTreeNode("").
-								SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
-							node.AddChild(dummy) // Restore dummy
-							// Update icon to closed folder
-							text := node.GetText()
-							node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderExpandedIcon, config.C.UI.FileBrowserFolderIcon, 1))
-						} else {
-							node.SetExpanded(true)
-							node.ClearChildren() // Remove dummy
-							fb.addNodes(node, path)
-							// Update icon to open folder
-							text := node.GetText()
-							node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderIcon, config.C.UI.FileBrowserFolderExpandedIcon, 1))
-						}
-						return nil
-					}
-				}
-				// For files, trigger selection
-				if event.Key() == tcell.KeyEnter {
-					// Use handleSelect for files
-					fb.handleSelect(node)
-					return nil
-				}
-				if event.Rune() == 'l' {
-					fb.handleSelect(node)
-					return nil
-				}
-			}
+		if event.Rune() == 'h' || event.Key() == tcell.KeyLeft {
+			handleBack()
 			return nil
 		}
 
 		switch event.Rune() {
-		case 'h':
-			node := fb.tree.GetCurrentNode()
-			if node != nil {
-				if node.IsExpanded() {
-					node.SetExpanded(false)
-					node.ClearChildren()
-					dummy := tview.NewTreeNode("").
-						SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
-					node.AddChild(dummy)
-					text := node.GetText()
-					node.SetText(strings.Replace(text, config.C.UI.FileBrowserFolderExpandedIcon, config.C.UI.FileBrowserFolderIcon, 1))
-				} else {
-					parent := fb.findParentNode(fb.tree.GetRoot(), node)
-					if parent != nil {
-						fb.tree.SetCurrentNode(parent)
-					}
-				}
-			}
-			return nil
 		case 'g':
 			nodes := fb.getVisibleNodes()
 			if len(nodes) > 0 {
@@ -188,7 +221,23 @@ func (fb *FileBrowser) handleSelect(node *tview.TreeNode) {
 
 	// Check if it's the ".." entry
 	if node.GetText() == ".." {
+		oldPath := fb.current
 		fb.setRoot(path)
+		// Focus the child representing the directory we came from
+		for _, child := range fb.root.GetChildren() {
+			if child.GetReference() == oldPath {
+				fb.tree.SetCurrentNode(child)
+				return
+			}
+		}
+		// Fallback to ".." if available
+		for _, child := range fb.root.GetChildren() {
+			if child.GetText() == ".." {
+				fb.tree.SetCurrentNode(child)
+				return
+			}
+		}
+		fb.tree.SetCurrentNode(fb.root)
 		return
 	}
 
@@ -272,7 +321,6 @@ func (fb *FileBrowser) setRoot(path string) {
 		SetTextStyle(tcell.StyleDefault.Background(fb.colors.Background))
 
 	fb.tree.SetRoot(fb.root)
-	fb.tree.SetCurrentNode(fb.root)
 
 	fb.addNodes(fb.root, path)
 
@@ -299,7 +347,7 @@ func (fb *FileBrowser) setRoot(path string) {
 
 // addNodes adds child nodes to the given parent node based on the directory path
 func (fb *FileBrowser) addNodes(target *tview.TreeNode, path string) {
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return
 	}
