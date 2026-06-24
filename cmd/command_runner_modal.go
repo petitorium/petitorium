@@ -43,6 +43,24 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 		}
 	}
 
+	// Body view panel (read-only preview of the body)
+	if ui.BodyViewPanel != nil && ui.BodyViewPanel == focus {
+		return &textInputTarget{
+			getText: func() string { return ui.CurrentBodyContent },
+			setText: func(s string) {
+				ui.CurrentBodyContent = s
+				if ui.CurrentRequest != nil {
+					ui.CurrentRequest.Body = s
+					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+				}
+				ui.SyncBodyContent(s)
+				if ui.BodyEditPanel != nil {
+					ui.BodyEditPanel.SetText(s, false)
+				}
+			},
+		}
+	}
+
 	// Environment modal JSON editor
 	if ui.EnvModalEditor != nil && ui.EnvModalEditor == focus {
 		return &textInputTarget{
