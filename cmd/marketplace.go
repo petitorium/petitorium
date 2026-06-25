@@ -236,10 +236,15 @@ func (m *MarketplacePanel) showVersionPicker(p types.RegistryPlugin, versions []
 
 	list := tview.NewList()
 	list.SetBackgroundColor(colors.Background)
-	list.SetMainTextColor(colors.Foreground)
-	list.SetSelectedBackgroundColor(colors.Selection)
-	list.SetSelectedTextColor(colors.Foreground)
 	list.SetHighlightFullLine(true)
+
+	list.SetMainTextStyle(tcell.StyleDefault.
+		Foreground(colors.Foreground).
+		Background(colors.Background))
+	list.SetSelectedStyle(tcell.StyleDefault.
+		Background(colors.DropdownFocus).
+		Foreground(colors.ActiveTab).
+		Bold(true))
 
 	installedVersion := ""
 	if info, ok := m.manager.GetInstalledInfo(p.Name); ok {
