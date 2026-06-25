@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/petitorium/petitorium-plugin-sdk/types"
@@ -49,20 +50,115 @@ func (rc *RegistryClient) ListPlugins() ([]types.RegistryPlugin, error) {
 	return plugins, nil
 }
 
-// InstallPlugin downloads and installs a plugin
+// CompareVersions compares two semantic versions (e.g., "1.2.3").
+// Returns -1 if a < b, 0 if a == b, 1 if a > b.
+func CompareVersions(a, b string) int {
+	parseV := func(v string) (major, minor, patch int) {
+		parts := strings.Split(v, ".")
+		if len(parts) >= 1 {
+			major, _ = strconv.Atoi(parts[0])
+		}
+		if len(parts) >= 2 {
+			minor, _ = strconv.Atoi(parts[1])
+		}
+		if len(parts) >= 3 {
+			patch, _ = strconv.Atoi(parts[2])
+		}
+		return
+	}
+
+	ma, mi, pa := parseV(a)
+	mb, mib, pb := parseV(b)
+
+	if ma != mb {
+		if ma < mb {
+			return -1
+		}
+		return 1
+	}
+	if mi != mib {
+		if mi < mib {
+			return -1
+		}
+		return 1
+	}
+	if pa != pb {
+		if pa < pb {
+			return -1
+		}
+		return 1
+	}
+	return 0
+}
+
+// maxDisplayedVersions limits how many versions are surfaced in the UI to keep
+// pickers and detail panes readable for plugins with a long release history.
+const maxDisplayedVersions = 10
+
+// AvailableVersions returns the distinct versions found in the plugin's
+// releases, sorted from newest to oldest and capped at the most recent
+// maxDisplayedVersions entries.
+func AvailableVersions(p types.RegistryPlugin) []string {
+	seen := make(map[string]struct{})
+	var versions []string
+	for _, r := range p.Releases {
+		if r == nil {
+			continue
+		}
+		if r.Version == "" {
+			continue
+		}
+		if _, ok := seen[r.Version]; ok {
+			continue
+		}
+		seen[r.Version] = struct{}{}
+		versions = append(versions, r.Version)
+	}
+	// Sort descending (newest first) using insertion sort.
+	for i := 1; i < len(versions); i++ {
+		for j := i; j > 0 && CompareVersions(versions[j], versions[j-1]) > 0; j-- {
+			versions[j], versions[j-1] = versions[j-1], versions[j]
+		}
+	}
+	if len(versions) > maxDisplayedVersions {
+		versions = versions[:maxDisplayedVersions]
+	}
+	return versions
+}
+
+// LatestVersion returns the highest semantic version available in the plugin's
+// releases. If the plugin has no releases, it falls back to the plugin's
+// Version field.
+func LatestVersion(p types.RegistryPlugin) string {
+	versions := AvailableVersions(p)
+	if len(versions) == 0 {
+		return p.Version
+	}
+	return versions[0]
+}
+
+// InstallPlugin downloads and installs the latest available version of a plugin.
 func (pm *PluginManager) InstallPlugin(p types.RegistryPlugin) error {
+	return pm.InstallPluginVersion(p, LatestVersion(p))
+}
+
+// InstallPluginVersion downloads and installs a specific version of a plugin.
+// The checksum is resolved by matching both the requested version and the
+// current platform to avoid verifying a binary against the wrong checksum when
+// multiple versions are published.
+func (pm *PluginManager) InstallPluginVersion(p types.RegistryPlugin, version string) error {
 	platform := fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH)
 	expectedChecksum := ""
 
 	for _, r := range p.Releases {
-		if r.Platform == platform {
+		if r.Version == version && r.Platform == platform {
 			expectedChecksum = r.Checksum
 			break
 		}
 	}
 
 	if expectedChecksum == "" {
-		return fmt.Errorf("checksum not available for plugin %s on platform %s", p.Name, platform)
+		return fmt.Errorf("no release for plugin %s version %s on platform %s", p.Name, version, platform)
 	}
 
 	// Construct download URL using the new format
@@ -71,7 +167,7 @@ func (pm *PluginManager) InstallPlugin(p types.RegistryPlugin) error {
 		pm.baseURL,
 		p.ID,
 		p.Name,
-		p.Version,
+		version,
 		platform,
 	)
 
@@ -101,7 +197,7 @@ func (pm *PluginManager) InstallPlugin(p types.RegistryPlugin) error {
 		pm.config.Installed = make(map[string]InstalledInfo)
 	}
 	pm.config.Installed[p.Name] = InstalledInfo{
-		Version:  p.Version,
+		Version:  version,
 		Checksum: expectedChecksum,
 		Path:     destPath,
 	}

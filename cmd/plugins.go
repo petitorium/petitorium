@@ -132,11 +132,13 @@ var searchCmd = &cobra.Command{
 		fmt.Println("Search results:")
 		for _, p := range available {
 			if query == "" || strings.Contains(strings.ToLower(p.Name), query) || strings.Contains(strings.ToLower(p.Description), query) {
-				fmt.Printf("  - %s (%s): %s\n", p.Name, p.Version, p.Description)
+				fmt.Printf("  - %s (%s): %s\n", p.Name, plugins.LatestVersion(p), p.Description)
 			}
 		}
 	},
 }
+
+var installVersionFlag string
 
 var installCmd = &cobra.Command{
 	Use:   "install <name>",
@@ -164,12 +166,29 @@ var installCmd = &cobra.Command{
 			return
 		}
 
+		version := installVersionFlag
+		if version == "" {
+			version = plugins.LatestVersion(*target)
+		} else {
+			found := false
+			for _, v := range plugins.AvailableVersions(*target) {
+				if v == version {
+					found = true
+					break
+				}
+			}
+			if !found {
+				fmt.Printf("Version %s not available for plugin %s\n", version, name)
+				return
+			}
+		}
+
 		home, _ := homedir.Dir()
 		pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
 		pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
 
-		fmt.Printf("Installing %s (%s)...\n", target.Name, target.Version)
-		if err := pm.InstallPlugin(*target); err != nil {
+		fmt.Printf("Installing %s (%s)...\n", target.Name, version)
+		if err := pm.InstallPluginVersion(*target, version); err != nil {
 			fmt.Printf("Error installing plugin: %v\n", err)
 			return
 		}
@@ -189,6 +208,7 @@ func init() {
 	pluginsCmd.AddCommand(disableCmd)
 	pluginsCmd.AddCommand(configCmd)
 	pluginsCmd.AddCommand(searchCmd)
+	installCmd.Flags().StringVarP(&installVersionFlag, "version", "v", "", "specific version to install (default: latest)")
 	pluginsCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(pluginsCmd)
 }
