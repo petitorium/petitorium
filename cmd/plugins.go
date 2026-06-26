@@ -39,6 +39,9 @@ var listCmd = &cobra.Command{
 				continue
 			}
 			name := entry.Name()
+			if strings.HasSuffix(name, ".sha256") {
+				continue
+			}
 			status := "disabled"
 			for _, enabled := range config.C.Plugins.Enabled {
 				if enabled == name {
