@@ -125,6 +125,25 @@ func syncContentTypeDropdown(currentRequest *workspace.Request, contentTypeDropd
 	}
 }
 
+// getPrettyResponseBody returns the response body as clean text with JSON
+// pretty-printed when possible.
+func getPrettyResponseBody(resp *HTTPResponse) string {
+	if resp == nil || resp.Body == "" {
+		return ""
+	}
+	body := resp.Body
+	trimmed := strings.TrimSpace(resp.Body)
+	if len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[') {
+		var jsonData interface{}
+		if err := json.Unmarshal([]byte(resp.Body), &jsonData); err == nil {
+			if prettyJSON, err := json.MarshalIndent(jsonData, "", "  "); err == nil {
+				body = string(prettyJSON)
+			}
+		}
+	}
+	return body
+}
+
 // updateResponseTabs updates the response tabs with new response data
 func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel tview.Primitive, colors *ColorManager, copyCallback func(), saveCallback func()) {
 	// Update the info bar - replace it in the top row
@@ -145,19 +164,7 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 
 	// Update preview tab
 	if resp != nil && resp.Body != "" {
-		// Pretty-print JSON if it's valid JSON
-		bodyToFormat := resp.Body
-		if strings.TrimSpace(resp.Body)[0] == '{' || strings.TrimSpace(resp.Body)[0] == '[' {
-			var jsonData interface{}
-			if err := json.Unmarshal([]byte(resp.Body), &jsonData); err == nil {
-				// It's valid JSON, pretty-print it
-				prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
-				if err == nil {
-					bodyToFormat = string(prettyJSON)
-				}
-			}
-		}
-		formattedBody := formatBodyContent(bodyToFormat)
+		formattedBody := formatBodyContent(getPrettyResponseBody(resp))
 		responsePreviewPanel.SetText(formattedBody)
 	} else {
 		responsePreviewPanel.SetText("(empty response)")

@@ -920,59 +920,36 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		}
 	}
 
-	// CopyResponse opens a file browser to save the response body to a file
+	// CopyResponse copies the response body to the system clipboard
 	uiOrchestrator.CopyResponse = func() {
+		currentFocus := app.GetFocus()
+
 		if uiOrchestrator.LastResponse == nil || len(uiOrchestrator.LastResponse.BodyBytes) == 0 {
-			currentFocus := app.GetFocus()
-			showErrorModalWithFocus(app, pages, "No response body available to save", currentFocus, uiOrchestrator.Colors)
+			showErrorModalWithFocus(app, pages, "No response body available to copy", currentFocus, uiOrchestrator.Colors)
 			return
 		}
 
-		// Get suggested filename from Content-Disposition header
-		suggestedName := "response"
-		if headers, ok := uiOrchestrator.LastResponse.Headers["Content-Disposition"]; ok && len(headers) > 0 {
-			parts := strings.Split(headers[0], "filename=")
-			if len(parts) > 1 {
-				suggestedName = strings.Trim(strings.Split(parts[1], ";")[0], "\" ")
-			}
-		}
-		// Fallback to Content-Type extension
-		if suggestedName == "response" {
-			if ct, ok := uiOrchestrator.LastResponse.Headers["Content-Type"]; ok && len(ct) > 0 {
-				switch {
-				case strings.HasPrefix(ct[0], "image/png"):
-					suggestedName = "response.png"
-				case strings.HasPrefix(ct[0], "image/jpeg"):
-					suggestedName = "response.jpg"
-				case strings.HasPrefix(ct[0], "image/gif"):
-					suggestedName = "response.gif"
-				case strings.HasPrefix(ct[0], "image/webp"):
-					suggestedName = "response.webp"
-				case strings.HasPrefix(ct[0], "application/pdf"):
-					suggestedName = "response.pdf"
-				case strings.HasPrefix(ct[0], "application/zip"):
-					suggestedName = "response.zip"
-				case strings.HasPrefix(ct[0], "video/"):
-					suggestedName = "response.video"
-				case strings.HasPrefix(ct[0], "audio/"):
-					suggestedName = "response.audio"
-				}
-			}
-		}
-
-		suggestedPath := filepath.Join(os.Getenv("HOME"), suggestedName)
-
-		onSave := func(path string) {
-			err := os.WriteFile(path, uiOrchestrator.LastResponse.BodyBytes, 0644)
-			if err != nil {
-				currentFocus := app.GetFocus()
-				showErrorModalWithFocus(app, pages, fmt.Sprintf("Failed to save file: %v", err), currentFocus, uiOrchestrator.Colors)
+		// Binary responses cannot be meaningfully copied to the clipboard
+		if ct, ok := uiOrchestrator.LastResponse.Headers["Content-Type"]; ok && len(ct) > 0 {
+			if isBinaryContentType(ct[0]) {
+				showErrorModalWithFocus(app, pages, "Cannot copy binary response to clipboard - use Save instead", currentFocus, uiOrchestrator.Colors)
 				return
 			}
-			showSuccessModal(pages, fmt.Sprintf("Saved to: %s", path), uiOrchestrator.Colors)
 		}
 
-		openSaveFileModal(app, pages, uiOrchestrator.Colors, suggestedPath, onSave, nil)
+		text := getPrettyResponseBody(uiOrchestrator.LastResponse)
+		if err := copyToClipboard(text); err != nil {
+			showErrorModalWithFocus(app, pages, fmt.Sprintf("Failed to copy to clipboard: %v", err), currentFocus, uiOrchestrator.Colors)
+			return
+		}
+
+		uiOrchestrator.FooterRight.SetText("Response copied to clipboard")
+		go func() {
+			time.Sleep(2 * time.Second)
+			app.QueueUpdateDraw(func() {
+				uiOrchestrator.FooterRight.SetText("Petitorium ")
+			})
+		}()
 	}
 
 	// SaveResponse opens a file browser to save the response body to a file

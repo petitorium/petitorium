@@ -920,6 +920,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						Headers:    lastResponse.Headers,
 						Cookies:    convertCookies(lastResponse.Cookies),
 						Body:       lastResponse.Body,
+						BodyBytes:  []byte(lastResponse.Body),
 						Duration:   lastResponse.Duration,
 						Timestamp:  lastResponse.Timestamp,
 						BodySize:   len(lastResponse.Body),
