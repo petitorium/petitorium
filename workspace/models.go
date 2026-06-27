@@ -76,6 +76,7 @@ func (e *Entry) UnmarshalYAML(node *yaml.Node) error {
 }
 
 type Request struct {
+	ID              string           `yaml:"id,omitempty"`
 	Name            string           `yaml:"name"`
 	Method          string           `yaml:"method"`
 	URL             string           `yaml:"url"`
@@ -106,6 +107,7 @@ type Environment struct {
 }
 
 type Collection struct {
+	ID          string       `yaml:"id,omitempty"`
 	Name        string       `yaml:"name"`
 	Requests    []Request    `yaml:"requests,omitempty"`
 	Collections []Collection `yaml:"collections,omitempty"`

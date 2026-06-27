@@ -19,45 +19,6 @@ func NewDataManager(workspaceData *workspace.Workspace) *DataManager {
 	}
 }
 
-// FindRequestPtr finds the pointer to a request in the workspace data
-func (dm *DataManager) FindRequestPtr(targetReq workspace.Request) *workspace.Request {
-	return dm.findRequestPtr(dm.workspaceData, targetReq)
-}
-
-// findRequestPtr finds the request pointer in workspace collections
-func (dm *DataManager) findRequestPtr(data *workspace.Workspace, req workspace.Request) *workspace.Request {
-	for i := range data.Collections {
-		for j := range data.Collections[i].Requests {
-			if data.Collections[i].Requests[j].Name == req.Name &&
-				data.Collections[i].Requests[j].Method == req.Method &&
-				data.Collections[i].Requests[j].URL == req.URL {
-				return &data.Collections[i].Requests[j]
-			}
-		}
-		if ptr := dm.findRequestPtrInCollections(data.Collections[i].Collections, req); ptr != nil {
-			return ptr
-		}
-	}
-	return nil
-}
-
-// Helper function to find in nested collections
-func (dm *DataManager) findRequestPtrInCollections(data []workspace.Collection, req workspace.Request) *workspace.Request {
-	for i := range data {
-		for j := range data[i].Requests {
-			if data[i].Requests[j].Name == req.Name &&
-				data[i].Requests[j].Method == req.Method &&
-				data[i].Requests[j].URL == req.URL {
-				return &data[i].Requests[j]
-			}
-		}
-		if ptr := dm.findRequestPtrInCollections(data[i].Collections, req); ptr != nil {
-			return ptr
-		}
-	}
-	return nil
-}
-
 // SaveWorkspace saves the workspace data to disk
 func (dm *DataManager) SaveWorkspace() error {
 	return workspace.SaveWorkspace(dm.workspaceData)

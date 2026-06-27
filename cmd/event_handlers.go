@@ -481,24 +481,22 @@ func (m *CollectionSearchModal) selectResult() {
 	for _, pathPart := range collectionPath {
 		ancestorNode := findNodeByPath(m.ui.RootNode, []string{pathPart})
 		if ancestorNode != nil {
-			expandCollectionAndLoadChildren(ancestorNode)
+			m.ui.expandCollectionAndLoadChildren(ancestorNode)
 		}
 	}
-	expandCollectionAndLoadChildren(node)
+	m.ui.expandCollectionAndLoadChildren(node)
 
 	for _, child := range node.GetChildren() {
-		if reqRef, ok := child.GetReference().(workspace.Request); ok {
-			if reqRef.Name == request.Name && reqRef.Method == request.Method && reqRef.URL == request.URL {
-				child.Expand()
-				m.ui.CollectionsTreeView.SetCurrentNode(child)
-				if m.ui.TreeHighlightHandler != nil {
-					m.ui.TreeHighlightHandler(child)
-				}
-				if m.ui.TreeSelectionHandler != nil {
-					m.ui.TreeSelectionHandler(child)
-				}
-				break
+		if childReq := m.ui.requestFromNode(child); childReq != nil && childReq.ID == request.ID {
+			child.Expand()
+			m.ui.CollectionsTreeView.SetCurrentNode(child)
+			if m.ui.TreeHighlightHandler != nil {
+				m.ui.TreeHighlightHandler(child)
 			}
+			if m.ui.TreeSelectionHandler != nil {
+				m.ui.TreeSelectionHandler(child)
+			}
+			break
 		}
 	}
 
@@ -720,7 +718,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					ui.JSONBodyContent = ui.CurrentBodyContent
 				}
 				if ui.CurrentSelectedNode != nil {
-					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
 			}
@@ -744,8 +741,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				newMethod := workspace.HTTPMethods[index]
 				if newMethod != ui.CurrentRequest.Method {
 					ui.CurrentRequest.Method = newMethod
-
-					ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 
 					coloredMethod := getColoredMethod(ui.CurrentRequest.Method)
 					paddedName := padNameToMinLength(ui.CurrentRequest.Name, 4)
@@ -796,9 +791,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 			ui.CurrentRequest.URL = text
 
-			// Update the node's reference with the new request data
-			ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-
 			saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 		}
 	})
@@ -813,9 +805,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if ui.CurrentRequest.ContentType == "JSON" {
 				ui.JSONBodyContent = ui.CurrentBodyContent
 			}
-
-			// Update the node's reference with the new request data
-			ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 
 			saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 		}
@@ -832,26 +821,21 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Remove icon from previously selected request only when another request is selected
 		if ui.LastSelectedRequestNode != nil && ui.LastSelectedRequestNode != node {
-			if reference := ui.LastSelectedRequestNode.GetReference(); reference != nil {
-				if req, ok := reference.(workspace.Request); ok {
-					// Only remove icon if the new selection is also a request
-					if newReference := node.GetReference(); newReference != nil {
-						if _, isRequest := newReference.(workspace.Request); isRequest {
-							coloredMethod := getColoredMethod(req.Method)
-							paddedName := padNameToMinLength(req.Name, 4)
-							// Restore to reserved space (icon width + fixed space)
-							iconWidth := getIconDisplayWidth(config.C.UI.SelectedRequestIcon) // + 1
-							spacePadding := strings.Repeat(" ", iconWidth)
-							ui.LastSelectedRequestNode.SetText(fmt.Sprintf("%s%s%s", spacePadding, coloredMethod, paddedName))
-						}
-					}
+			if prevReq := ui.requestFromNode(ui.LastSelectedRequestNode); prevReq != nil {
+				// Only remove icon if the new selection is also a request
+				if nodeIsRequest(node) {
+					coloredMethod := getColoredMethod(prevReq.Method)
+					paddedName := padNameToMinLength(prevReq.Name, 4)
+					// Restore to reserved space (icon width + fixed space)
+					iconWidth := getIconDisplayWidth(config.C.UI.SelectedRequestIcon) // + 1
+					spacePadding := strings.Repeat(" ", iconWidth)
+					ui.LastSelectedRequestNode.SetText(fmt.Sprintf("%s%s%s", spacePadding, coloredMethod, paddedName))
 				}
 			}
 		}
 
 		// Add icon to newly selected node if it's a request
-		reference := node.GetReference()
-		if req, ok := reference.(workspace.Request); ok {
+		if req := ui.requestFromNode(node); req != nil {
 			coloredMethod := getColoredMethod(req.Method)
 			paddedName := padNameToMinLength(req.Name, 4)
 			// Create colored icon with configured color, always add space after icon
@@ -887,13 +871,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				workspace.SaveWorkspace(ui.WorkspaceData)
 			}
 
-			// Find the request pointer in collectionsData
-			ui.CurrentRequest = ui.DataManager.FindRequestPtr(req)
-
-			// Update node reference to current data
-			if ui.CurrentRequest != nil {
-				node.SetReference(*ui.CurrentRequest)
-			}
+			// Resolve the live request pointer by stable ID. The node holds an
+			// immutable NodeRef{ID}, so this always returns current data even
+			// after the tree was rebuilt or the underlying slice was shifted.
+			ui.CurrentRequest = req
 
 			// Set method and content type in dropdowns AFTER currentRequest is set
 			if ui.CurrentRequest != nil {
@@ -935,7 +916,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 				}
 			}
-		} else if _, ok := reference.(workspace.Collection); ok {
+		} else if nodeIsCollection(node) {
 			// Save current request headers before clearing
 			if ui.CurrentRequest != nil {
 				ui.CurrentRequest.Headers = getHeadersFromUI()
@@ -948,10 +929,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 
 			// Track the last selected request node
-			if reference := node.GetReference(); reference != nil {
-				if _, ok := reference.(workspace.Request); ok {
-					ui.LastSelectedRequestNode = node
-				}
+			if nodeIsRequest(node) {
+				ui.LastSelectedRequestNode = node
 			}
 		}
 	}
@@ -1291,7 +1270,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.CurrentRequest != nil {
 			requestName = ui.CurrentRequest.Name
 			if ui.WorkspaceData != nil {
-				if parent := findParentCollectionOfRequest(&ui.WorkspaceData.Collections, requestName, method, url); parent != nil {
+				if parent := workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, ui.CurrentRequest.ID); parent != nil {
 					collection = parent.Name
 				}
 			}
@@ -1562,9 +1541,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					}
 					(*ui.CurrentRequest).ResponseHistory = append((*ui.CurrentRequest).ResponseHistory, workspaceResp)
 
-					// Update the node's reference with the new response history
 					if ui.CurrentSelectedNode != nil {
-						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
 				}
@@ -1909,12 +1886,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if node != nil {
 				var selectedCollection *workspace.Collection
 
-				if col, ok := node.GetReference().(workspace.Collection); ok {
+				if col := ui.collectionFromNode(node); col != nil {
 					// Collection is selected
-					selectedCollection = &col
-				} else if req, ok := node.GetReference().(workspace.Request); ok {
-					// Request is selected - find its parent collection
-					selectedCollection = findParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.Name, req.Method, req.URL)
+					selectedCollection = col
+				} else if req := ui.requestFromNode(node); req != nil {
+					// Request is selected - find its parent collection by ID
+					selectedCollection = workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
 				}
 
 				if selectedCollection != nil {
@@ -1955,12 +1932,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 						if node != nil {
 							var selectedCollection *workspace.Collection
 
-							if col, ok := node.GetReference().(workspace.Collection); ok {
+							if col := ui.collectionFromNode(node); col != nil {
 								// Collection is selected
-								selectedCollection = &col
-							} else if req, ok := node.GetReference().(workspace.Request); ok {
-								// Request is selected - find its parent collection
-								selectedCollection = findParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.Name, req.Method, req.URL)
+								selectedCollection = col
+							} else if req := ui.requestFromNode(node); req != nil {
+								// Request is selected - find its parent collection by ID
+								selectedCollection = workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
 							}
 
 							if selectedCollection != nil {
@@ -1981,18 +1958,16 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'r' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
-				reference := node.GetReference()
-
-				if col, ok := reference.(workspace.Collection); ok {
+				if col := ui.collectionFromNode(node); col != nil {
 					// Rename collection
-					form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					form := createRenameCollectionForm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 25, 10, tcell.ColorDefault)
 					ui.Pages.AddPage("renameCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
-				} else if req, ok := reference.(workspace.Request); ok {
+				} else if req := ui.requestFromNode(node); req != nil {
 					// Rename request - need to find parent collection
-					form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+					form := createRenameRequestForm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 					modal := createModal(form, 47, 10, tcell.ColorDefault)
 					ui.Pages.AddPage("renameRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -2005,20 +1980,18 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'm' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
-				if col, ok := node.GetReference().(workspace.Collection); ok {
-					form := createMoveCollectionForm(ui, &col)
+				if col := ui.collectionFromNode(node); col != nil {
+					form := createMoveCollectionForm(ui, col)
 					modal := createModal(form, 40, 12, tcell.ColorDefault)
 					ui.Pages.AddPage("moveCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
-				} else if req, ok := node.GetReference().(workspace.Request); ok {
-					if ptr := ui.DataManager.FindRequestPtr(req); ptr != nil {
-						form := createMoveRequestForm(ui, ptr)
-						modal := createModal(form, 40, 10, tcell.ColorDefault)
-						ui.Pages.AddPage("moveRequest", modal, true, true)
-						ui.App.SetFocus(form)
-						return nil
-					}
+				} else if req := ui.requestFromNode(node); req != nil {
+					form := createMoveRequestForm(ui, req)
+					modal := createModal(form, 40, 10, tcell.ColorDefault)
+					ui.Pages.AddPage("moveRequest", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
 				}
 			}
 		}
@@ -2027,22 +2000,18 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'd' {
 			node := ui.CollectionsTreeView.GetCurrentNode()
 			if node != nil {
-				reference := node.GetReference()
-
-				if col, ok := reference.(workspace.Collection); ok {
-					form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+				if col := ui.collectionFromNode(node); col != nil {
+					form := createDeleteCollectionConfirm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
 					modal := createModal(form, 50, 8, tcell.ColorDefault)
 					ui.Pages.AddPage("deleteCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
-				} else if req, ok := reference.(workspace.Request); ok {
-					if ptr := ui.DataManager.FindRequestPtr(req); ptr != nil {
-						form := createDeleteRequestConfirm(ui.App, ui.Pages, ptr, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-						modal := createModal(form, 50, 8, tcell.ColorDefault)
-						ui.Pages.AddPage("deleteRequest", modal, true, true)
-						ui.App.SetFocus(form)
-						return nil
-					}
+				} else if req := ui.requestFromNode(node); req != nil {
+					form := createDeleteRequestConfirm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+					modal := createModal(form, 50, 8, tcell.ColorDefault)
+					ui.Pages.AddPage("deleteRequest", modal, true, true)
+					ui.App.SetFocus(form)
+					return nil
 				}
 			}
 		}
@@ -2063,7 +2032,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					ui.SyncBodyContent(modifiedContent)
 					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 						ui.CurrentRequest.Body = modifiedContent
-						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
 				})
@@ -2089,7 +2057,6 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					ui.SyncBodyContent(modifiedContent)
 					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 						ui.CurrentRequest.Body = modifiedContent
-						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
 				})

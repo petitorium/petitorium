@@ -48,7 +48,7 @@ func addWorkspaceToTree(data *workspace.Workspace, root *tview.TreeNode) {
 			SetSelectable(true).
 			SetTextStyle(tcell.StyleDefault.Background(backgroundColor)).
 			SetSelectedTextStyle(tcell.StyleDefault.Background(selectionBackgroundColor).Foreground(foregroundColor)).
-			SetReference(collection)
+			SetReference(NodeRef{Kind: KindCollection, ID: collection.ID, Name: collection.Name})
 
 		// Set expansion state
 		if shouldExpand {
@@ -83,7 +83,7 @@ func addChildrenToCollectionNode(node *tview.TreeNode, collection workspace.Coll
 			SetSelectable(true).
 			SetTextStyle(tcell.StyleDefault.Background(backgroundColor)).
 			SetSelectedTextStyle(tcell.StyleDefault.Background(selectionBackgroundColor).Foreground(foregroundColor)).
-			SetReference(req)
+			SetReference(NodeRef{Kind: KindRequest, ID: req.ID, Name: req.Name})
 		node.AddChild(requestNode)
 	}
 
@@ -118,7 +118,7 @@ func addChildrenToCollectionNode(node *tview.TreeNode, collection workspace.Coll
 			SetSelectable(true).
 			SetTextStyle(tcell.StyleDefault.Background(backgroundColor)).
 			SetSelectedTextStyle(tcell.StyleDefault.Background(selectionBackgroundColor).Foreground(foregroundColor)).
-			SetReference(subCol)
+			SetReference(NodeRef{Kind: KindCollection, ID: subCol.ID, Name: subCol.Name})
 
 		// Set expansion state
 		if shouldExpand {

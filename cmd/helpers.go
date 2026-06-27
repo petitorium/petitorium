@@ -311,16 +311,15 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 	}
 }
 
-// getNodeName extracts the name from a tree node's reference
+// getNodeName extracts the display name from a tree node's reference.
+// It reads the cached Name from the NodeRef; data access should still go
+// through collectionFromNode / requestFromNode (by ID).
 func getNodeName(node *tview.TreeNode) string {
-	ref := node.GetReference()
-	if col, ok := ref.(workspace.Collection); ok {
-		return col.Name
+	ref, ok := node.GetReference().(NodeRef)
+	if !ok {
+		return ""
 	}
-	if req, ok := ref.(workspace.Request); ok {
-		return req.Name
-	}
-	return ""
+	return ref.Name
 }
 
 // findNodePath finds the path of names from root to the target node
@@ -366,15 +365,14 @@ func findNodeByPath(root *tview.TreeNode, path []string) *tview.TreeNode {
 // expandCollectionAndLoadChildren expands a collection node and loads its children if not already done.
 // This is useful when navigating to a request in a collapsed collection - we need to ensure
 // the collection is expanded and children are loaded before we can find the target request.
-func expandCollectionAndLoadChildren(node *tview.TreeNode) {
-	ref := node.GetReference()
-	col, ok := ref.(workspace.Collection)
-	if !ok {
+func (ui *UIOrchestrator) expandCollectionAndLoadChildren(node *tview.TreeNode) {
+	col := ui.collectionFromNode(node)
+	if col == nil {
 		return
 	}
 
 	if !node.IsExpanded() {
-		addChildrenToCollectionNode(node, col)
+		addChildrenToCollectionNode(node, *col)
 		node.SetExpanded(true)
 		node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
 	}

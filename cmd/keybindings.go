@@ -667,12 +667,12 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		if node != nil {
 			var selectedCollection *workspace.Collection
 
-			if col, ok := node.GetReference().(workspace.Collection); ok {
+			if col := ui.collectionFromNode(node); col != nil {
 				// Collection is selected
-				selectedCollection = &col
-			} else if req, ok := node.GetReference().(workspace.Request); ok {
-				// Request is selected - find its parent collection
-				selectedCollection = findParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.Name, req.Method, req.URL)
+				selectedCollection = col
+			} else if req := ui.requestFromNode(node); req != nil {
+				// Request is selected - find its parent collection by ID
+				selectedCollection = workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
 			}
 
 			if selectedCollection != nil {
@@ -696,12 +696,12 @@ func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		// Duplicate request - check if a request is selected
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
-			if req, ok := node.GetReference().(workspace.Request); ok {
-				// Request is selected - find its parent collection
-				selectedCollection := findParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.Name, req.Method, req.URL)
+			if req := ui.requestFromNode(node); req != nil {
+				// Request is selected - find its parent collection by ID
+				selectedCollection := workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
 
 				if selectedCollection != nil {
-					form := createDuplicateRequestForm(ui.App, ui.Pages, &req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+					form := createDuplicateRequestForm(ui.App, ui.Pages, req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
 					modal := createModal(form, 60, 15, tcell.ColorDefault)
 					ui.Pages.AddPage("duplicateRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -721,18 +721,16 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
-			reference := node.GetReference()
-
-			if col, ok := reference.(workspace.Collection); ok {
+			if col := ui.collectionFromNode(node); col != nil {
 				// Rename collection
-				form := createRenameCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+				form := createRenameCollectionForm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 				modal := createModal(form, 25, 7, tcell.ColorDefault)
 				ui.Pages.AddPage("renameCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
-			} else if req, ok := reference.(workspace.Request); ok {
+			} else if req := ui.requestFromNode(node); req != nil {
 				// Rename request - need to find parent collection
-				form := createRenameRequestForm(ui.App, ui.Pages, &req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+				form := createRenameRequestForm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
 				modal := createModal(form, 25, 7, tcell.ColorDefault)
 				ui.Pages.AddPage("renameRequest", modal, true, true)
 				ui.App.SetFocus(form)
@@ -802,20 +800,18 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
-			if col, ok := node.GetReference().(workspace.Collection); ok {
-				form := createMoveCollectionForm(ui, &col)
+			if col := ui.collectionFromNode(node); col != nil {
+				form := createMoveCollectionForm(ui, col)
 				modal := createModal(form, 40, 12, tcell.ColorDefault)
 				ui.Pages.AddPage("moveCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
-			} else if req, ok := node.GetReference().(workspace.Request); ok {
-				if ptr := ui.DataManager.FindRequestPtr(req); ptr != nil {
-					form := createMoveRequestForm(ui, ptr)
-					modal := createModal(form, 30, 7, tcell.ColorDefault)
-					ui.Pages.AddPage("moveRequest", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				}
+			} else if req := ui.requestFromNode(node); req != nil {
+				form := createMoveRequestForm(ui, req)
+				modal := createModal(form, 30, 7, tcell.ColorDefault)
+				ui.Pages.AddPage("moveRequest", modal, true, true)
+				ui.App.SetFocus(form)
+				return nil
 			}
 		}
 	}
@@ -830,22 +826,18 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
-			reference := node.GetReference()
-
-			if col, ok := reference.(workspace.Collection); ok {
-				form := createDeleteCollectionConfirm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+			if col := ui.collectionFromNode(node); col != nil {
+				form := createDeleteCollectionConfirm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
 				modal := createModal(form, 66, 8, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
-			} else if req, ok := reference.(workspace.Request); ok {
-				if ptr := ui.DataManager.FindRequestPtr(req); ptr != nil {
-					form := createDeleteRequestConfirm(ui.App, ui.Pages, ptr, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-					modal := createModal(form, 40, 8, tcell.ColorDefault)
-					ui.Pages.AddPage("deleteRequest", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				}
+			} else if req := ui.requestFromNode(node); req != nil {
+				form := createDeleteRequestConfirm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+				modal := createModal(form, 40, 8, tcell.ColorDefault)
+				ui.Pages.AddPage("deleteRequest", modal, true, true)
+				ui.App.SetFocus(form)
+				return nil
 			}
 		}
 	}
@@ -871,7 +863,6 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 						if ui.CurrentRequest.ContentType == "JSON" {
 							ui.JSONBodyContent = modifiedContent
 						}
-						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
 				})
@@ -919,9 +910,6 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 				// Update the request model directly with the parsed headers
 				if ui.CurrentRequest != nil {
 					ui.CurrentRequest.Headers = newHeaders
-					if ui.CurrentSelectedNode != nil {
-						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-					}
 				}
 
 				// Rebuild the UI with the standard save callback so future
@@ -982,9 +970,6 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 				// Update the request model directly with the parsed params
 				if ui.CurrentRequest != nil {
 					ui.CurrentRequest.QueryParams = newParams
-					if ui.CurrentSelectedNode != nil {
-						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-					}
 				}
 
 				// Rebuild the UI with the standard save callback so future
@@ -1388,7 +1373,7 @@ func pageBodyUp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 func collapseOrMoveToParent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	node := ui.CollectionsTreeView.GetCurrentNode()
 	if node != nil {
-		if col, ok := node.GetReference().(workspace.Collection); ok {
+		if col := ui.collectionFromNode(node); col != nil {
 			// Check if this is a nested collection (has a parent that is also a collection)
 			parentNode := findParentNode(ui.RootNode, node)
 			isNestedCollection := parentNode != nil && parentNode != ui.RootNode
@@ -1399,7 +1384,7 @@ func collapseOrMoveToParent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 				node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
 				node.ClearChildren()
 				if config.C.UI.CollectionExpansion == "remember" {
-					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, false)
+					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, false)
 				}
 				return nil
 			} else if isNestedCollection {
@@ -1408,17 +1393,17 @@ func collapseOrMoveToParent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 				return nil
 			}
 			// If it's a root collection and already collapsed, do nothing
-		} else if _, ok := node.GetReference().(workspace.Request); ok {
+		} else if nodeIsRequest(node) {
 			// Handle request navigation - 'h' collapses parent collection
 			parentNode := findParentNode(ui.RootNode, node)
 			if parentNode != nil {
-				if col, ok := parentNode.GetReference().(workspace.Collection); ok && parentNode.IsExpanded() {
+				if col := ui.collectionFromNode(parentNode); col != nil && parentNode.IsExpanded() {
 					// Collapse parent collection
 					parentNode.SetExpanded(false)
 					parentNode.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
 					parentNode.ClearChildren()
 					if config.C.UI.CollectionExpansion == "remember" {
-						updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, false)
+						updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, false)
 					}
 					// Move selection to the parent collection
 					ui.CollectionsTreeView.SetCurrentNode(parentNode)
@@ -1433,20 +1418,20 @@ func collapseOrMoveToParent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 func expandOrSelectRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	node := ui.CollectionsTreeView.GetCurrentNode()
 	if node != nil {
-		if col, ok := node.GetReference().(workspace.Collection); ok {
+		if col := ui.collectionFromNode(node); col != nil {
 			if !node.IsExpanded() {
 				// Expand collection
 				node.SetExpanded(true)
 				node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
 				if len(node.GetChildren()) == 0 {
-					addChildrenToCollectionNode(node, col)
+					addChildrenToCollectionNode(node, *col)
 				}
 				if config.C.UI.CollectionExpansion == "remember" {
-					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, true)
+					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, true)
 				}
 				return nil
 			}
-		} else if _, ok := node.GetReference().(workspace.Request); ok {
+		} else if nodeIsRequest(node) {
 			// 'l' on a request opens/selects it
 			if ui.TreeSelectionHandler != nil {
 				ui.TreeSelectionHandler(node)
@@ -1460,7 +1445,7 @@ func expandOrSelectRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 func selectRequestInTree(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	node := ui.CollectionsTreeView.GetCurrentNode()
 	if node != nil {
-		if _, ok := node.GetReference().(workspace.Request); ok {
+		if nodeIsRequest(node) {
 			if ui.TreeSelectionHandler != nil {
 				ui.TreeSelectionHandler(node)
 			}
@@ -1603,7 +1588,6 @@ func saveBodyContent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 	if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 		ui.CurrentBodyContent = ui.BodyEditPanel.GetText()
 		ui.CurrentRequest.Body = ui.CurrentBodyContent
-		ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
 		saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 		// Show save confirmation could be added here
 	}
@@ -1921,28 +1905,27 @@ func handleTreeSendRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 		return event
 	}
 
-	reference := node.GetReference()
-	if col, ok := reference.(workspace.Collection); ok {
+	if col := ui.collectionFromNode(node); col != nil {
 		node.SetExpanded(!node.IsExpanded())
 		if node.IsExpanded() {
 			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
 			if len(node.GetChildren()) == 0 {
-				addChildrenToCollectionNode(node, col)
+				addChildrenToCollectionNode(node, *col)
 			}
 			if config.C.UI.CollectionExpansion == "remember" {
-				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, true)
+				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, true)
 			}
 		} else {
 			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
 			node.ClearChildren()
 			if config.C.UI.CollectionExpansion == "remember" {
-				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.Name, false)
+				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, false)
 			}
 		}
 		return nil
 	}
 
-	if _, ok := reference.(workspace.Request); ok {
+	if nodeIsRequest(node) {
 		if ui.RequestInProgress {
 			return nil
 		}

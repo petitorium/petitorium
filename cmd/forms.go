@@ -61,7 +61,7 @@ func createCollectionFormWithLocation(
 			return
 		}
 
-		newCollection := workspace.Collection{Name: name}
+		newCollection := workspace.Collection{ID: workspace.NewID(), Name: name}
 
 		if location == "(Root Level)" {
 			// Add to root level
@@ -145,7 +145,7 @@ func createCollectionForm(app *tview.Application,
 			return
 		}
 
-		newCollection := workspace.Collection{Name: name}
+		newCollection := workspace.Collection{ID: workspace.NewID(), Name: name}
 
 		if parentCollection != nil {
 			// Add to nested collection
@@ -255,6 +255,7 @@ func createRequestForm(app *tview.Application,
 		// For multipart, the body field contains the formatted field data
 
 		newRequest := workspace.Request{
+			ID:          workspace.NewID(),
 			Name:        name,
 			Method:      method,
 			URL:         url,
@@ -269,19 +270,15 @@ func createRequestForm(app *tview.Application,
 			} else {
 				// Create a default collection
 				defaultCollection := workspace.Collection{
+					ID:       workspace.NewID(),
 					Name:     "Requests",
 					Requests: []workspace.Request{newRequest},
 				}
 				workspaceData.Collections = append(workspaceData.Collections, defaultCollection)
 			}
 		} else {
-			// Find and update the actual collection in workspaceData
-			actualCollection := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
-
-			if actualCollection != nil {
-				// Add request to the actual collection in workspaceData
-				actualCollection.Requests = append(actualCollection.Requests, newRequest)
-			}
+			// selectedCollection is already a live pointer into workspaceData.
+			selectedCollection.Requests = append(selectedCollection.Requests, newRequest)
 		}
 
 		// Rebuild the entire tree to reflect changes
@@ -290,7 +287,7 @@ func createRequestForm(app *tview.Application,
 
 		// Save workspace
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
+			debugLog("new request: failed to save workspace: %v", err)
 		}
 
 		pages.RemovePage("newRequest")
@@ -372,13 +369,9 @@ func createRenameCollectionForm(app *tview.Application,
 			return
 		}
 
-		// Find and update the actual collection in workspaceData
-		for i := range workspaceData.Collections {
-			if workspaceData.Collections[i].Name == selectedCollection.Name {
-				workspaceData.Collections[i].Name = newName
-				break
-			}
-		}
+		// Update the collection name in-place via the live pointer (works for
+		// nested collections too, unlike the previous name-matching loop).
+		selectedCollection.Name = newName
 
 		// Update tree node
 		expanded := node.IsExpanded()
@@ -388,14 +381,12 @@ func createRenameCollectionForm(app *tview.Application,
 			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, newName))
 		}
 
-		// Update node reference
-		updatedCollection := *selectedCollection
-		updatedCollection.Name = newName
-		node.SetReference(updatedCollection)
+		// Refresh the node's cached display name (the ID is unchanged).
+		node.SetReference(NodeRef{Kind: KindCollection, ID: selectedCollection.ID, Name: newName})
 
 		// Save workspace
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
+			debugLog("rename collection: failed to save workspace: %v", err)
 		}
 
 		pages.RemovePage("renameCollection")
@@ -450,35 +441,23 @@ func createRenameRequestForm(app *tview.Application,
 			return
 		}
 
-		// Find and update the request in workspaceData
-		// Check collections
-		for i := range workspaceData.Collections {
-			for j := range workspaceData.Collections[i].Requests {
-				if workspaceData.Collections[i].Requests[j].Name == selectedRequest.Name &&
-					workspaceData.Collections[i].Requests[j].Method == selectedRequest.Method &&
-					workspaceData.Collections[i].Requests[j].URL == selectedRequest.URL {
-					workspaceData.Collections[i].Requests[j].Name = newName
+		// Update the request name in-place via the live pointer.
+		selectedRequest.Name = newName
 
-					// Update tree node
-					coloredMethod := getColoredMethod(selectedRequest.Method)
-					paddedName := padNameToMinLength(newName, 4)
-					node.SetText(fmt.Sprintf("%s %s", coloredMethod, paddedName))
+		// Update tree node
+		coloredMethod := getColoredMethod(selectedRequest.Method)
+		paddedName := padNameToMinLength(newName, 4)
+		node.SetText(fmt.Sprintf("%s %s", coloredMethod, paddedName))
 
-					// Update node reference
-					updatedRequest := *selectedRequest
-					updatedRequest.Name = newName
-					node.SetReference(updatedRequest)
+		// Refresh the node's cached display name (the ID is unchanged).
+		node.SetReference(NodeRef{Kind: KindRequest, ID: selectedRequest.ID, Name: newName})
 
-					// Save workspace
-					if err := workspace.SaveWorkspace(workspaceData); err != nil {
-						// Handle error
-					}
-
-					cancelFunc()
-					return
-				}
-			}
+		// Save workspace
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			debugLog("rename request: failed to save workspace: %v", err)
 		}
+
+		cancelFunc()
 	}).SetButtonActivatedStyle(tcell.StyleDefault.Background(colors.Border).Foreground(colors.Foreground))
 
 	form.AddButton("Cancel", func() {
@@ -721,7 +700,7 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the collection '%s'?\nThis will also delete all nested collections and requests.", selectedCollection.Name), 0, 2, false, false)
 
 	form.AddButton("Delete", func() {
-		deleteCollectionFromData(&workspaceData.Collections, selectedCollection.Name)
+		workspace.RemoveCollectionByID(workspaceData, selectedCollection.ID)
 
 		workspaceData.SelectedRequest = nil
 
@@ -737,6 +716,7 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 		}
 
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			debugLog("delete collection: failed to save workspace: %v", err)
 		}
 
 		pages.RemovePage("deleteCollection")
@@ -762,39 +742,6 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 	return form
 }
 
-// Helper function to check if a collection is a descendant of another
-func isDescendant(parent, child *workspace.Collection) bool {
-	for _, col := range parent.Collections {
-		if col.Name == child.Name || isDescendant(&col, child) {
-			return true
-		}
-	}
-	return false
-}
-
-// Helper function to remove a collection from its parent
-func removeCollectionFromParent(workspaceData *workspace.Workspace, name string) {
-	for i := range workspaceData.Collections {
-		col := &workspaceData.Collections[i]
-		if col.Name == name {
-			workspaceData.Collections = append(workspaceData.Collections[:i], workspaceData.Collections[i+1:]...)
-			return
-		}
-		removeCollectionFromParentNested(&col.Collections, name)
-	}
-}
-
-// Helper function to remove a collection from nested collections
-func removeCollectionFromParentNested(collections *[]workspace.Collection, name string) {
-	for i := range *collections {
-		if (*collections)[i].Name == name {
-			*collections = append((*collections)[:i], (*collections)[i+1:]...)
-			return
-		}
-		removeCollectionFromParentNested(&(*collections)[i].Collections, name)
-	}
-}
-
 func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.Collection) *tview.Form {
 	app := ui.App
 	pages := ui.Pages
@@ -813,14 +760,17 @@ func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.
 	form.SetButtonTextColor(colors.Foreground)
 
 	// Collect possible parent collection NAMES (excluding self and descendants).
-	// We capture names rather than *Collection pointers because the Collections
-	// backing array is shifted by removeCollectionFromParent
-	// (append(s[:i], s[i+1:]...)), which would invalidate any pointer captured
-	// before the removal. Names are re-resolved to live pointers AFTER removal.
+	// Collect possible parent collections (excluding self and descendants).
+	// We capture IDs (for re-resolution after removal) and names (for the
+	// dropdown display). Pointers are NOT captured because RemoveCollectionByID
+	// shifts the Collections backing array (append(s[:i], s[i+1:]...)),
+	// invalidating any pre-captured pointer.
+	var possibleParentIDs []string
 	var possibleParentNames []string
 	for i := range workspaceData.Collections {
 		col := &workspaceData.Collections[i]
-		if col.Name != selectedCollection.Name && !isDescendant(col, selectedCollection) {
+		if col.ID != selectedCollection.ID && !workspace.IsDescendantCollection(col, selectedCollection.ID) {
+			possibleParentIDs = append(possibleParentIDs, col.ID)
 			possibleParentNames = append(possibleParentNames, col.Name)
 		}
 	}
@@ -844,31 +794,22 @@ func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.
 	form.AddButton("Move", func() {
 		selectedIndex, _ := parentDropdown.GetCurrentOption()
 
-		// Re-find the live collection to snapshot its current state. selectedCollection
-		// may be a stack copy from a type assertion, so we cannot trust its pointer.
-		liveCol := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
-		if liveCol == nil {
-			debugLog("move collection: source %q not found, aborting", selectedCollection.Name)
-			pages.RemovePage("moveCollection")
-			pages.SwitchToPage("main")
-			app.SetFocus(collectionsTreeView)
-			return
-		}
-		// Snapshot the value BEFORE removal. After removeCollectionFromParent shifts
-		// the backing array, any pointer into it (including liveCol) is invalid.
-		savedCol := *liveCol
+		// Snapshot the collection value BEFORE removal. selectedCollection is a
+		// live pointer into the Collections backing array, which
+		// RemoveCollectionByID shifts via append(s[:i], s[i+1:]...); reading
+		// *selectedCollection after removal would return shifted memory.
+		savedCol := *selectedCollection
 
 		// Remove first (shifts the Collections backing array).
-		removeCollectionFromParent(workspaceData, savedCol.Name)
+		workspace.RemoveCollectionByID(workspaceData, savedCol.ID)
 
-		// Re-resolve the target parent by name AFTER removal. A pointer captured
-		// before removal would now address shifted memory and likely point at the
-		// wrong collection.
-		if selectedIndex > 0 && selectedIndex-1 < len(possibleParentNames) {
-			targetName := possibleParentNames[selectedIndex-1]
-			newParent := findCollectionByName(&workspaceData.Collections, targetName)
+		// Re-resolve the target parent by ID AFTER removal. A pointer captured
+		// before removal would now address shifted memory.
+		if selectedIndex > 0 && selectedIndex-1 < len(possibleParentIDs) {
+			targetID := possibleParentIDs[selectedIndex-1]
+			newParent := workspace.FindCollectionByID(&workspaceData.Collections, targetID)
 			if newParent == nil {
-				debugLog("move collection: target parent %q not found after removal, appending to root", targetName)
+				debugLog("move collection: target parent id %q not found after removal, appending to root", targetID)
 				workspaceData.Collections = append(workspaceData.Collections, savedCol)
 			} else {
 				newParent.Collections = append(newParent.Collections, savedCol)
@@ -924,44 +865,6 @@ func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.
 	return form
 }
 
-// Helper function to remove a request from collections
-func removeRequestFromCollections(workspaceData *workspace.Workspace, name, method, url string) {
-	// Remove from collections
-	for i := range workspaceData.Collections {
-		col := &workspaceData.Collections[i]
-		for j, req := range col.Requests {
-			if req.Name == name && req.Method == method && req.URL == url {
-				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
-				return
-			}
-		}
-		// Recursive for nested
-		if len(col.Collections) > 0 {
-			if removeRequestFromNestedCollections(&col.Collections, name, method, url) {
-				return
-			}
-		}
-	}
-}
-
-func removeRequestFromNestedCollections(collections *[]workspace.Collection, name, method, url string) bool {
-	for i := range *collections {
-		col := &(*collections)[i]
-		for j, req := range col.Requests {
-			if req.Name == name && req.Method == method && req.URL == url {
-				col.Requests = append(col.Requests[:j], col.Requests[j+1:]...)
-				return true
-			}
-		}
-		if len(col.Collections) > 0 {
-			if removeRequestFromNestedCollections(&col.Collections, name, method, url) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func createMoveRequestForm(ui *UIOrchestrator, selectedRequest *workspace.Request) *tview.Form {
 	app := ui.App
 	pages := ui.Pages
@@ -979,13 +882,11 @@ func createMoveRequestForm(ui *UIOrchestrator, selectedRequest *workspace.Reques
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	// Get all collections as possible targets, including nested.
-	// targetCollections holds *Collection pointers into the Collections backing
-	// array. This is safe because removeRequestFromCollections only shifts the
-	// Requests slice of the source collection; the Collections array (and thus
-	// these pointers) is not reallocated.
+	// Get all collections as possible targets, including nested. We capture IDs
+	// (not pointers) so the target can be re-resolved by ID after the source
+	// request is removed, avoiding any stale-pointer risk across mutation.
 	var collectionOptions []string
-	var targetCollections []*workspace.Collection
+	var targetCollectionIDs []string
 	collectionOptions = append(collectionOptions, "Root")
 
 	var addCollectionsToOptions func(collections *[]workspace.Collection, prefix string)
@@ -993,7 +894,7 @@ func createMoveRequestForm(ui *UIOrchestrator, selectedRequest *workspace.Reques
 		for i := range *collections {
 			col := &(*collections)[i]
 			collectionOptions = append(collectionOptions, prefix+col.Name)
-			targetCollections = append(targetCollections, col)
+			targetCollectionIDs = append(targetCollectionIDs, col.ID)
 			if len(col.Collections) > 0 {
 				addCollectionsToOptions(&col.Collections, prefix+col.Name+" → ")
 			}
@@ -1015,40 +916,38 @@ func createMoveRequestForm(ui *UIOrchestrator, selectedRequest *workspace.Reques
 	form.AddButton("Move", func() {
 		selectedIndex, _ := collectionDropdown.GetCurrentOption()
 
-		foundPtr := dataManager.FindRequestPtr(*selectedRequest)
-		if foundPtr == nil {
-			debugLog("move request: source %q not found, aborting", selectedRequest.Name)
-			pages.RemovePage("moveRequest")
-			pages.SwitchToPage("main")
-			app.SetFocus(collectionsTreeView)
-			return
-		}
-		selectedRequest = foundPtr
-
-		// Snapshot the request value BEFORE removal. foundPtr points into the
-		// Requests backing array, and removeRequestFromCollections shifts that
-		// array via append(s[:j], s[j+1:]...). Reading *selectedRequest after the
-		// removal would return the shifted/neighbouring request, which is the
-		// direct cause of lost and duplicated requests.
+		// selectedRequest is a live pointer (resolved by ID in moveItem).
+		// Snapshot the value BEFORE removal: RemoveRequestByID shifts the
+		// Requests backing array via append(s[:j], s[j+1:]...), so reading
+		// *selectedRequest afterwards would return shifted/neighbouring memory,
+		// which was the direct cause of lost and duplicated requests.
 		savedReq := *selectedRequest
 
 		if selectedIndex == 0 {
-			removeRequestFromCollections(workspaceData, savedReq.Name, savedReq.Method, savedReq.URL)
+			workspace.RemoveRequestByID(workspaceData, savedReq.ID)
 			if len(workspaceData.Collections) > 0 {
 				workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, savedReq)
 			} else {
 				defaultCollection := workspace.Collection{
+					ID:       workspace.NewID(),
 					Name:     "Requests",
 					Requests: []workspace.Request{savedReq},
 				}
 				workspaceData.Collections = append(workspaceData.Collections, defaultCollection)
 			}
-		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
-			targetCollection := targetCollections[selectedIndex-1]
+		} else if selectedIndex > 0 && selectedIndex <= len(targetCollectionIDs) {
+			workspace.RemoveRequestByID(workspaceData, savedReq.ID)
 
-			removeRequestFromCollections(workspaceData, savedReq.Name, savedReq.Method, savedReq.URL)
-
-			targetCollection.Requests = append(targetCollection.Requests, savedReq)
+			// Re-resolve the target collection by ID after removal.
+			targetCollection := workspace.FindCollectionByID(&workspaceData.Collections, targetCollectionIDs[selectedIndex-1])
+			if targetCollection != nil {
+				targetCollection.Requests = append(targetCollection.Requests, savedReq)
+			} else {
+				debugLog("move request: target collection id %q not found, appending to first collection", targetCollectionIDs[selectedIndex-1])
+				if len(workspaceData.Collections) > 0 {
+					workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, savedReq)
+				}
+			}
 		}
 
 		workspaceData.SelectedRequest = nil
@@ -1122,15 +1021,8 @@ func createDeleteRequestConfirm(app *tview.Application,
 	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete\nthe request '%s'?", selectedRequest.Name), 0, 2, false, false)
 
 	form.AddButton("Delete", func() {
-		foundPtr := dataManager.FindRequestPtr(*selectedRequest)
-		if foundPtr == nil {
-			pages.RemovePage("deleteRequest")
-			pages.SwitchToPage("main")
-			app.SetFocus(collectionsTreeView)
-			return
-		}
-
-		deleteRequestFromData(workspaceData, foundPtr.Name)
+		// selectedRequest is a live pointer resolved by ID; remove by ID.
+		workspace.RemoveRequestByID(workspaceData, selectedRequest.ID)
 
 		workspaceData.SelectedRequest = nil
 
@@ -1146,6 +1038,7 @@ func createDeleteRequestConfirm(app *tview.Application,
 		}
 
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			debugLog("delete request: failed to save workspace: %v", err)
 		}
 
 		pages.RemovePage("deleteRequest")
@@ -1555,6 +1448,7 @@ func createDuplicateRequestForm(
 
 		// Create new request with duplicated data (excluding response history)
 		newRequest := workspace.Request{
+			ID:          workspace.NewID(),
 			Name:        name,
 			Method:      method,
 			URL:         url,
@@ -1574,6 +1468,7 @@ func createDuplicateRequestForm(
 			} else {
 				// Create a default collection
 				defaultCollection := workspace.Collection{
+					ID:       workspace.NewID(),
 					Name:     "Requests",
 					Requests: []workspace.Request{newRequest},
 				}
@@ -1581,12 +1476,8 @@ func createDuplicateRequestForm(
 			}
 		} else {
 			// Find and update the actual collection in workspaceData
-			actualCollection := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
-
-			if actualCollection != nil {
-				// Add request to the actual collection in workspaceData
-				actualCollection.Requests = append(actualCollection.Requests, newRequest)
-			}
+			// selectedCollection is already a live pointer into workspaceData.
+			selectedCollection.Requests = append(selectedCollection.Requests, newRequest)
 		}
 
 		// Rebuild the entire tree to reflect changes
@@ -1595,7 +1486,7 @@ func createDuplicateRequestForm(
 
 		// Save workspace
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
+			debugLog("duplicate request: failed to save workspace: %v", err)
 		}
 
 		pages.RemovePage("duplicateRequest")

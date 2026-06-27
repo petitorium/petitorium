@@ -450,7 +450,6 @@ func switchBodyMode(
 			currentBodyContent = bodyEditPanel.GetText()
 			(*currentRequest).Body = currentBodyContent
 			if *currentSelectedNode != nil {
-				(*currentSelectedNode).SetReference(**currentRequest)
 				saveCurrentRequest()
 			}
 		}

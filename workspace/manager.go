@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
 
@@ -210,6 +211,39 @@ func migrateWorkspaceContentTypes(workspace *Workspace) bool {
 	return migrateOldCommandRunnerTags(workspace.Collections)
 }
 
+// ensureIDs assigns a stable UUID to every Request and Collection that lacks
+// one. It returns true if any ID was assigned so callers can persist the
+// change. This migrates workspaces created before stable IDs existed; without
+// unique IDs, move/delete/find operations can't reliably distinguish items
+// that share a name.
+func ensureIDs(ws *Workspace) bool {
+	if ws == nil {
+		return false
+	}
+	return ensureCollectionIDs(&ws.Collections)
+}
+
+func ensureCollectionIDs(collections *[]Collection) bool {
+	modified := false
+	for i := range *collections {
+		col := &(*collections)[i]
+		if col.ID == "" {
+			col.ID = uuid.NewString()
+			modified = true
+		}
+		for j := range col.Requests {
+			if col.Requests[j].ID == "" {
+				col.Requests[j].ID = uuid.NewString()
+				modified = true
+			}
+		}
+		if ensureCollectionIDs(&col.Collections) {
+			modified = true
+		}
+	}
+	return modified
+}
+
 // migrateCollectionsContentTypes recursively migrates content types for all collections
 func migrateCollectionsContentTypes(collections []Collection) {
 	for i := range collections {
@@ -353,8 +387,13 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 			if err := LoadExpansionState(&workspace.Collections); err != nil {
 				// Not critical
 			}
-			// Migrate existing requests to have default content types and tag formats
+			// Migrate: assign stable IDs to any items that lack them, default content
+			// types, and legacy tag formats.
+			modified := ensureIDs(workspace)
 			if migrateWorkspaceContentTypes(workspace) {
+				modified = true
+			}
+			if modified {
 				if updatedData, err := yaml.Marshal(workspace); err == nil {
 					os.WriteFile(workspacePath, updatedData, 0o644)
 				}
@@ -406,8 +445,12 @@ func LoadWorkspaceByName(name string) (*Workspace, error) {
 		// Not critical
 	}
 
-	// Migrate existing requests to have default content types and tag formats
+	// Migrate existing requests to have stable IDs, default content types and tag formats
+	modified := ensureIDs(workspace)
 	if migrateWorkspaceContentTypes(workspace) {
+		modified = true
+	}
+	if modified {
 		if updatedData, err := yaml.Marshal(workspace); err == nil {
 			os.WriteFile(workspacePath, updatedData, 0o644)
 		}
@@ -438,6 +481,10 @@ func SaveWorkspaceManager(manager *WorkspaceManager) error {
 }
 
 func SaveWorkspace(workspace *Workspace) error {
+	// Safety net: guarantee every item has a stable ID before persisting, so the
+	// on-disk format is always consistent even if a constructor forgot to set one.
+	ensureIDs(workspace)
+
 	workspaceDir := getWorkspaceDir(workspace.Name)
 	if err := os.MkdirAll(workspaceDir, 0o755); err != nil {
 		return err

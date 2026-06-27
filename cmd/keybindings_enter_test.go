@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/petitorium/petitorium/workspace"
 	"github.com/rivo/tview"
 )
 
@@ -45,7 +44,7 @@ func TestSelectRequestInTree(t *testing.T) {
 	app := tview.NewApplication()
 	root := tview.NewTreeNode("root").SetSelectable(false)
 	reqNode := tview.NewTreeNode("GET Test").SetSelectable(true)
-	reqNode.SetReference(workspace.Request{Name: "Test", Method: "GET", URL: "http://example.com"})
+	reqNode.SetReference(NodeRef{Kind: KindRequest, ID: "test-id", Name: "Test"})
 	root.AddChild(reqNode)
 
 	tree := tview.NewTreeView().
@@ -76,7 +75,7 @@ func TestSelectRequestInTreeNoHandler(t *testing.T) {
 	app := tview.NewApplication()
 	root := tview.NewTreeNode("root").SetSelectable(false)
 	reqNode := tview.NewTreeNode("GET Test").SetSelectable(true)
-	reqNode.SetReference(workspace.Request{Name: "Test", Method: "GET", URL: "http://example.com"})
+	reqNode.SetReference(NodeRef{Kind: KindRequest, ID: "test-id", Name: "Test"})
 	root.AddChild(reqNode)
 
 	tree := tview.NewTreeView().
