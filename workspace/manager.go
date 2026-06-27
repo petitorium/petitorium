@@ -26,6 +26,46 @@ func getWorkspaceFilePath() (string, error) {
 	return filepath.Join(configDir, "workspace.yaml"), nil
 }
 
+// writeFileAtomic writes data to path atomically: it writes to a temp file in
+// the same directory, fsyncs it, then renames it over the target. This prevents
+// a torn/partial file (and thus a corrupt workspace) if the process is
+// interrupted mid-write. The rename is atomic on POSIX filesystems.
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".tmp-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	success := false
+	defer func() {
+		if !success {
+			tmp.Close()
+			os.Remove(tmpName)
+		}
+	}()
+	if _, err := tmp.Write(data); err != nil {
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, perm); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	success = true
+	return nil
+}
+
 func getWorkspaceManagerFilePath() (string, error) {
 	home, err := homedir.Dir()
 	if err != nil {
@@ -468,16 +508,12 @@ func SaveWorkspaceManager(manager *WorkspaceManager) error {
 		return err
 	}
 
-	if err = os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-
 	data, err := yaml.Marshal(manager)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0o644)
+	return writeFileAtomic(path, data, 0o644)
 }
 
 func SaveWorkspace(workspace *Workspace) error {
@@ -497,7 +533,7 @@ func SaveWorkspace(workspace *Workspace) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(workspacePath, workspaceData, 0o644); err != nil {
+	if err := writeFileAtomic(workspacePath, workspaceData, 0o644); err != nil {
 		return err
 	}
 
@@ -507,7 +543,7 @@ func SaveWorkspace(workspace *Workspace) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(collectionsPath, collectionsData, 0o644); err != nil {
+	if err := writeFileAtomic(collectionsPath, collectionsData, 0o644); err != nil {
 		return err
 	}
 
@@ -663,16 +699,12 @@ func SaveEnvironments(environments []Environment) error {
 		return err
 	}
 
-	if err = os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-
 	data, err := yaml.Marshal(environments)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0o644)
+	return writeFileAtomic(path, data, 0o644)
 }
 
 func getExpansionStateFilePath() (string, error) {
@@ -717,7 +749,7 @@ func SaveExpansionState(collections *[]Collection) error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0o644)
+	return writeFileAtomic(path, data, 0o644)
 }
 
 // LoadExpansionState loads the expansion state and applies it to collections

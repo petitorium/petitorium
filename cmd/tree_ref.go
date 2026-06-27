@@ -45,7 +45,7 @@ func (ui *UIOrchestrator) collectionFromNode(node *tview.TreeNode) *workspace.Co
 	if !ok || ref.Kind != KindCollection || ref.ID == "" {
 		return nil
 	}
-	return workspace.FindCollectionByID(&ui.WorkspaceData.Collections, ref.ID)
+	return ui.DataManager.GetCollectionByID(ref.ID)
 }
 
 // requestFromNode resolves the live *Request referenced by a tree node, or nil
@@ -58,7 +58,7 @@ func (ui *UIOrchestrator) requestFromNode(node *tview.TreeNode) *workspace.Reque
 	if !ok || ref.Kind != KindRequest || ref.ID == "" {
 		return nil
 	}
-	return workspace.FindRequestByID(&ui.WorkspaceData.Collections, ref.ID)
+	return ui.DataManager.GetRequestByID(ref.ID)
 }
 
 // nodeIsRequest reports whether a tree node references a request.

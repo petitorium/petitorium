@@ -131,8 +131,12 @@ type UIOrchestrator struct {
 	LastResponseTime           *time.Time
 
 	// State variables
-	CurrentSelectedNode                 *tview.TreeNode
-	CurrentRequest                      *workspace.Request
+	CurrentSelectedNode *tview.TreeNode
+	CurrentRequest      *workspace.Request
+	// CurrentRequestID is the stable ID of CurrentRequest. It survives slice
+	// shifts that invalidate the CurrentRequest pointer, allowing
+	// refreshCurrentRequest to re-resolve the live request by ID.
+	CurrentRequestID                    string
 	Navigating                          bool
 	ProgrammaticallyUpdatingMethod      bool
 	ProgrammaticallyUpdatingURL         bool
@@ -218,11 +222,25 @@ type UIOrchestrator struct {
 // calls to read or write the wrong request (data loss / duplication).
 func (ui *UIOrchestrator) clearSelectionState() {
 	ui.CurrentRequest = nil
+	ui.CurrentRequestID = ""
 	ui.CurrentSelectedNode = nil
 	ui.LastSelectedRequestNode = nil
 	if ui.WorkspaceData != nil {
 		ui.WorkspaceData.SelectedRequest = nil
 	}
+}
+
+// refreshCurrentRequest re-resolves ui.CurrentRequest from its stable ID. This
+// must be called after any structural mutation (move/delete) that may have
+// shifted the Requests backing array, since the cached *Request pointer would
+// otherwise dangle. If the ID is empty or no longer present, CurrentRequest is
+// set to nil.
+func (ui *UIOrchestrator) refreshCurrentRequest() {
+	if ui.CurrentRequestID == "" {
+		ui.CurrentRequest = nil
+		return
+	}
+	ui.CurrentRequest = ui.DataManager.GetRequestByID(ui.CurrentRequestID)
 }
 
 // switchBodyContent switches the body container content based on content type

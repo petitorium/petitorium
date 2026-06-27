@@ -601,6 +601,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		refreshCollectionsTree(ui)
 
 		ui.CurrentRequest = nil
+		ui.CurrentRequestID = ""
 		ui.CurrentSelectedNode = nil
 		ui.LastSelectedRequestNode = nil
 
@@ -875,6 +876,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			// immutable NodeRef{ID}, so this always returns current data even
 			// after the tree was rebuilt or the underlying slice was shifted.
 			ui.CurrentRequest = req
+			ui.CurrentRequestID = req.ID
 
 			// Set method and content type in dropdowns AFTER currentRequest is set
 			if ui.CurrentRequest != nil {
@@ -924,6 +926,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 			// Clear current request when a collection is selected
 			ui.CurrentRequest = nil
+			ui.CurrentRequestID = ""
 			ui.CurrentSelectedNode = nil
 			ui.LastResponse = nil
 			updateResponseTabs(nil, nil, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
@@ -1512,7 +1515,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					savePluginEnvironmentChanges(context.Environment, currentEnvIndex, ui.EnvironmentsData)
 				}
 
-				// Store the response in the current request's history
+				// Store the response in the current request's history. Re-resolve the
+				// request by ID first: the request was sent from a goroutine and the
+				// Requests backing array may have shifted (e.g. the user moved another
+				// request) while the response was in flight.
+				ui.refreshCurrentRequest()
 				if ui.CurrentRequest != nil {
 					body := resp.Body
 					respContentType := ""
