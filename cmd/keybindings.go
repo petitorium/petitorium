@@ -916,20 +916,24 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 					}
 				}
 
-				// Update headers in UI
-				setHeadersInUI(ui.Colors, newHeaders, func() {
-					if ui.CurrentRequest != nil {
-						ui.CurrentRequest.Headers = newHeaders
-						if ui.CurrentSelectedNode != nil {
-							ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-							saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
-						}
-					}
-				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
-
+				// Update the request model directly with the parsed headers
 				if ui.CurrentRequest != nil {
 					ui.CurrentRequest.Headers = newHeaders
+					if ui.CurrentSelectedNode != nil {
+						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
+					}
+				}
+
+				// Rebuild the UI with the standard save callback so future
+				// individual edits (typing, Add Header, etc.) save correctly
+				setHeadersInUI(ui.Colors, newHeaders, func() {
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
+
+				// Persist the workspace directly, bypassing saveCurrentRequest's
+				// UI re-sync which can produce inconsistent state during Suspend
+				if ui.WorkspaceData != nil {
+					workspace.SaveWorkspace(ui.WorkspaceData)
 				}
 
 				if currentHeadersList != nil {
@@ -975,19 +979,24 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 					}
 				}
 
-				setQueryParamsInUI(ui.Colors, newParams, func() {
-					if ui.CurrentRequest != nil {
-						ui.CurrentRequest.QueryParams = newParams
-						if ui.CurrentSelectedNode != nil {
-							ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
-							saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
-						}
-					}
-				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
-
+				// Update the request model directly with the parsed params
 				if ui.CurrentRequest != nil {
 					ui.CurrentRequest.QueryParams = newParams
+					if ui.CurrentSelectedNode != nil {
+						ui.CurrentSelectedNode.SetReference(*ui.CurrentRequest)
+					}
+				}
+
+				// Rebuild the UI with the standard save callback so future
+				// individual edits save correctly
+				setQueryParamsInUI(ui.Colors, newParams, func() {
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
+				}, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
+
+				// Persist the workspace directly, bypassing saveCurrentRequest's
+				// UI re-sync which can produce inconsistent state during Suspend
+				if ui.WorkspaceData != nil {
+					workspace.SaveWorkspace(ui.WorkspaceData)
 				}
 
 				if currentQueryParamsList != nil {
