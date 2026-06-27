@@ -208,6 +208,23 @@ type UIOrchestrator struct {
 	ExitModal                    func()
 }
 
+// clearSelectionState resets all cached selection pointers and nodes.
+//
+// It MUST be called after any structural mutation (move/delete/rename) that
+// rebuilds the collections tree. The cached *Request points into a Requests
+// backing array that gets shifted by append(s[:i], s[i+1:]...) removals, and
+// the cached *tview.TreeNode values become detached once rootNode.ClearChildren
+// runs. Leaving them stale causes subsequent handleTreeSelection / saveCurrentRequest
+// calls to read or write the wrong request (data loss / duplication).
+func (ui *UIOrchestrator) clearSelectionState() {
+	ui.CurrentRequest = nil
+	ui.CurrentSelectedNode = nil
+	ui.LastSelectedRequestNode = nil
+	if ui.WorkspaceData != nil {
+		ui.WorkspaceData.SelectedRequest = nil
+	}
+}
+
 // switchBodyContent switches the body container content based on content type
 func (ui *UIOrchestrator) switchBodyContent(newContentType, oldContentType string) {
 	// Save current body content before switching

@@ -795,7 +795,15 @@ func removeCollectionFromParentNested(collections *[]workspace.Collection, name 
 	}
 }
 
-func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager, dataManager *DataManager) *tview.Form {
+func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.Collection) *tview.Form {
+	app := ui.App
+	pages := ui.Pages
+	workspaceData := ui.WorkspaceData
+	rootNode := ui.RootNode
+	collectionsTreeView := ui.CollectionsTreeView
+	colors := ui.Colors
+	dataManager := ui.DataManager
+
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -804,21 +812,23 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	// Get all possible parent collections (excluding self and descendants)
-	var possibleParents []*workspace.Collection
+	// Collect possible parent collection NAMES (excluding self and descendants).
+	// We capture names rather than *Collection pointers because the Collections
+	// backing array is shifted by removeCollectionFromParent
+	// (append(s[:i], s[i+1:]...)), which would invalidate any pointer captured
+	// before the removal. Names are re-resolved to live pointers AFTER removal.
+	var possibleParentNames []string
 	for i := range workspaceData.Collections {
 		col := &workspaceData.Collections[i]
 		if col.Name != selectedCollection.Name && !isDescendant(col, selectedCollection) {
-			possibleParents = append(possibleParents, col)
+			possibleParentNames = append(possibleParentNames, col.Name)
 		}
 	}
 
 	// Create dropdown for selecting new parent
-	parentOptions := make([]string, len(possibleParents)+1)
+	parentOptions := make([]string, len(possibleParentNames)+1)
 	parentOptions[0] = "Root"
-	for i, col := range possibleParents {
-		parentOptions[i+1] = col.Name
-	}
+	copy(parentOptions[1:], possibleParentNames)
 
 	parentDropdown := tview.NewDropDown().
 		SetLabel("Move to: ").
@@ -833,23 +843,49 @@ func createMoveCollectionForm(app *tview.Application, pages *tview.Pages, select
 
 	form.AddButton("Move", func() {
 		selectedIndex, _ := parentDropdown.GetCurrentOption()
-		var newParent *workspace.Collection
-		if selectedIndex > 0 {
-			newParent = possibleParents[selectedIndex-1]
+
+		// Re-find the live collection to snapshot its current state. selectedCollection
+		// may be a stack copy from a type assertion, so we cannot trust its pointer.
+		liveCol := findCollectionByName(&workspaceData.Collections, selectedCollection.Name)
+		if liveCol == nil {
+			debugLog("move collection: source %q not found, aborting", selectedCollection.Name)
+			pages.RemovePage("moveCollection")
+			pages.SwitchToPage("main")
+			app.SetFocus(collectionsTreeView)
+			return
 		}
+		// Snapshot the value BEFORE removal. After removeCollectionFromParent shifts
+		// the backing array, any pointer into it (including liveCol) is invalid.
+		savedCol := *liveCol
 
-		removeCollectionFromParent(workspaceData, selectedCollection.Name)
+		// Remove first (shifts the Collections backing array).
+		removeCollectionFromParent(workspaceData, savedCol.Name)
 
-		if newParent != nil {
-			newParent.Collections = append(newParent.Collections, *selectedCollection)
+		// Re-resolve the target parent by name AFTER removal. A pointer captured
+		// before removal would now address shifted memory and likely point at the
+		// wrong collection.
+		if selectedIndex > 0 && selectedIndex-1 < len(possibleParentNames) {
+			targetName := possibleParentNames[selectedIndex-1]
+			newParent := findCollectionByName(&workspaceData.Collections, targetName)
+			if newParent == nil {
+				debugLog("move collection: target parent %q not found after removal, appending to root", targetName)
+				workspaceData.Collections = append(workspaceData.Collections, savedCol)
+			} else {
+				newParent.Collections = append(newParent.Collections, savedCol)
+			}
 		} else {
-			workspaceData.Collections = append(workspaceData.Collections, *selectedCollection)
+			workspaceData.Collections = append(workspaceData.Collections, savedCol)
 		}
 
 		dataManager.UpdateWorkspaceData(workspaceData)
 
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			debugLog("move collection: failed to save workspace: %v", err)
 		}
+
+		// Clear cached selection state: the tree is about to be rebuilt, so the
+		// cached *Request / *tview.TreeNode would otherwise dangle.
+		ui.clearSelectionState()
 
 		rootNode.ClearChildren()
 		addWorkspaceToTree(workspaceData, rootNode)
@@ -926,7 +962,15 @@ func removeRequestFromNestedCollections(collections *[]workspace.Collection, nam
 	return false
 }
 
-func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedRequest *workspace.Request, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, colors *ColorManager, dataManager *DataManager) *tview.Form {
+func createMoveRequestForm(ui *UIOrchestrator, selectedRequest *workspace.Request) *tview.Form {
+	app := ui.App
+	pages := ui.Pages
+	workspaceData := ui.WorkspaceData
+	rootNode := ui.RootNode
+	collectionsTreeView := ui.CollectionsTreeView
+	colors := ui.Colors
+	dataManager := ui.DataManager
+
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
 	form.SetBorderColor(colors.BorderFocus)
@@ -935,7 +979,11 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	// Get all collections as possible targets, including nested
+	// Get all collections as possible targets, including nested.
+	// targetCollections holds *Collection pointers into the Collections backing
+	// array. This is safe because removeRequestFromCollections only shifts the
+	// Requests slice of the source collection; the Collections array (and thus
+	// these pointers) is not reallocated.
 	var collectionOptions []string
 	var targetCollections []*workspace.Collection
 	collectionOptions = append(collectionOptions, "Root")
@@ -969,31 +1017,38 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 
 		foundPtr := dataManager.FindRequestPtr(*selectedRequest)
 		if foundPtr == nil {
+			debugLog("move request: source %q not found, aborting", selectedRequest.Name)
 			pages.RemovePage("moveRequest")
 			pages.SwitchToPage("main")
 			app.SetFocus(collectionsTreeView)
 			return
 		}
-
 		selectedRequest = foundPtr
 
+		// Snapshot the request value BEFORE removal. foundPtr points into the
+		// Requests backing array, and removeRequestFromCollections shifts that
+		// array via append(s[:j], s[j+1:]...). Reading *selectedRequest after the
+		// removal would return the shifted/neighbouring request, which is the
+		// direct cause of lost and duplicated requests.
+		savedReq := *selectedRequest
+
 		if selectedIndex == 0 {
-			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+			removeRequestFromCollections(workspaceData, savedReq.Name, savedReq.Method, savedReq.URL)
 			if len(workspaceData.Collections) > 0 {
-				workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, *selectedRequest)
+				workspaceData.Collections[0].Requests = append(workspaceData.Collections[0].Requests, savedReq)
 			} else {
 				defaultCollection := workspace.Collection{
 					Name:     "Requests",
-					Requests: []workspace.Request{*selectedRequest},
+					Requests: []workspace.Request{savedReq},
 				}
 				workspaceData.Collections = append(workspaceData.Collections, defaultCollection)
 			}
 		} else if selectedIndex > 0 && selectedIndex <= len(targetCollections) {
 			targetCollection := targetCollections[selectedIndex-1]
 
-			removeRequestFromCollections(workspaceData, selectedRequest.Name, selectedRequest.Method, selectedRequest.URL)
+			removeRequestFromCollections(workspaceData, savedReq.Name, savedReq.Method, savedReq.URL)
 
-			targetCollection.Requests = append(targetCollection.Requests, *selectedRequest)
+			targetCollection.Requests = append(targetCollection.Requests, savedReq)
 		}
 
 		workspaceData.SelectedRequest = nil
@@ -1001,7 +1056,12 @@ func createMoveRequestForm(app *tview.Application, pages *tview.Pages, selectedR
 		dataManager.UpdateWorkspaceData(workspaceData)
 
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			debugLog("move request: failed to save workspace: %v", err)
 		}
+
+		// Clear cached selection state: the tree is about to be rebuilt, so the
+		// cached *Request / *tview.TreeNode would otherwise dangle.
+		ui.clearSelectionState()
 
 		rootNode.ClearChildren()
 		addWorkspaceToTree(workspaceData, rootNode)

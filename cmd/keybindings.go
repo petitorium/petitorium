@@ -803,14 +803,14 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		node := ui.CollectionsTreeView.GetCurrentNode()
 		if node != nil {
 			if col, ok := node.GetReference().(workspace.Collection); ok {
-				form := createMoveCollectionForm(ui.App, ui.Pages, &col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+				form := createMoveCollectionForm(ui, &col)
 				modal := createModal(form, 40, 12, tcell.ColorDefault)
 				ui.Pages.AddPage("moveCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req, ok := node.GetReference().(workspace.Request); ok {
 				if ptr := ui.DataManager.FindRequestPtr(req); ptr != nil {
-					form := createMoveRequestForm(ui.App, ui.Pages, ptr, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors, ui.DataManager)
+					form := createMoveRequestForm(ui, ptr)
 					modal := createModal(form, 30, 7, tcell.ColorDefault)
 					ui.Pages.AddPage("moveRequest", modal, true, true)
 					ui.App.SetFocus(form)
