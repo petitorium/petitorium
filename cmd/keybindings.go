@@ -647,7 +647,7 @@ func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+		form := createCollectionFormWithLocation(ui)
 		modal := createModal(form, 30, 9, tcell.ColorDefault)
 		ui.Pages.AddPage("newCollection", modal, true, true)
 		ui.App.SetFocus(form)

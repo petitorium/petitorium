@@ -276,3 +276,125 @@ func TestEnsureIDsAssignsAndPreserves(t *testing.T) {
 		t.Error("ensureIDs reported changes on a fully-IDed workspace")
 	}
 }
+
+// buildNestedTree constructs root -> A -> B -> C (depths 1/2/3) to exercise
+// multi-level nesting, which the New Collection form used to collapse to depth 2.
+func buildNestedTree() *Workspace {
+	return &Workspace{
+		Name: "nested",
+		Collections: []Collection{
+			{ID: "a", Name: "A", Collections: []Collection{
+				{ID: "b", Name: "B", Collections: []Collection{
+					{ID: "c", Name: "C"},
+				}},
+			}},
+		},
+	}
+}
+
+// depthOf returns the depth (1-based) of the collection with id, or 0 if not
+// found.
+func depthOf(collections []Collection, id string, depth int) int {
+	for i := range collections {
+		if collections[i].ID == id {
+			return depth
+		}
+		if d := depthOf(collections[i].Collections, id, depth+1); d != 0 {
+			return d
+		}
+	}
+	return 0
+}
+
+// parentIDOf returns the ID of the collection directly containing the
+// collection with id, or "" if it is at the root or not found.
+func parentIDOf(collections []Collection, id, parent string) string {
+	for i := range collections {
+		if collections[i].ID == id {
+			return parent
+		}
+		if p := parentIDOf(collections[i].Collections, id, collections[i].ID); p != "" {
+			return p
+		}
+	}
+	return ""
+}
+
+// TestCreateCollectionAtNestedDepth reproduces the reported bug: a collection
+// placed at "A -> B -> C" must land inside C (depth 4), not be collapsed to A
+// (depth 2) by resolving only the first path segment. The form now resolves the
+// target by ID, which is what this test exercises.
+func TestCreateCollectionAtNestedDepth(t *testing.T) {
+	ws := buildNestedTree()
+
+	// Simulate the form: target the deepest collection C by ID and append.
+	target := FindCollectionByID(&ws.Collections, "c")
+	if target == nil {
+		t.Fatal("target C not found")
+	}
+	target.Collections = append(target.Collections, Collection{ID: "d", Name: "D"})
+
+	if d := depthOf(ws.Collections, "d", 1); d != 4 {
+		t.Errorf("new collection D is at depth %d, want 4 (inside C)", d)
+	}
+	if p := parentIDOf(ws.Collections, "d", ""); p != "c" {
+		t.Errorf("D's parent = %q, want c", p)
+	}
+	// And it must NOT appear under A directly.
+	a := FindCollectionByID(&ws.Collections, "a")
+	for _, c := range a.Collections {
+		if c.ID == "d" {
+			t.Error("D was incorrectly placed directly under A (the old first-segment bug)")
+		}
+	}
+}
+
+// TestMoveCollectionIntoNestedParent verifies a collection can be moved into a
+// nested parent (not just top-level), and that cycle prevention excludes the
+// moved collection's own descendants as targets.
+func TestMoveCollectionIntoNestedParent(t *testing.T) {
+	ws := &Workspace{
+		Name: "nested",
+		Collections: []Collection{
+			{ID: "a", Name: "A", Collections: []Collection{
+				{ID: "b", Name: "B"},
+			}},
+			{ID: "x", Name: "X", Collections: []Collection{
+				{ID: "y", Name: "Y"},
+			}},
+		},
+	}
+
+	// Move X into B (a nested parent in a different subtree).
+	src := FindCollectionByID(&ws.Collections, "x")
+	savedCol := *src
+	RemoveCollectionByID(ws, savedCol.ID)
+
+	newParent := FindCollectionByID(&ws.Collections, "b")
+	if newParent == nil {
+		t.Fatal("nested parent B not found after removal")
+	}
+	newParent.Collections = append(newParent.Collections, savedCol)
+
+	// X should now be a child of B; Y should still be a child of X.
+	b := FindCollectionByID(&ws.Collections, "b")
+	foundX := false
+	for _, c := range b.Collections {
+		if c.ID == "x" {
+			foundX = true
+		}
+	}
+	if !foundX {
+		t.Error("X was not moved into nested parent B")
+	}
+	x := FindCollectionByID(&ws.Collections, "x")
+	if len(x.Collections) != 1 || x.Collections[0].ID != "y" {
+		t.Error("X's descendant Y was not preserved during the move")
+	}
+
+	// Cycle prevention: a descendant of X (i.e. Y) must not be offered as a
+	// parent for X. IsDescendantCollection(X, Y.ID) must be true.
+	if !IsDescendantCollection(x, "y") {
+		t.Error("IsDescendantCollection(X, Y) should be true (Y is a descendant of X)")
+	}
+}

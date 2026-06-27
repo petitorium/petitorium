@@ -11,14 +11,13 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
-func createCollectionFormWithLocation(
-	app *tview.Application,
-	pages *tview.Pages,
-	workspaceData *workspace.Workspace,
-	rootNode *tview.TreeNode,
-	collectionsTreeView *tview.TreeView,
-	colors *ColorManager,
-) *tview.Form {
+func createCollectionFormWithLocation(ui *UIOrchestrator) *tview.Form {
+	app := ui.App
+	pages := ui.Pages
+	workspaceData := ui.WorkspaceData
+	rootNode := ui.RootNode
+	collectionsTreeView := ui.CollectionsTreeView
+	colors := ui.Colors
 
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)
@@ -30,23 +29,49 @@ func createCollectionFormWithLocation(
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	// Get all available collections for location targets
+	// Build the location dropdown with the full nested path as display text and
+	// capture the target collection IDs in parallel. Resolution on Save is by
+	// ID (not by splitting the display path), so a collection placed at
+	// "A → B → C" lands inside C at the correct depth.
 	var locationOptions []string
+	var targetCollectionIDs []string
 	locationOptions = append(locationOptions, "(Root Level)")
 
-	var addCollectionsToOptions func(collections []workspace.Collection, prefix string)
-	addCollectionsToOptions = func(collections []workspace.Collection, prefix string) {
-		for _, col := range collections {
+	var addCollectionsToOptions func(collections *[]workspace.Collection, prefix string)
+	addCollectionsToOptions = func(collections *[]workspace.Collection, prefix string) {
+		for i := range *collections {
+			col := &(*collections)[i]
 			locationOptions = append(locationOptions, prefix+col.Name)
+			targetCollectionIDs = append(targetCollectionIDs, col.ID)
 			if len(col.Collections) > 0 {
-				addCollectionsToOptions(col.Collections, prefix+col.Name+" → ")
+				addCollectionsToOptions(&col.Collections, prefix+col.Name+" → ")
 			}
 		}
 	}
-	addCollectionsToOptions(workspaceData.Collections, "")
+	addCollectionsToOptions(&workspaceData.Collections, "")
+
+	// Pre-fill the Location dropdown to the currently-selected collection (or
+	// the parent of a selected request), falling back to Root Level.
+	defaultLocationIdx := 0
+	if node := collectionsTreeView.GetCurrentNode(); node != nil {
+		var selectedColID string
+		if col := ui.collectionFromNode(node); col != nil {
+			selectedColID = col.ID
+		} else if req := ui.requestFromNode(node); req != nil {
+			if parent := ui.DataManager.FindParentCollectionOfRequest(req.ID); parent != nil {
+				selectedColID = parent.ID
+			}
+		}
+		for i, id := range targetCollectionIDs {
+			if id == selectedColID {
+				defaultLocationIdx = i + 1 // +1 because dropdown index 0 is Root
+				break
+			}
+		}
+	}
 
 	form.AddInputField("Name: ", "", 0, nil, nil).SetFieldBackgroundColor(colors.Border)
-	form.AddDropDown("Location:", locationOptions, 0, nil)
+	form.AddDropDown("Location:", locationOptions, defaultLocationIdx, nil)
 
 	cancelFunc := func() {
 		pages.RemovePage("newCollection")
@@ -56,35 +81,25 @@ func createCollectionFormWithLocation(
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
-		_, location := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+		selectedIdx, _ := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
 		if strings.TrimSpace(name) == "" {
 			return
 		}
 
 		newCollection := workspace.Collection{ID: workspace.NewID(), Name: name}
 
-		if location == "(Root Level)" {
+		if selectedIdx == 0 || selectedIdx-1 >= len(targetCollectionIDs) {
 			// Add to root level
 			workspaceData.Collections = append(workspaceData.Collections, newCollection)
 		} else {
-			// Find target collection and add to it
-			targetName := strings.Split(location, " → ")[0]
-			var addToCollection func(collections []workspace.Collection) bool
-			addToCollection = func(collections []workspace.Collection) bool {
-				for i := range collections {
-					if collections[i].Name == targetName {
-						collections[i].Collections = append(collections[i].Collections, newCollection)
-						return true
-					}
-					if len(collections[i].Collections) > 0 {
-						if addToCollection(collections[i].Collections) {
-							return true
-						}
-					}
-				}
-				return false
+			targetID := targetCollectionIDs[selectedIdx-1]
+			target := workspace.FindCollectionByID(&workspaceData.Collections, targetID)
+			if target != nil {
+				target.Collections = append(target.Collections, newCollection)
+			} else {
+				debugLog("new collection: target id %q not found, appending to root", targetID)
+				workspaceData.Collections = append(workspaceData.Collections, newCollection)
 			}
-			addToCollection(workspaceData.Collections)
 		}
 
 		// Rebuild the entire tree to reflect changes
@@ -93,7 +108,7 @@ func createCollectionFormWithLocation(
 
 		// Save workspace
 		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
+			debugLog("new collection: failed to save workspace: %v", err)
 		}
 
 		cancelFunc()
@@ -759,21 +774,32 @@ func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	// Collect possible parent collection NAMES (excluding self and descendants).
-	// Collect possible parent collections (excluding self and descendants).
-	// We capture IDs (for re-resolution after removal) and names (for the
-	// dropdown display). Pointers are NOT captured because RemoveCollectionByID
+	// Collect possible parent collections, including nested ones (excluding self
+	// and the selected collection's descendants, which would create a cycle). We
+	// capture IDs (for re-resolution after removal) and path-prefixed names (for
+	// the dropdown display). Pointers are NOT captured because RemoveCollectionByID
 	// shifts the Collections backing array (append(s[:i], s[i+1:]...)),
 	// invalidating any pre-captured pointer.
 	var possibleParentIDs []string
 	var possibleParentNames []string
-	for i := range workspaceData.Collections {
-		col := &workspaceData.Collections[i]
-		if col.ID != selectedCollection.ID && !workspace.IsDescendantCollection(col, selectedCollection.ID) {
-			possibleParentIDs = append(possibleParentIDs, col.ID)
-			possibleParentNames = append(possibleParentNames, col.Name)
+	var addPossibleParents func(collections *[]workspace.Collection, prefix string)
+	addPossibleParents = func(collections *[]workspace.Collection, prefix string) {
+		for i := range *collections {
+			col := &(*collections)[i]
+			// A collection is a valid parent unless it IS the selected collection
+			// or a descendant of it (moving into a descendant creates a cycle).
+			if col.ID != selectedCollection.ID && !workspace.IsDescendantCollection(selectedCollection, col.ID) {
+				possibleParentIDs = append(possibleParentIDs, col.ID)
+				possibleParentNames = append(possibleParentNames, prefix+col.Name)
+			}
+			// Recurse to find deeper valid parents, but skip the selected
+			// collection's own subtree (its descendants are all excluded above).
+			if col.ID != selectedCollection.ID && len(col.Collections) > 0 {
+				addPossibleParents(&col.Collections, prefix+col.Name+" → ")
+			}
 		}
 	}
+	addPossibleParents(&workspaceData.Collections, "")
 
 	// Create dropdown for selecting new parent
 	parentOptions := make([]string, len(possibleParentNames)+1)

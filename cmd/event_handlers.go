@@ -1879,7 +1879,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Collection shortcuts (only when not in input fields and no form popup is active)
 		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'N' && !isFormPopupActive {
-			form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+			form := createCollectionFormWithLocation(ui)
 			modal := createModal(form, 50, 12, tcell.ColorDefault)
 			setFormPopupActive(true)
 			ui.Pages.AddPage("newCollection", modal, true, true)
@@ -1927,7 +1927,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				} else {
 					// Normal operation - create new collection/request
 					if event.Rune() == 'N' {
-						form := createCollectionFormWithLocation(ui.App, ui.Pages, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+						form := createCollectionFormWithLocation(ui)
 						modal := createModal(form, 50, 12, tcell.ColorDefault)
 						setFormPopupActive(true)
 						ui.Pages.AddPage("newCollection", modal, true, true)
