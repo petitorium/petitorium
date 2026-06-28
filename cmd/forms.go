@@ -71,7 +71,15 @@ func createCollectionFormWithLocation(ui *UIOrchestrator) *tview.Form {
 	}
 
 	form.AddInputField("Name: ", "", 0, nil, nil).SetFieldBackgroundColor(colors.Border)
-	form.AddDropDown("Location:", locationOptions, defaultLocationIdx, nil)
+	// The title follows the selected Location: Root creates a "Collection",
+	// any nested target creates a "Folder".
+	form.AddDropDown("Location:", locationOptions, defaultLocationIdx, func(_ string, optionIndex int) {
+		if optionIndex == 0 {
+			form.SetTitle(" New Collection ")
+		} else {
+			form.SetTitle(" New Folder ")
+		}
+	})
 
 	cancelFunc := func() {
 		pages.RemovePage("newCollection")
@@ -122,75 +130,12 @@ func createCollectionFormWithLocation(ui *UIOrchestrator) *tview.Form {
 
 	form.SetCancelFunc(cancelFunc)
 
-	form.SetBorder(true).SetTitle(" New Collection ")
-	return form
-}
-
-func createCollectionForm(app *tview.Application,
-	pages *tview.Pages,
-	workspaceData *workspace.Workspace,
-	rootNode *tview.TreeNode,
-	parentNode *tview.TreeNode,
-	collectionsTreeView *tview.TreeView,
-	parentCollection *workspace.Collection,
-	colors *ColorManager,
-) *tview.Form {
-
-	form := tview.NewForm()
-	form.SetBackgroundColor(colors.Background)
-	form.SetBorderColor(colors.BorderFocus)
-	form.SetTitleColor(colors.Title)
-	form.SetFieldBackgroundColor(colors.Background)
-	form.SetFieldTextColor(colors.Foreground)
-	form.SetLabelColor(colors.Foreground)
-	form.SetButtonBackgroundColor(colors.Background)
-	form.SetButtonTextColor(colors.Foreground)
-
-	form.AddInputField("Collection Name", "", 21, nil, nil)
-
-	cancelFunc := func() {
-		pages.RemovePage("newCollection")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
+	form.SetBorder(true)
+	if defaultLocationIdx == 0 {
+		form.SetTitle(" New Collection ")
+	} else {
+		form.SetTitle(" New Folder ")
 	}
-
-	form.AddButton("Save", func() {
-		name := form.GetFormItem(0).(*tview.InputField).GetText()
-		if strings.TrimSpace(name) == "" {
-			return
-		}
-
-		newCollection := workspace.Collection{ID: workspace.NewID(), Name: name}
-
-		if parentCollection != nil {
-			// Add to nested collection
-			parentCollection.Collections = append(parentCollection.Collections, newCollection)
-		} else {
-			// Add to root level
-			workspaceData.Collections = append(workspaceData.Collections, newCollection)
-		}
-
-		// Rebuild the entire tree to reflect changes
-		rootNode.ClearChildren()
-		addWorkspaceToTree(workspaceData, rootNode)
-
-		// Save workspace
-		if err := workspace.SaveWorkspace(workspaceData); err != nil {
-			// Handle error
-		}
-
-		cancelFunc()
-	})
-
-	form.AddButton("Cancel", func() {
-		pages.RemovePage("newCollection")
-		pages.SwitchToPage("main")
-		app.SetFocus(collectionsTreeView)
-	})
-
-	form.SetCancelFunc(cancelFunc)
-
-	form.SetBorder(true).SetTitle(" New Collection ")
 	return form
 }
 
@@ -388,12 +333,16 @@ func createRenameCollectionForm(app *tview.Application,
 		// nested collections too, unlike the previous name-matching loop).
 		selectedCollection.Name = newName
 
-		// Update tree node
+		// Update tree node (keep Collection icon at root, Folder icon when nested)
+		closedIcon, expandedIcon := config.C.UI.CollectionIcon, config.C.UI.CollectionExpandedIcon
+		if findParentNode(rootNode, node) != rootNode {
+			closedIcon, expandedIcon = config.C.UI.FolderIcon, config.C.UI.FolderExpandedIcon
+		}
 		expanded := node.IsExpanded()
 		if expanded {
-			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, newName))
+			node.SetText(fmt.Sprintf("%s %s", expandedIcon, newName))
 		} else {
-			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, newName))
+			node.SetText(fmt.Sprintf("%s %s", closedIcon, newName))
 		}
 
 		// Refresh the node's cached display name (the ID is unchanged).
@@ -418,7 +367,12 @@ func createRenameCollectionForm(app *tview.Application,
 
 	form.SetCancelFunc(cancelFunc)
 
-	form.SetBorder(true).SetTitle(" Rename Collection ")
+	form.SetBorder(true)
+	if isRootCollectionByID(workspaceData, selectedCollection.ID) {
+		form.SetTitle(" Rename Collection ")
+	} else {
+		form.SetTitle(" Rename Folder ")
+	}
 	return form
 }
 
@@ -712,7 +666,12 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the collection '%s'?\nThis will also delete all nested collections and requests.", selectedCollection.Name), 0, 2, false, false)
+	isRoot := isRootCollectionByID(workspaceData, selectedCollection.ID)
+	kind := "collection"
+	if !isRoot {
+		kind = "folder"
+	}
+	form.AddTextView("", fmt.Sprintf("Are you sure you want to delete the %s '%s'?\nThis will also delete all nested folders and requests.", kind, selectedCollection.Name), 0, 2, false, false)
 
 	form.AddButton("Delete", func() {
 		workspace.RemoveCollectionByID(workspaceData, selectedCollection.ID)
@@ -753,7 +712,12 @@ func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, s
 
 	form.SetCancelFunc(cancelFunc)
 
-	form.SetBorder(true).SetTitle(" Delete Collection ")
+	form.SetBorder(true)
+	if isRoot {
+		form.SetTitle(" Delete Collection ")
+	} else {
+		form.SetTitle(" Delete Folder ")
+	}
 	return form
 }
 
@@ -887,7 +851,12 @@ func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.
 		return event
 	})
 
-	form.SetBorder(true).SetTitle(" Move Collection ")
+	form.SetBorder(true)
+	if isRootCollectionByID(workspaceData, selectedCollection.ID) {
+		form.SetTitle(" Move Collection ")
+	} else {
+		form.SetTitle(" Move Folder ")
+	}
 	return form
 }
 

@@ -374,7 +374,8 @@ func (ui *UIOrchestrator) expandCollectionAndLoadChildren(node *tview.TreeNode) 
 	if !node.IsExpanded() {
 		addChildrenToCollectionNode(node, *col)
 		node.SetExpanded(true)
-		node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
+		_, expandedIcon := ui.collectionIconFor(node)
+		node.SetText(fmt.Sprintf("%s %s", expandedIcon, col.Name))
 	}
 }
 

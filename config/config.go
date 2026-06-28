@@ -62,8 +62,10 @@ type BorderConfig struct {
 
 type UIConfig struct {
 	CollectionExpansion           string `mapstructure:"collectionExpansion"`           // "closed", "expanded", "remember"
-	CollectionIcon                string `mapstructure:"collectionIcon"`                // icon to display before closed collection names
-	CollectionExpandedIcon        string `mapstructure:"collectionExpandedIcon"`        // icon to display before expanded collection names
+	CollectionIcon                string `mapstructure:"collectionIcon"`                // icon to display before closed root collection names
+	CollectionExpandedIcon        string `mapstructure:"collectionExpandedIcon"`        // icon to display before expanded root collection names
+	FolderIcon                    string `mapstructure:"folderIcon"`                    // icon to display before closed nested folder names
+	FolderExpandedIcon            string `mapstructure:"folderExpandedIcon"`            // icon to display before expanded nested folder names
 	SelectedRequestIcon           string `mapstructure:"selectedRequestIcon"`           // icon to display before selected request names
 	SelectedRequestIconColor      string `mapstructure:"selectedRequestIconColor"`      // color for selected request icon
 	HeaderRemoveIcon              string `mapstructure:"headerRemoveIcon"`              // icon for removing headers
@@ -161,6 +163,8 @@ ui:
   collectionExpansion: "closed"       # "closed", "expanded", or "remember"
   collectionIcon: ""
   collectionExpandedIcon: ""
+  folderIcon: ""
+  folderExpandedIcon: ""
   selectedRequestIcon: ""
   selectedRequestIconColor: "#c8d3f5"
   headerRemoveIcon: ""

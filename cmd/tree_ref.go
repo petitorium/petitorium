@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/rivo/tview"
 
+	"github.com/petitorium/petitorium/config"
 	"github.com/petitorium/petitorium/workspace"
 )
 
@@ -77,4 +78,23 @@ func nodeIsCollection(node *tview.TreeNode) bool {
 	}
 	ref, ok := node.GetReference().(NodeRef)
 	return ok && ref.Kind == KindCollection && ref.ID != ""
+}
+
+// isRootCollectionByID reports whether the collection with the given ID sits
+// directly under the workspace root. Root containers are labelled "Collection";
+// any container nested inside another is labelled "Folder".
+func isRootCollectionByID(ws *workspace.Workspace, id string) bool {
+	if ws == nil || id == "" {
+		return false
+	}
+	return workspace.FindParentCollection(&ws.Collections, id) == nil
+}
+
+// collectionIconFor returns the (collapsed, expanded) icon pair appropriate for
+// a collection node: CollectionIcon at the root level, FolderIcon when nested.
+func (ui *UIOrchestrator) collectionIconFor(node *tview.TreeNode) (string, string) {
+	if findParentNode(ui.RootNode, node) == ui.RootNode {
+		return config.C.UI.CollectionIcon, config.C.UI.CollectionExpandedIcon
+	}
+	return config.C.UI.FolderIcon, config.C.UI.FolderExpandedIcon
 }

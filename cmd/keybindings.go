@@ -113,7 +113,7 @@ func NewKeyBindingManager() *KeyBindingManager {
 		{
 			Rune:        'N',
 			Action:      newCollection,
-			Description: "Create new collection",
+			Description: "Create new collection or folder",
 			Context:     "global",
 		},
 		{
@@ -131,19 +131,19 @@ func NewKeyBindingManager() *KeyBindingManager {
 		{
 			Rune:        'r',
 			Action:      renameItem,
-			Description: "Rename collection/request",
+			Description: "Rename collection/folder/request",
 			Context:     "global",
 		},
 		{
 			Rune:        'm',
 			Action:      moveItem,
-			Description: "Move collection/request",
+			Description: "Move collection/folder/request",
 			Context:     "global",
 		},
 		{
 			Rune:        'd',
 			Action:      deleteItem,
-			Description: "Delete collection/request",
+			Description: "Delete collection/folder/request",
 			Context:     "global",
 		},
 		{
@@ -322,7 +322,7 @@ func NewKeyBindingManager() *KeyBindingManager {
 		{
 			Rune:        'h',
 			Action:      collapseOrMoveToParent,
-			Description: "Collapse collection or move to parent",
+			Description: "Collapse collection/folder or move to parent",
 			Context:     "tree_view",
 		},
 		{
@@ -340,7 +340,7 @@ func NewKeyBindingManager() *KeyBindingManager {
 		{
 			Rune:        'l',
 			Action:      expandOrSelectRequest,
-			Description: "Expand collection or select request",
+			Description: "Expand collection/folder or select request",
 			Context:     "tree_view",
 		},
 		{
@@ -1381,7 +1381,8 @@ func collapseOrMoveToParent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 			if node.IsExpanded() {
 				// First: collapse the current collection if it's expanded
 				node.SetExpanded(false)
-				node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
+				closedIcon, _ := ui.collectionIconFor(node)
+				node.SetText(fmt.Sprintf("%s %s", closedIcon, col.Name))
 				node.ClearChildren()
 				if config.C.UI.CollectionExpansion == "remember" {
 					updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, false)
@@ -1400,7 +1401,8 @@ func collapseOrMoveToParent(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Ev
 				if col := ui.collectionFromNode(parentNode); col != nil && parentNode.IsExpanded() {
 					// Collapse parent collection
 					parentNode.SetExpanded(false)
-					parentNode.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
+					closedIcon, _ := ui.collectionIconFor(parentNode)
+					parentNode.SetText(fmt.Sprintf("%s %s", closedIcon, col.Name))
 					parentNode.ClearChildren()
 					if config.C.UI.CollectionExpansion == "remember" {
 						updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, false)
@@ -1422,7 +1424,8 @@ func expandOrSelectRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 			if !node.IsExpanded() {
 				// Expand collection
 				node.SetExpanded(true)
-				node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
+				_, expandedIcon := ui.collectionIconFor(node)
+				node.SetText(fmt.Sprintf("%s %s", expandedIcon, col.Name))
 				if len(node.GetChildren()) == 0 {
 					addChildrenToCollectionNode(node, *col)
 				}
@@ -1907,8 +1910,9 @@ func handleTreeSendRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 
 	if col := ui.collectionFromNode(node); col != nil {
 		node.SetExpanded(!node.IsExpanded())
+		closedIcon, expandedIcon := ui.collectionIconFor(node)
 		if node.IsExpanded() {
-			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, col.Name))
+			node.SetText(fmt.Sprintf("%s %s", expandedIcon, col.Name))
 			if len(node.GetChildren()) == 0 {
 				addChildrenToCollectionNode(node, *col)
 			}
@@ -1916,7 +1920,7 @@ func handleTreeSendRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, true)
 			}
 		} else {
-			node.SetText(fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, col.Name))
+			node.SetText(fmt.Sprintf("%s %s", closedIcon, col.Name))
 			node.ClearChildren()
 			if config.C.UI.CollectionExpansion == "remember" {
 				updateCollectionExpansionState(&ui.WorkspaceData.Collections, col.ID, false)

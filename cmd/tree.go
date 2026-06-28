@@ -108,10 +108,10 @@ func addChildrenToCollectionNode(node *tview.TreeNode, collection workspace.Coll
 			shouldShowExpandedIcon = false
 		}
 
-		// Set appropriate icon
-		nodeText := fmt.Sprintf("%s %s", config.C.UI.CollectionIcon, subCol.Name)
+		// Set appropriate icon (nested collections are displayed as folders)
+		nodeText := fmt.Sprintf("%s %s", config.C.UI.FolderIcon, subCol.Name)
 		if shouldShowExpandedIcon {
-			nodeText = fmt.Sprintf("%s %s", config.C.UI.CollectionExpandedIcon, subCol.Name)
+			nodeText = fmt.Sprintf("%s %s", config.C.UI.FolderExpandedIcon, subCol.Name)
 		}
 
 		subCollectionNode := tview.NewTreeNode(nodeText).
