@@ -87,6 +87,10 @@ func showTagPickerModal(ui *UIOrchestrator, tags []DetectedTag, onSelect func(ta
 //   - opens the editor directly (0 or 1 tag)
 //   - shows the picker first (2+ tags)
 func openTagEditorForField(ui *UIOrchestrator) {
+	// If the env vars modal is open in view mode, switch to edit mode so the
+	// tag insertion targets a visible, focused editor.
+	ensureEnvModalEditMode(ui)
+
 	target := findActiveTextInput(ui)
 	if target == nil {
 		return
@@ -111,16 +115,17 @@ func openTagEditorForField(ui *UIOrchestrator) {
 }
 
 // showCommandRunnerModalForTag opens the command-runner modal pre-filled with
-// the specific tag identified by dt.  On save it replaces that exact tag in the
+// the specific tag identified by dt. On save it replaces that exact tag in the
 // parent text using the precise Start/End offsets.
-//
-// TODO: This is a temporary bridge until Phase 5 replaces it with the dynamic
-// plugin-driven form renderer.
 func showCommandRunnerModalForTag(ui *UIOrchestrator, target *textInputTarget, dt DetectedTag) {
 	colors := ui.Colors
 	app := ui.App
 	pages := ui.Pages
 	forEnvJSON := ui.EnvModalEditor != nil
+
+	// If the env vars modal is open in view mode, switch to edit mode so the
+	// tag insertion targets a visible, focused editor.
+	ensureEnvModalEditMode(ui)
 
 	// Pre-fill from the detected tag's inner params.
 	matches := paramRegex.FindAllStringSubmatch(dt.Inner, -1)

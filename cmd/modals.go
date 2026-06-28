@@ -39,20 +39,72 @@ func showEnvironmentModal(
 		env = nil
 	}
 
-	// Create JSON editor for environment variables
+	// Determine initial JSON content (own variables, not effective/merged)
 	var jsonBytes []byte
 	if env != nil {
-		// Convert existing environment variables to JSON (own variables, not effective)
 		jsonBytes, _ = json.MarshalIndent(env.Variables, "", "  ")
 	} else {
-		// Start with empty JSON for new environment
 		jsonBytes = []byte("{}")
 	}
+	initialContent := string(jsonBytes)
 
-	// Create JSON editor
-	jsonEditor := createTextArea(" Environment Variables (JSON) ", ui.Colors.Background, ui.Colors.Border, ui.Colors.Title, ui.Colors.Foreground)
-	jsonEditor.SetWordWrap(false)
-	jsonEditor.SetText(string(jsonBytes), false)
+	// Create the view panel (highlighted, read-only) and the edit panel (raw).
+	envViewPanel := createPanel(" Environment Variables (VIEW) ", ui.Colors, &PanelOptions{HasBorder: &[]bool{true}[0]})
+	envEditPanel := createTextArea(" Environment Variables (EDIT) ", ui.Colors.Background, ui.Colors.Border, ui.Colors.Title, ui.Colors.Foreground)
+	envEditPanel.SetWordWrap(false)
+
+	// Highlight the border of the focused env panel (view or edit), matching the
+	// environment list panel's focus/blur behaviour.
+	envViewPanel.SetFocusFunc(func() { envViewPanel.SetBorderColor(ui.Colors.BorderFocus) })
+	envViewPanel.SetBlurFunc(func() { envViewPanel.SetBorderColor(ui.Colors.Border) })
+	envEditPanel.SetFocusFunc(func() { envEditPanel.SetBorderColor(ui.Colors.BorderFocus) })
+	envEditPanel.SetBlurFunc(func() { envEditPanel.SetBorderColor(ui.Colors.Border) })
+
+	// Swap container between view and edit. View mode is the default.
+	envContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	envContainer.SetBackgroundColor(ui.Colors.Background)
+	envContainer.AddItem(envViewPanel, 0, 1, false)
+
+	// Modal state
+	ui.EnvModalCurrentContent = initialContent
+	ui.EnvModalEditMode = false
+
+	// SyncEnvModalContent renders content into the currently active panel.
+	ui.SyncEnvModalContent = func(content string) {
+		ui.EnvModalCurrentContent = content
+		if ui.EnvModalEditMode {
+			envEditPanel.SetText(content, false)
+		} else {
+			envViewPanel.Clear()
+			if content != "" {
+				envViewPanel.SetText(FormatBodyContentWithVariables(content))
+				envViewPanel.SetTextAlign(tview.AlignLeft)
+			} else {
+				envViewPanel.SetText("")
+				envViewPanel.SetTextAlign(tview.AlignLeft)
+			}
+		}
+	}
+
+	// SwitchEnvModalMode toggles between view (highlighted) and edit (raw).
+	ui.SwitchEnvModalMode = func() {
+		ui.EnvModalEditMode = !ui.EnvModalEditMode
+		envContainer.Clear()
+		if ui.EnvModalEditMode {
+			envContainer.AddItem(envEditPanel, 0, 1, false)
+			envEditPanel.SetText(ui.EnvModalCurrentContent, false)
+			ui.App.SetFocus(envEditPanel)
+		} else {
+			ui.EnvModalCurrentContent = envEditPanel.GetText()
+			envContainer.AddItem(envViewPanel, 0, 1, false)
+			ui.SyncEnvModalContent(ui.EnvModalCurrentContent)
+			ui.App.SetFocus(envViewPanel)
+		}
+	}
+
+	// Initialize both panels and render the view.
+	envEditPanel.SetText(initialContent, false)
+	ui.SyncEnvModalContent(initialContent)
 
 	// Create error display
 	errorText := tview.NewTextView()
@@ -61,6 +113,11 @@ func showEnvironmentModal(
 	errorText.SetDynamicColors(true)
 	errorText.SetText("")
 
+	// Create status bar with error display
+	statusBar := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(errorText, 1, 0, false)
+
 	// Create left panel (environment list)
 	var selectedEnvironment *workspace.Environment
 	var leftPanel *tview.List
@@ -68,14 +125,15 @@ func showEnvironmentModal(
 	// Define callbacks
 	onEnvironmentSelected := func(env *workspace.Environment) {
 		selectedEnvironment = env
+		var content string
 		if env != nil {
-			// Update the JSON editor with the selected environment's own variables (not effective/merged)
-			jsonBytes, _ := json.MarshalIndent(env.Variables, "", "  ")
-			jsonEditor.SetText(string(jsonBytes), false)
+			b, _ := json.MarshalIndent(env.Variables, "", "  ")
+			content = string(b)
 		} else {
-			// Clear the JSON editor when no environment is selected
-			jsonEditor.SetText("{}", false)
+			content = "{}"
 		}
+		envEditPanel.SetText(content, false)
+		ui.SyncEnvModalContent(content)
 	}
 
 	// Function to save environment variables
@@ -106,7 +164,7 @@ func showEnvironmentModal(
 			return fmt.Errorf("no environment selected to save")
 		}
 
-		jsonText := sanitizeCommandRunnerTagsInJSON(jsonEditor.GetText())
+		jsonText := sanitizeCommandRunnerTagsInJSON(envEditPanel.GetText())
 		var newVars map[string]string
 		if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
 			return fmt.Errorf("invalid JSON: %v", err)
@@ -119,6 +177,112 @@ func showEnvironmentModal(
 		}
 
 		return nil
+	}
+
+	// closeEnvModal tears down the modal and restores focus to the config button.
+	closeEnvModal := func() {
+		ui.EnvModalEditor = nil
+		ui.EnvModalViewPanel = nil
+		ui.EnvModalContainer = nil
+		ui.EnvModalEditMode = false
+		ui.SyncEnvModalContent = nil
+		ui.SwitchEnvModalMode = nil
+		ui.Pages.RemovePage("envVariables")
+		ui.App.SetFocus(ui.EnvConfigButton)
+	}
+
+	// openExternalEnvEditor launches $EDITOR on the current content and
+	// returns to view mode to show the highlighted result.
+	openExternalEnvEditor := func() {
+		currentContent := envEditPanel.GetText()
+		ui.App.Suspend(func() {
+			modifiedContent, err := openInExternalEditor(currentContent, "json")
+			if err != nil {
+				errorText.SetText(fmt.Sprintf("Error opening external editor: %v", err))
+				return
+			}
+			errorText.SetText("")
+			ui.EnvModalCurrentContent = modifiedContent
+			envEditPanel.SetText(modifiedContent, false)
+			if ui.EnvModalEditMode {
+				ui.SwitchEnvModalMode() // edit -> view (syncs highlighted view)
+			} else {
+				ui.SyncEnvModalContent(modifiedContent)
+			}
+		})
+	}
+
+	// activeEnvPanel returns the currently visible env panel.
+	activeEnvPanel := func() tview.Primitive {
+		if ui.EnvModalEditMode {
+			return envEditPanel
+		}
+		return envViewPanel
+	}
+
+	// makeContentCapture wires Tab/Esc/q/i/F4 handling for the modal content.
+	makeContentCapture := func(lp *tview.List) func(event *tcell.EventKey) *tcell.EventKey {
+		return func(event *tcell.EventKey) *tcell.EventKey {
+			// F4: external editor (only when an env panel is focused)
+			if event.Key() == tcell.KeyF4 {
+				f := ui.App.GetFocus()
+				if f == envViewPanel || f == envEditPanel {
+					openExternalEnvEditor()
+					return nil
+				}
+				return event
+			}
+			// Tab: toggle focus between the list and the active env panel
+			if event.Key() == tcell.KeyTab {
+				if ui.App.GetFocus() == lp {
+					ui.App.SetFocus(activeEnvPanel())
+				} else {
+					ui.App.SetFocus(lp)
+				}
+				return nil
+			}
+			// 'i': enter edit mode (only from the view panel)
+			if event.Rune() == 'i' && ui.App.GetFocus() == envViewPanel {
+				ui.SwitchEnvModalMode()
+				return nil
+			}
+			// Esc: exit edit -> view when editing; otherwise save + close
+			if event.Key() == tcell.KeyEsc {
+				if ui.App.GetFocus() == envEditPanel {
+					ui.SwitchEnvModalMode()
+					return nil
+				}
+				if err := saveEnvironmentVariables(); err != nil {
+					errorText.SetText(fmt.Sprintf("Error saving: [red]%v", err))
+					return nil
+				}
+				closeEnvModal()
+				return nil
+			}
+			// 'q': save + close (not while editing, where 'q' types)
+			if event.Rune() == 'q' && ui.App.GetFocus() != envEditPanel {
+				if err := saveEnvironmentVariables(); err != nil {
+					errorText.SetText(fmt.Sprintf("Error saving: [red]%v", err))
+					return nil
+				}
+				closeEnvModal()
+				return nil
+			}
+			return event
+		}
+	}
+
+	// buildModalContent assembles the modal content (list | env container + status bar).
+	buildModalContent := func(lp *tview.List) *tview.Flex {
+		c := tview.NewFlex().
+			SetDirection(tview.FlexRow).
+			AddItem(tview.NewFlex().
+				AddItem(lp, 0, 4, false).
+				AddItem(envContainer, 0, 6, false),
+				0, 1, false).
+			AddItem(statusBar, 1, 0, false)
+		c.SetInputCapture(makeContentCapture(lp))
+		return c
 	}
 
 	onEnvironmentChosen := func(name string) {
@@ -141,9 +305,7 @@ func showEnvironmentModal(
 		}
 
 		// 3. Close modal
-		ui.EnvModalEditor = nil
-		ui.Pages.RemovePage("envVariables")
-		ui.App.SetFocus(ui.EnvConfigButton)
+		closeEnvModal()
 	}
 
 	var onCreateNew func()
@@ -240,27 +402,17 @@ func showEnvironmentModal(
 		// Select the newly created environment (index = number of environments, since 0 is "Create New")
 		newLeftPanel.SetCurrentItem(len(*ui.EnvironmentsData))
 
-		// Replace the left panel with the updated one
-		content := tview.NewFlex().
-			AddItem(newLeftPanel, 0, 4, false). // 40% for left panel
-			AddItem(jsonEditor, 0, 6, false)    // 60% for JSON editor
-
-		content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyTab {
-				if ui.App.GetFocus() == newLeftPanel {
-					ui.App.SetFocus(jsonEditor)
-				} else {
-					ui.App.SetFocus(newLeftPanel)
-				}
-				return nil
-			}
-			return event
-		})
+		// Rebuild the modal content with the refreshed list.
+		content := buildModalContent(newLeftPanel)
 
 		modal := createModal(content, 120, 40, ui.Colors.Background)
 		ui.EnvModalEditor = nil
 		ui.Pages.RemovePage("envVariables")
 		ui.Pages.AddPage("envVariables", modal, true, true)
+		ui.EnvModalEditor = envEditPanel
+		ui.EnvModalViewPanel = envViewPanel
+		ui.EnvModalContainer = envContainer
+		ui.EnvModalEditMode = false
 		ui.UpdateFooter()
 		ui.App.SetFocus(newLeftPanel)
 	}
@@ -281,92 +433,25 @@ func showEnvironmentModal(
 		onClone,
 	)
 
-	// Add F4 support for external editor on JSON editor
-	jsonEditor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyF4 {
-			currentContent := jsonEditor.GetText()
-
-			ui.App.Suspend(func() {
-				modifiedContent, err := openInExternalEditor(currentContent, "json")
-				if err != nil {
-					errorText.SetText(fmt.Sprintf("Error opening external editor: %v", err))
-					return
-				}
-
-				errorText.SetText("")
-
-				jsonEditor.SetText(modifiedContent, false)
-			})
-
-			return nil // Consume the event
-		}
-		return event
-	})
-
-	// Create status bar with error display
-	statusBar := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(errorText, 1, 0, false)
-
-	// Create the layout
-	content := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(tview.NewFlex().
-			AddItem(leftPanel, 0, 4, false).  // 40% for left panel
-			AddItem(jsonEditor, 0, 6, false), // 60% for JSON editor
-			0, 1, false).
-		AddItem(statusBar, 1, 0, false)
-
-	content.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			if ui.App.GetFocus() == leftPanel {
-				ui.App.SetFocus(jsonEditor)
-			} else {
-				ui.App.SetFocus(leftPanel)
-			}
-			return nil
-		}
-		if event.Key() == tcell.KeyEsc {
-			// Save environment variables before closing
-			if err := saveEnvironmentVariables(); err != nil {
-				// Show error and don't close
-				errorText.SetText(fmt.Sprintf("Error saving: [red]%v", err))
-				return nil
-			}
-
-			ui.EnvModalEditor = nil
-			ui.Pages.RemovePage("envVariables")
-			ui.App.SetFocus(ui.EnvConfigButton)
-			return nil
-		}
-		// Also allow 'q' to close from the list panel
-		if event.Rune() == 'q' && ui.App.GetFocus() == leftPanel {
-			// Save environment variables before closing
-			if err := saveEnvironmentVariables(); err != nil {
-				// Show error and don't close
-				errorText.SetText(fmt.Sprintf("Error saving: [red]%v", err))
-				return nil
-			}
-
-			ui.EnvModalEditor = nil
-			ui.Pages.RemovePage("envVariables")
-			ui.App.SetFocus(ui.EnvConfigButton)
-			return nil
-		}
-		return event
-	})
+	// Build the modal content (list | env container + status bar) with key handling.
+	content := buildModalContent(leftPanel)
 
 	// Find the index of the selected environment in the list (add 1 because index 0 is "Create New Environment")
-	for i, listEnv := range *ui.EnvironmentsData {
-		if listEnv.Name == env.Name {
-			leftPanel.SetCurrentItem(i + 1) // +1 because index 0 is "Create New Environment"
-			break
+	if env != nil {
+		for i, listEnv := range *ui.EnvironmentsData {
+			if listEnv.Name == env.Name {
+				leftPanel.SetCurrentItem(i + 1) // +1 because index 0 is "Create New Environment"
+				break
+			}
 		}
 	}
 
 	modal := createModal(content, 120, 40, ui.Colors.Background)
 	ui.Pages.AddPage("envVariables", modal, true, true)
-	ui.EnvModalEditor = jsonEditor
+	ui.EnvModalEditor = envEditPanel
+	ui.EnvModalViewPanel = envViewPanel
+	ui.EnvModalContainer = envContainer
+	ui.EnvModalEditMode = false
 	ui.UpdateFooter()
 	ui.App.SetFocus(leftPanel)
 }

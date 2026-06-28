@@ -69,6 +69,24 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 		}
 	}
 
+	// Environment modal view panel (highlighted, read-only). Recognized so the
+	// command-runner shortcut can trigger from view mode; insertion switches to
+	// edit mode first (see ensureEnvModalEditMode).
+	if ui.EnvModalViewPanel != nil && ui.EnvModalViewPanel == focus {
+		return &textInputTarget{
+			getText: func() string { return ui.EnvModalCurrentContent },
+			setText: func(s string) {
+				ui.EnvModalCurrentContent = s
+				if ui.EnvModalEditor != nil {
+					ui.EnvModalEditor.SetText(s, false)
+				}
+				if ui.SyncEnvModalContent != nil {
+					ui.SyncEnvModalContent(s)
+				}
+			},
+		}
+	}
+
 	// Header rows
 	for _, row := range currentHeaderRows {
 		if row.KeyInput != nil && hasDescendant(row.KeyInput, focus) {
@@ -102,6 +120,17 @@ func findActiveTextInput(ui *UIOrchestrator) *textInputTarget {
 	}
 
 	return nil
+}
+
+// ensureEnvModalEditMode switches the environment variables modal into edit
+// mode if it is currently in view mode. This guarantees that tag insertion
+// (which uses TextArea.Replace / GetCursor) targets a visible, focused editor.
+func ensureEnvModalEditMode(ui *UIOrchestrator) {
+	if ui.EnvModalEditor != nil && ui.EnvModalViewPanel != nil && !ui.EnvModalEditMode {
+		if ui.SwitchEnvModalMode != nil {
+			ui.SwitchEnvModalMode()
+		}
+	}
 }
 
 // cursorByteOffset converts a (row, col) position from tview.TextArea.GetCursor
@@ -157,6 +186,10 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 	colors := ui.Colors
 	app := ui.App
 	pages := ui.Pages
+
+	// If the env vars modal is open in view mode, switch to edit mode so the
+	// tag insertion targets a visible, focused editor.
+	ensureEnvModalEditMode(ui)
 
 	// Detect the active text input before opening the modal
 	target := findActiveTextInput(ui)

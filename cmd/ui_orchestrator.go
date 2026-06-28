@@ -163,6 +163,12 @@ type UIOrchestrator struct {
 
 	// Modal state (nil when no modal is open)
 	EnvModalEditor               *tview.TextArea
+	EnvModalViewPanel            *tview.TextView
+	EnvModalContainer            *tview.Flex
+	EnvModalEditMode             bool
+	EnvModalCurrentContent       string
+	SyncEnvModalContent          func(content string)
+	SwitchEnvModalMode           func()
 	NavCurrentCookieRowElement   int // For navigation within cookies (0: Add Cookie, 1: Delete All, 2+: cookie rows)
 	NavCurrentCookieElement      int // For navigation within a cookie row (0: Domain, 1: Name, 2: Value, 3: Path, 4: Secure, 5: HttpOnly, 6: Checkbox, 7: Delete button)
 	NavPreviousContainer         int
