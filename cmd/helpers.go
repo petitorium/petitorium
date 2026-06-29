@@ -145,7 +145,7 @@ func getPrettyResponseBody(resp *HTTPResponse) string {
 }
 
 // updateResponseTabs updates the response tabs with new response data
-func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.TextView, responseTimelinePanel tview.Primitive, colors *ColorManager, copyCallback func(), saveCallback func()) {
+func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview.Flex, responseTabHeader *tview.Flex, responseInfoBar **tview.Flex, responseTimeText **tview.TextView, lastResponseTime **time.Time, responsePreviewPanel *tview.TextView, responseHeadersPanel tview.Primitive, responseCookiesPanel *tview.Table, responseTimelinePanel tview.Primitive, colors *ColorManager, copyCallback func(), saveCallback func()) {
 	// Update the info bar - replace it in the top row
 	newInfoBar, newTimeText, infoBarWidth := createResponseInfoBar(colors, resp, lastTime, copyCallback, saveCallback)
 	// The response container has: topRow (item 0), tabPages (item 1)
@@ -229,27 +229,82 @@ func updateResponseTabs(resp *HTTPResponse, lastTime *time.Time, response *tview
 	}
 
 	// Update cookies tab
+	responseCookiesPanel.Clear()
+
 	if resp != nil && len(resp.Cookies) > 0 {
-		var cookiesText strings.Builder
-		cookiesText.WriteString("Response Cookies:\n\n")
-		for _, cookie := range resp.Cookies {
-			cookiesText.WriteString(fmt.Sprintf("Name: %s\n", cookie.Name))
-			cookiesText.WriteString(fmt.Sprintf("Value: %s\n", cookie.Value))
-			if cookie.Domain != "" {
-				cookiesText.WriteString(fmt.Sprintf("Domain: %s\n", cookie.Domain))
+		row := 0
+		for i, cookie := range resp.Cookies {
+			if i > 0 {
+				responseCookiesPanel.SetCell(row, 0,
+					tview.NewTableCell("").SetSelectable(false))
+				responseCookiesPanel.SetCell(row, 1,
+					tview.NewTableCell("").SetSelectable(false))
+				row++
 			}
-			if cookie.Path != "" {
-				cookiesText.WriteString(fmt.Sprintf("Path: %s\n", cookie.Path))
+
+			responseCookiesPanel.SetCell(row, 0,
+				tview.NewTableCell(fmt.Sprintf("Cookie: %s", cookie.Name)).
+					SetTextColor(colors.Title).
+					SetAlign(tview.AlignLeft).
+					SetSelectable(false))
+			responseCookiesPanel.SetCell(row, 1,
+				tview.NewTableCell("").SetSelectable(false))
+			row++
+
+			domainValue := cookie.Domain
+			if domainValue == "" {
+				domainValue = "(none)"
 			}
+			pathValue := cookie.Path
+			if pathValue == "" {
+				pathValue = "(none)"
+			}
+			expiresValue := "(none)"
 			if !cookie.Expires.IsZero() {
-				cookiesText.WriteString(fmt.Sprintf("Expires: %s\n", cookie.Expires.Format("2006-01-02 15:04:05")))
+				expiresValue = cookie.Expires.Format("2006-01-02 15:04:05")
 			}
-			cookiesText.WriteString(fmt.Sprintf("Secure: %t\n", cookie.Secure))
-			cookiesText.WriteString(fmt.Sprintf("HttpOnly: %t\n\n", cookie.HttpOnly))
+			cookieAttrs := []struct {
+				field string
+				value string
+			}{
+				{"Name", cookie.Name},
+				{"Value", cookie.Value},
+				{"Domain", domainValue},
+				{"Path", pathValue},
+				{"Expires", expiresValue},
+				{"Secure", fmt.Sprintf("%t", cookie.Secure)},
+				{"HttpOnly", fmt.Sprintf("%t", cookie.HttpOnly)},
+			}
+
+			for _, attr := range cookieAttrs {
+				value := attr.value
+				if len(value) > 60 {
+					value = value[:57] + "..."
+				}
+				responseCookiesPanel.SetCell(row, 0,
+					tview.NewTableCell(attr.field).
+						SetTextColor(colors.BorderFocus).
+						SetAlign(tview.AlignLeft).
+						SetSelectable(true))
+				responseCookiesPanel.SetCell(row, 1,
+					tview.NewTableCell(value).
+						SetTextColor(colors.Success).
+						SetAlign(tview.AlignLeft).
+						SetSelectable(true))
+				row++
+			}
 		}
-		responseCookiesPanel.SetText(cookiesText.String())
 	} else {
-		responseCookiesPanel.SetText("No response cookies")
+		responseCookiesPanel.SetCell(0, 0,
+			tview.NewTableCell("No response cookies").
+				SetTextColor(colors.Foreground).
+				SetAlign(tview.AlignCenter).
+				SetSelectable(false))
+		responseCookiesPanel.SetCell(0, 1,
+			tview.NewTableCell("").
+				SetTextColor(colors.Foreground).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
 	}
 
 	// Update timeline tab

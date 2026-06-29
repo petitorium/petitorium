@@ -1320,10 +1320,7 @@ func scrollResponseHalfPageDown(ui *UIOrchestrator, event *tcell.EventKey) *tcel
 			headersTable.ScrollToEnd()
 		}
 	case "cookies":
-		_, _, _, height := ui.ResponseCookiesPanel.GetRect()
-		currentTop, _ := ui.ResponseCookiesPanel.GetScrollOffset()
-		newTop := currentTop + height/2
-		ui.ResponseCookiesPanel.ScrollTo(newTop, 0)
+		ui.ResponseCookiesPanel.ScrollToEnd()
 	case "timeline":
 		// Table with fixed rows - no scroll needed
 	}
@@ -1348,13 +1345,7 @@ func scrollResponseHalfPageUp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.
 			headersTable.ScrollToBeginning()
 		}
 	case "cookies":
-		_, _, _, height := ui.ResponseCookiesPanel.GetRect()
-		currentTop, _ := ui.ResponseCookiesPanel.GetScrollOffset()
-		newTop := currentTop - height/2
-		if newTop < 0 {
-			newTop = 0
-		}
-		ui.ResponseCookiesPanel.ScrollTo(newTop, 0)
+		ui.ResponseCookiesPanel.ScrollToBeginning()
 	case "timeline":
 		// Table with fixed rows - no scroll needed
 	}

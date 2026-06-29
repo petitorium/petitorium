@@ -115,7 +115,7 @@ type UIOrchestrator struct {
 	ResponseTimeText           *tview.TextView
 	ResponsePreviewPanel       *tview.TextView
 	ResponseHeadersPanel       tview.Primitive
-	ResponseCookiesPanel       *tview.TextView
+	ResponseCookiesPanel       *tview.Table
 	ResponseTimelinePanel      *tview.Table
 	EnvironmentPanel           *tview.Flex
 	EnvDropdown                *tview.DropDown
