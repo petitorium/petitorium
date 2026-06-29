@@ -384,12 +384,7 @@ func showEnvironmentModal(
 
 		// Refresh the environment list in place
 		newLeftPanel := createEnvironmentListPanel(
-			ui.Colors.Background,
-			ui.Colors.Border,
-			ui.Colors.BorderFocus,
-			ui.Colors.Title,
-			ui.Colors.Foreground,
-			ui.Colors.ButtonSelect,
+			ui.Colors,
 			*ui.EnvironmentsData,
 			onEnvironmentSelected,
 			onEnvironmentChosen,
@@ -418,12 +413,7 @@ func showEnvironmentModal(
 	}
 
 	leftPanel = createEnvironmentListPanel(
-		ui.Colors.Background,
-		ui.Colors.Border,
-		ui.Colors.BorderFocus,
-		ui.Colors.Title,
-		ui.Colors.Foreground,
-		ui.Colors.ButtonSelect,
+		ui.Colors,
 		*ui.EnvironmentsData,
 		onEnvironmentSelected,
 		onEnvironmentChosen,
@@ -568,12 +558,7 @@ func showWorkspaceModal(
 	}
 
 	leftPanel = createWorkspaceListPanel(
-		ui.Colors.Background,
-		ui.Colors.Border,
-		ui.Colors.BorderFocus,
-		ui.Colors.Title,
-		ui.Colors.Foreground,
-		ui.Colors.ButtonSelect,
+		ui.Colors,
 		manager.Workspaces,
 		manager.CurrentWorkspace,
 		onWorkspaceSelected,

@@ -74,12 +74,7 @@ func createRenameEnvironmentPanel(
 
 // createEnvironmentListPanel creates a list panel for selecting environments using tview.NewList
 func createEnvironmentListPanel(
-	backgroundColor,
-	borderColor,
-	borderFocusColor,
-	titleColor,
-	foregroundColor,
-	buttonSelectedColor tcell.Color,
+	colors *ColorManager,
 	environments []workspace.Environment,
 	onEnvironmentSelected func(*workspace.Environment),
 	onEnvironmentChosen func(string),
@@ -89,20 +84,25 @@ func createEnvironmentListPanel(
 	onClone func(*workspace.Environment),
 ) *tview.List {
 	list := tview.NewList()
-	list.SetBackgroundColor(backgroundColor)
-	list.SetBorderColor(borderColor)
-	list.SetTitleColor(titleColor)
-	list.SetMainTextColor(foregroundColor)
-	list.SetSelectedBackgroundColor(buttonSelectedColor)
-	list.SetSelectedTextColor(foregroundColor)
+	list.SetBackgroundColor(colors.Background)
+	list.SetHighlightFullLine(true)
+	list.SetBorderColor(colors.Border)
+	list.SetTitleColor(colors.Title)
+	list.SetMainTextStyle(tcell.StyleDefault.
+		Foreground(colors.Foreground).
+		Background(colors.Background))
+	list.SetSelectedStyle(tcell.StyleDefault.
+		Background(colors.DropdownFocus).
+		Foreground(colors.ActiveTab).
+		Bold(true))
 	list.SetBorder(true).SetTitle(" Environments ")
 
 	// Add focus/blur handlers to highlight border
 	list.SetFocusFunc(func() {
-		list.SetBorderColor(borderFocusColor)
+		list.SetBorderColor(colors.BorderFocus)
 	})
 	list.SetBlurFunc(func() {
-		list.SetBorderColor(borderColor)
+		list.SetBorderColor(colors.Border)
 	})
 
 	// Add "Create New Environment" option at the top
@@ -183,12 +183,7 @@ func createEnvironmentListPanel(
 
 // createWorkspaceListPanel creates a list panel for selecting workspaces using tview.NewList
 func createWorkspaceListPanel(
-	backgroundColor,
-	borderColor,
-	borderFocusColor,
-	titleColor,
-	foregroundColor,
-	buttonSelectedColor tcell.Color,
+	colors *ColorManager,
 	workspaces []workspace.WorkspaceMetadata,
 	currentWorkspace string,
 	onWorkspaceSelected func(*workspace.WorkspaceMetadata),
@@ -199,20 +194,25 @@ func createWorkspaceListPanel(
 	onDuplicate func(*workspace.WorkspaceMetadata),
 ) *tview.List {
 	list := tview.NewList()
-	list.SetBackgroundColor(backgroundColor)
-	list.SetBorderColor(borderColor)
-	list.SetTitleColor(titleColor)
-	list.SetMainTextColor(foregroundColor)
-	list.SetSelectedBackgroundColor(buttonSelectedColor)
-	list.SetSelectedTextColor(foregroundColor)
+	list.SetBackgroundColor(colors.Background)
+	list.SetHighlightFullLine(true)
+	list.SetBorderColor(colors.Border)
+	list.SetTitleColor(colors.Title)
+	list.SetMainTextStyle(tcell.StyleDefault.
+		Foreground(colors.Foreground).
+		Background(colors.Background))
+	list.SetSelectedStyle(tcell.StyleDefault.
+		Background(colors.DropdownFocus).
+		Foreground(colors.ActiveTab).
+		Bold(true))
 	list.SetBorder(true).SetTitle(" Workspaces ")
 
 	// Add focus/blur handlers to highlight border
 	list.SetFocusFunc(func() {
-		list.SetBorderColor(borderFocusColor)
+		list.SetBorderColor(colors.BorderFocus)
 	})
 	list.SetBlurFunc(func() {
-		list.SetBorderColor(borderColor)
+		list.SetBorderColor(colors.Border)
 	})
 
 	// Add "Create New Workspace" option at the top
