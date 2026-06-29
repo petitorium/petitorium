@@ -10,11 +10,8 @@ import (
 	"github.com/rivo/tview"
 
 	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/version"
 )
-
-// Version is the current version of Petitorium.
-// It is set at build time using -ldflags.
-var Version = "dev"
 
 // VersionCheckURL is the GitHub API URL for the latest release.
 const VersionCheckURL = "https://api.github.com/repos/petitorium/petitorium/releases/latest"
@@ -26,7 +23,7 @@ type githubRelease struct {
 // CheckLatestVersion checks if there is a newer version of Petitorium available on GitHub.
 // If a new version is found, it updates the footer right text.
 func CheckLatestVersion(app *tview.Application, footerRight *tview.TextView, colors *ColorManager) {
-	if config.C.DisableVersionCheck || Version == "dev" {
+	if config.C.DisableVersionCheck || version.Version == "dev" {
 		return
 	}
 
@@ -42,7 +39,7 @@ func CheckLatestVersion(app *tview.Application, footerRight *tview.TextView, col
 		}
 
 		// GitHub API requires a User-Agent header
-		req.Header.Set("User-Agent", "Petitorium-Version-Checker")
+		req.Header.Set("User-Agent", "Petitorium/"+version.Version)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -65,7 +62,7 @@ func CheckLatestVersion(app *tview.Application, footerRight *tview.TextView, col
 		}
 
 		// Normalize versions by removing 'v' prefix for comparison
-		currentNormalized := strings.TrimPrefix(Version, "v")
+		currentNormalized := strings.TrimPrefix(version.Version, "v")
 		latestNormalized := strings.TrimPrefix(latestVersion, "v")
 
 		if latestNormalized != "" && latestNormalized != currentNormalized {

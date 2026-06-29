@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/petitorium/petitorium-plugin-sdk/types"
+	"github.com/petitorium/petitorium/version"
 )
 
 // RegistryClient handles communication with the plugin registry
@@ -32,7 +33,13 @@ func NewRegistryClient(baseURL string) *RegistryClient {
 
 // ListPlugins fetches the list of available plugins from the registry
 func (rc *RegistryClient) ListPlugins() ([]types.RegistryPlugin, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/plugins", rc.BaseURL))
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/plugins", rc.BaseURL), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create plugins request: %w", err)
+	}
+	req.Header.Set("User-Agent", "Petitorium/"+version.Version)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch plugins: %w", err)
 	}
@@ -244,7 +251,13 @@ func downloadFile(url string, destPath string, expectedChecksum string) error {
 	defer out.Close()
 
 	// Get the data
-	resp, err := http.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Petitorium/"+version.Version)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/rivo/tview"
 
 	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/version"
 	"github.com/petitorium/petitorium/workspace"
 )
 
@@ -155,7 +156,7 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 	}
 
 	if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", "Petitorium/1.0")
+		req.Header.Set("User-Agent", "Petitorium/"+version.Version)
 	}
 
 	if jar != nil {
@@ -207,6 +208,8 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 		if err != nil {
 			return nil, fmt.Errorf("failed to create redirect request: %v", err)
 		}
+
+		req.Header.Set("User-Agent", "Petitorium/"+version.Version)
 
 		if jar != nil {
 			cookies := jar.GetCookies(finalURL)

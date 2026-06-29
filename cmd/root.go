@@ -12,12 +12,13 @@ import (
 
 	"github.com/petitorium/petitorium/config"
 	"github.com/petitorium/petitorium/plugins"
+	"github.com/petitorium/petitorium/version"
 )
 
 var rootCmd = &cobra.Command{
 	Use:     "petitorium",
 	Short:   "A powerful Terminal API Testing Client.",
-	Version: Version,
+	Version: version.Version,
 	Run:     runTUI,
 }
 
