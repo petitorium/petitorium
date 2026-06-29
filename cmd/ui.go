@@ -93,6 +93,62 @@ func createPanel(title string, colors *ColorManager, opts *PanelOptions) *tview.
 	return tv
 }
 
+// footerHint represents a single footer keybinding hint.
+type footerHint struct {
+	Action      string // key part, e.g. "j/k" - rendered bold in colors.ActiveTab (lighter)
+	Description string // text part, e.g. "Navigate" - rendered in colors.Border (darker)
+}
+
+// footerSeparator is the configurable separator inserted between footer hints, colored to
+// match the description color (colors.Border). When empty (the default), hints are joined
+// with a single space for readability. Set it (e.g. to " | ") to render an explicit separator.
+var footerSeparator = ""
+
+// formatFooterHints builds a colored footer string from structured hints.
+// Actions are rendered bold in colors.ActiveTab (lighter), descriptions in colors.Border (darker).
+// Hints are joined with footerSeparator (colored to match the description); when it is empty,
+// a single space is used.
+func formatFooterHints(colors *ColorManager, hints []footerHint) string {
+	focusHex := colorToHex(colors.ActiveTab)
+	borderHex := colorToHex(colors.Border)
+
+	parts := make([]string, 0, len(hints))
+	for _, h := range hints {
+		var s string
+		if h.Action != "" {
+			s += "[" + focusHex + "::b]" + h.Action + "[-:-:-]"
+		}
+		if h.Description != "" {
+			if h.Action != "" {
+				s += " "
+			}
+			s += "[" + borderHex + "]" + h.Description + "[-]"
+		}
+		parts = append(parts, s)
+	}
+	sep := footerSeparator
+	if sep == "" {
+		sep = " "
+	}
+	return strings.Join(parts, "["+borderHex+"]"+sep+"[-]")
+}
+
+// footerBrandText returns the "Petitorium" brand text styled with the active color and bold.
+func footerBrandText(colors *ColorManager) string {
+	return "[" + colorToHex(colors.ActiveTab) + "::b]Petitorium[-:-:-]"
+}
+
+// footerStatusText returns a transient status message styled with the description color (colors.Border).
+func footerStatusText(colors *ColorManager, text string) string {
+	return "[" + colorToHex(colors.Border) + "]" + text + "[-]"
+}
+
+// Transient footer-right status messages.
+const (
+	footerStatusResponseCopied = "Response copied to clipboard"
+	footerStatusCurlCopied     = "cURL command copied to clipboard"
+)
+
 // createInputField creates a new input field with consistent styling
 func createInputField(title string, colors *ColorManager) *tview.InputField {
 	input := tview.NewInputField()

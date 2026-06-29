@@ -25,7 +25,7 @@ type githubRelease struct {
 
 // CheckLatestVersion checks if there is a newer version of Petitorium available on GitHub.
 // If a new version is found, it updates the footer right text.
-func CheckLatestVersion(app *tview.Application, footerRight *tview.TextView) {
+func CheckLatestVersion(app *tview.Application, footerRight *tview.TextView, colors *ColorManager) {
 	if config.C.DisableVersionCheck || Version == "dev" {
 		return
 	}
@@ -70,7 +70,7 @@ func CheckLatestVersion(app *tview.Application, footerRight *tview.TextView) {
 
 		if latestNormalized != "" && latestNormalized != currentNormalized {
 			app.QueueUpdateDraw(func() {
-				footerRight.SetText(fmt.Sprintf("Petitorium [yellow](%s available!) ", latestVersion))
+				footerRight.SetText(fmt.Sprintf("%s [yellow](%s available!) ", footerBrandText(colors), latestVersion))
 			})
 		}
 	}()

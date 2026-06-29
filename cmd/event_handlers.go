@@ -1682,11 +1682,11 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		copyToClipboard(curlCommand)
 
 		// Show a brief notification (could be improved with a proper toast notification)
-		ui.FooterRight.SetText("cURL command copied to clipboard")
+		ui.FooterRight.SetText(footerStatusText(ui.Colors, footerStatusCurlCopied))
 		go func() {
 			time.Sleep(2 * time.Second)
 			ui.App.QueueUpdateDraw(func() {
-				ui.FooterRight.SetText("Petitorium ")
+				ui.FooterRight.SetText(footerBrandText(ui.Colors) + " ")
 			})
 		}()
 	})

@@ -863,24 +863,49 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Set initial footer right text
 	uiOrchestrator.FooterRight.
-		SetText("Petitorium ").
+		SetText(footerBrandText(uiOrchestrator.Colors) + " ").
 		SetTextAlign(tview.AlignRight)
 
 	// Function to update footer based on current focus
 	updateFooterFunc := func() {
+		colors := uiOrchestrator.Colors
 		currentPage, _ := uiOrchestrator.Pages.GetFrontPage()
 		if currentPage == "workspaceModal" {
-			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select Workspace | (N) New Workspace | (c) Duplicate | (r) Rename | (d) Delete | (Esc/q) Close") // Workspace Config
+			uiOrchestrator.FooterLeft.SetText(" " + formatFooterHints(colors, []footerHint{
+				{"j/k", "Navigate"},
+				{"Enter", "Select Workspace"},
+				{"N", "New Workspace"},
+				{"c", "Duplicate"},
+				{"r", "Rename"},
+				{"d", "Delete"},
+				{"Esc/q", "Close"},
+			})) // Workspace Config
 			return
 		}
 
 		if currentPage == "envVariables" {
-			uiOrchestrator.FooterLeft.SetText(" (j/k) Navigate | (Enter) Select | (N) New Environment | (c) Clone Environment | (r) Rename Environment | (d) Delete Environment | (Tab) Switch Panel | (Esc/q) Close") // Environment Config
+			uiOrchestrator.FooterLeft.SetText(" " + formatFooterHints(colors, []footerHint{
+				{"j/k", "Navigate"},
+				{"Enter", "Select"},
+				{"N", "New Environment"},
+				{"c", "Clone Environment"},
+				{"r", "Rename Environment"},
+				{"d", "Delete Environment"},
+				{"Tab", "Switch Panel"},
+				{"Esc/q", "Close"},
+			})) // Environment Config
 			return
 		}
 
 		if currentPage == "marketplace" {
-			uiOrchestrator.FooterLeft.SetText("(Enter) Install  (u) Uninstall  (↑/↓/j/k) Move  (Tab) Next  (Shift+Tab) Prev  (Esc/q) Close")
+			uiOrchestrator.FooterLeft.SetText(formatFooterHints(colors, []footerHint{
+				{"Enter", "Install"},
+				{"u", "Uninstall"},
+				{"↑/↓/j/k", "Move"},
+				{"Tab", "Next"},
+				{"Shift+Tab", "Prev"},
+				{"Esc/q", "Close"},
+			}))
 			return
 		}
 
@@ -889,36 +914,94 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 		switch uiOrchestrator.MainCycle.current {
 		case uiOrchestrator.PanelIndices.Workspace:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select Workspace | (Tab) Next Panel | (q) Quit") // Workspace
+			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+				{"Enter", "Select Workspace"},
+				{"Tab", "Next Panel"},
+				{"q", "Quit"},
+			})) // Workspace
 		case uiOrchestrator.PanelIndices.Environment:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select Environment | (Tab) Next Panel | (q) Quit") // Environment
+			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+				{"Enter", "Select Environment"},
+				{"Tab", "Next Panel"},
+				{"q", "Quit"},
+			})) // Environment
 		case uiOrchestrator.PanelIndices.Collections:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select Request | (N) New Collection | (n) New Request | (r) Rename | (m) Move | (d) Delete | (D) Duplicate Request | (Tab) Next Panel | (q) Quit") // Collections
+			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+				{"Enter", "Select Request"},
+				{"N", "New Collection"},
+				{"n", "New Request"},
+				{"r", "Rename"},
+				{"m", "Move"},
+				{"d", "Delete"},
+				{"D", "Duplicate Request"},
+				{"Tab", "Next Panel"},
+				{"q", "Quit"},
+			})) // Collections
 		case uiOrchestrator.PanelIndices.URLBar:
 			focused := uiOrchestrator.App.GetFocus()
 			if focused == uiOrchestrator.MethodDropdown {
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Select the method | (Tab) Next | (q) Quit")
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"Enter", "Select the method"},
+					{"Tab", "Next"},
+					{"q", "Quit"},
+				}))
 			} else if focused == uiOrchestrator.URLInput.viewMode {
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit URL | (Tab) Next | (q) Quit")
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"i", "Edit URL"},
+					{"Tab", "Next"},
+					{"q", "Quit"},
+				}))
 			} else if focused == uiOrchestrator.URLInput.editMode {
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Save | (Esc) Cancel")
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"Enter", "Save"},
+					{"Esc", "Cancel"},
+				}))
 			} else if focused == uiOrchestrator.SendButton {
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Send the request | (Tab) Next | (q) Quit")
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"Enter", "Send the request"},
+					{"Tab", "Next"},
+					{"q", "Quit"},
+				}))
 			} else if focused == uiOrchestrator.CurlButton {
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Export to cURL | (Tab) Next | (q) Quit")
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"Enter", "Export to cURL"},
+					{"Tab", "Next"},
+					{"q", "Quit"},
+				}))
 			} else {
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(Enter) Send Request | (i) Edit URL | (c) Export cURL | (Tab) Next Panel | (q) Quit")
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"Enter", "Send Request"},
+					{"i", "Edit URL"},
+					{"c", "Export cURL"},
+					{"Tab", "Next Panel"},
+					{"q", "Quit"},
+				}))
 			}
 		case uiOrchestrator.PanelIndices.Request:
 			switch uiOrchestrator.CurrentTabIndex {
 			case uiOrchestrator.RPBodyTabIndex:
 				if uiOrchestrator.BodyEditMode {
-					uiOrchestrator.FooterLeft.SetText(expPrefix + "(Esc) Exit Edit | (F4) External Editor | (Tab) Next Panel | (q) Quit") // Request Body (Edit)
+					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+						{"Esc", "Exit Edit"},
+						{"F4", "External Editor"},
+						{"Tab", "Next Panel"},
+						{"q", "Quit"},
+					})) // Request Body (Edit)
 				} else {
-					uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit | (F4) External Editor | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Body
+					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+						{"i", "Edit"},
+						{"F4", "External Editor"},
+						{"1-4/←/→", "Switch Tabs"},
+						{"Tab", "Next Panel"},
+						{"q", "Quit"},
+					})) // Request Body
 				}
 			case uiOrchestrator.RPAuthTabIndex:
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Auth
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"1-4/←/→", "Switch Tabs"},
+					{"Tab", "Next Panel"},
+					{"q", "Quit"},
+				})) // Request Auth
 			case uiOrchestrator.RPQueryTabIndex:
 				// Check if any query param is in edit mode
 				queryInEditMode := false
@@ -931,9 +1014,22 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				}
 
 				if queryInEditMode {
-					uiOrchestrator.FooterLeft.SetText(expPrefix + "(Esc) Exit Edit | (Tab) Next Panel | (q) Quit") // Request Query (Edit)
+					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+						{"Esc", "Exit Edit"},
+						{"Tab", "Next Panel"},
+						{"q", "Quit"},
+					})) // Request Query (Edit)
 				} else {
-					uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit Key/Value | (n) New Param | (d) Delete Param | (D) Delete All | (F4) Bulk Edit | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Query
+					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+						{"i", "Edit Key/Value"},
+						{"n", "New Param"},
+						{"d", "Delete Param"},
+						{"D", "Delete All"},
+						{"F4", "Bulk Edit"},
+						{"1-4/←/→", "Switch Tabs"},
+						{"Tab", "Next Panel"},
+						{"q", "Quit"},
+					})) // Request Query
 				}
 			case uiOrchestrator.RPHeadersTabIndex:
 				// Check if any header is in edit mode
@@ -947,17 +1043,45 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				}
 
 				if headerInEditMode {
-					uiOrchestrator.FooterLeft.SetText(expPrefix + "(Esc) Exit Edit | (Tab) Next Panel | (q) Quit") //  Request Headers (Edit)
+					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+						{"Esc", "Exit Edit"},
+						{"Tab", "Next Panel"},
+						{"q", "Quit"},
+					})) //  Request Headers (Edit)
 				} else {
-					uiOrchestrator.FooterLeft.SetText(expPrefix + "(i) Edit Key/Value | (n) New Header | (d) Delete Header | (D) Delete All | (F4) Bulk Edit | (1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request Headers
+					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+						{"i", "Edit Key/Value"},
+						{"n", "New Header"},
+						{"d", "Delete Header"},
+						{"D", "Delete All"},
+						{"F4", "Bulk Edit"},
+						{"1-4/←/→", "Switch Tabs"},
+						{"Tab", "Next Panel"},
+						{"q", "Quit"},
+					})) // Request Headers
 				}
 			default:
-				uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch Tabs | (Tab) Next Panel | (q) Quit") // Request
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"1-4/←/→", "Switch Tabs"},
+					{"Tab", "Next Panel"},
+					{"q", "Quit"},
+				})) // Request
 			}
 		case uiOrchestrator.PanelIndices.Response:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(1-4/←/→) Switch tabs | (j/k) Scroll up/down | (d/u) Half page scroll | (g/G) Scroll to top/bottom | (f) Open in fx | (Tab) Next Panel | (q) Quit") // Response
+			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+				{"1-4/←/→", "Switch tabs"},
+				{"j/k", "Scroll up/down"},
+				{"d/u", "Half page scroll"},
+				{"g/G", "Scroll to top/bottom"},
+				{"f", "Open in fx"},
+				{"Tab", "Next Panel"},
+				{"q", "Quit"},
+			})) // Response
 		default:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + "(Tab) Cycle Focus | (q) Quit")
+			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+				{"Tab", "Cycle Focus"},
+				{"q", "Quit"},
+			}))
 		}
 	}
 
@@ -984,11 +1108,11 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			return
 		}
 
-		uiOrchestrator.FooterRight.SetText("Response copied to clipboard")
+		uiOrchestrator.FooterRight.SetText(footerStatusText(uiOrchestrator.Colors, footerStatusResponseCopied))
 		go func() {
 			time.Sleep(2 * time.Second)
 			app.QueueUpdateDraw(func() {
-				uiOrchestrator.FooterRight.SetText("Petitorium ")
+				uiOrchestrator.FooterRight.SetText(footerBrandText(uiOrchestrator.Colors) + " ")
 			})
 		}()
 	}
@@ -1130,7 +1254,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	// Set initial tab to Body (0) to show content type dropdown
 	tabIndexSetter(0)
 
-	CheckLatestVersion(uiOrchestrator.App, uiOrchestrator.FooterRight)
+	CheckLatestVersion(uiOrchestrator.App, uiOrchestrator.FooterRight, uiOrchestrator.Colors)
 
 	return uiOrchestrator, nil
 }

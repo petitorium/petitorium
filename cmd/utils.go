@@ -28,6 +28,11 @@ func hexToColor(hexStr string) tcell.Color {
 	return tcell.ColorWhite
 }
 
+// colorToHex converts a tcell.Color to a "#RRGGBB" string suitable for tview color tags.
+func colorToHex(c tcell.Color) string {
+	return fmt.Sprintf("#%06x", c.Hex())
+}
+
 // strToRune converts the first character of a string to a rune
 func strToRune(s string) rune {
 	for _, r := range s {
