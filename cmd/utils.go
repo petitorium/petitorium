@@ -450,6 +450,7 @@ func getAvailableThemes() []string {
 func getSupportedUnifiedThemes() []string {
 	return []string{
 		"tokyonight-night",
+		"tokyonight-storm",
 		"github-dark",
 		"dracula",
 		"monokai",

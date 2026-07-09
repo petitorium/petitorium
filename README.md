@@ -165,7 +165,7 @@ petitorium themes
 
 **Available Themes:**
 
-- **Unified Themes (★):** monokai, solarized-dark, one-dark, gruvbox, doom-one, tokyonight-night, dracula, nord, vim, catppuccin-mocha, evergarden, rose-pine-moon, github-dark.
+- **Unified Themes (★):** monokai, solarized-dark, one-dark, gruvbox, doom-one, tokyonight-night, tokyonight-storm, dracula, nord, vim, catppuccin-mocha, evergarden, rose-pine-moon, github-dark.
 - **Popular Choices:** github-dark, dracula, monokai, solarized-dark, nord, one-dark.
 
 ### Switching Themes

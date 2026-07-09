@@ -94,8 +94,12 @@ func GetThemeManager() *ThemeManager {
 
 // initializeThemes sets up all predefined unified themes
 func (tm *ThemeManager) initializeThemes() {
-	// Define built-in unified themes with extracted colors from popular syntax themes
-	tm.themes["tokyonight-night"] = tm.extractThemeFromChroma("tokyonight-night", "#1a1b26")
+	// Hand-tuned themes use a canonical palette so the full color range is
+	// represented in the UI instead of collapsing into a few derived tones.
+	tm.themes["tokyonight-night"] = buildThemeFromPalette(tokyoNightNightPalette)
+	tm.themes["tokyonight-storm"] = buildThemeFromPalette(tokyoNightStormPalette)
+
+	// Other themes are extracted from their Chroma syntax definition.
 	tm.themes["github-dark"] = tm.extractThemeFromChroma("github-dark", "#0d1117")
 	tm.themes["dracula"] = tm.extractThemeFromChroma("dracula", "#282a36")
 	tm.themes["monokai"] = tm.extractThemeFromChroma("monokai", "#272822")
@@ -128,45 +132,45 @@ func (tm *ThemeManager) extractThemeFromChroma(themeName, fallbackBackground str
 	}
 }
 
-// extractColorsFromStyle extracts UI colors from a Chroma style
+// extractColorsFromStyle extracts UI colors from a Chroma style by translating
+// the style tokens into a ThemePalette and then using the shared palette builder.
 func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors {
-	// Get the background color from the style's background token
-	bgEntry := style.Get(chroma.Background)
-	background := tm.colorToHex(bgEntry.Background)
+	palette := tm.paletteFromStyle(style)
+	return buildThemeFromPalette(palette).UIColors
+}
+
+// paletteFromStyle converts a Chroma syntax style into a ThemePalette.
+// It extracts the most common tokens and fills the remaining palette slots with
+// sensible fallbacks so every theme benefits from the full UI color range.
+func (tm *ThemeManager) paletteFromStyle(style *chroma.Style) ThemePalette {
+	background := tm.colorToHex(style.Get(chroma.Background).Background)
 	if background == "" {
-		background = "#1a1b26" // Default dark background
+		background = "#1a1b26"
 	}
 
-	// Get foreground color
-	fgEntry := style.Get(chroma.Text)
-	foreground := tm.colorToHex(fgEntry.Colour)
+	foreground := tm.colorToHex(style.Get(chroma.Text).Colour)
 	if foreground == "" {
-		foreground = "#e4e4e4" // Default light foreground
+		foreground = "#e4e4e4"
 	}
 
-	// Extract accent colors from various token types
-	keywordEntry := style.Get(chroma.Keyword)
-	keywordColor := tm.colorToHex(keywordEntry.Colour)
-	if keywordColor == "" {
-		keywordColor = "#7aa2f7" // Default blue
+	keyword := tm.colorToHex(style.Get(chroma.Keyword).Colour)
+	if keyword == "" {
+		keyword = "#7aa2f7"
 	}
 
-	stringEntry := style.Get(chroma.String)
-	stringColor := tm.colorToHex(stringEntry.Colour)
+	stringColor := tm.colorToHex(style.Get(chroma.String).Colour)
 	if stringColor == "" {
-		stringColor = "#9ece6a" // Default green
+		stringColor = "#9ece6a"
 	}
 
-	commentEntry := style.Get(chroma.Comment)
-	commentColor := tm.colorToHex(commentEntry.Colour)
+	commentColor := tm.colorToHex(style.Get(chroma.Comment).Colour)
 	if commentColor == "" {
-		commentColor = "#565f89" // Default gray
+		commentColor = "#565f89"
 	}
 
-	numberEntry := style.Get(chroma.Number)
-	numberColor := tm.colorToHex(numberEntry.Colour)
+	numberColor := tm.colorToHex(style.Get(chroma.Number).Colour)
 	if numberColor == "" {
-		numberColor = "#ff9e64" // Default orange
+		numberColor = "#ff9e64"
 	}
 
 	errorEntry := style.Get(chroma.GenericError)
@@ -175,60 +179,45 @@ func (tm *ThemeManager) extractColorsFromStyle(style *chroma.Style) ThemeColors 
 	}
 	errorColor := tm.colorToHex(errorEntry.Colour)
 	if errorColor == "" {
-		errorColor = "#fb4f49" // Default red
+		errorColor = "#fb4f49"
 	}
 
-	// Create a selection background color that's appropriate for highlighting
-	// This should be a subtle background color, not too bright
-	treeSelection := tm.createSelectionBackground(background, keywordColor)
+	// Optional richer tokens; when absent we fall back to the main accents.
+	functionColor := tm.colorToHex(style.Get(chroma.NameFunction).Colour)
+	classColor := tm.colorToHex(style.Get(chroma.NameClass).Colour)
+	operatorColor := tm.colorToHex(style.Get(chroma.Operator).Colour)
+	attributeColor := tm.colorToHex(style.Get(chroma.NameAttribute).Colour)
+	literalColor := tm.colorToHex(style.Get(chroma.Literal).Colour)
 
-	// Create UI color scheme based on extracted colors
-	return ThemeColors{
-		Background:             background,
-		Foreground:             foreground,
-		Border:                 tm.adjustBrightness(keywordColor, 0.7), // Slightly darker than keyword
-		BorderFocus:            keywordColor,
-		Title:                  foreground,
-		Selection:              tm.adjustBrightness(background, 1.2), // Lighter than background
-		TreeSelection:          treeSelection,                        // Appropriate selection background
-		SelectedBackground:     stringColor,
-		SelectedForeground:     background,
-		ActiveTab:              keywordColor,
-		ButtonBackground:       tm.adjustBrightness(keywordColor, 0.7), // Similar to border color
-		ButtonSelected:         stringColor,
-		DropdownFocused:        tm.adjustBrightness(background, 1.3),
-		Placeholder:            commentColor,
-		InputBackground:        tm.adjustBrightness(background, 1.15),
-		InputBackgroundLighter: tm.adjustBrightness(background, 1.3),
-		Success:                stringColor, // Use string color for success
-		Error:                  errorColor,
-		Warning:                numberColor,  // Use number color for warning
-		SelectedRequestIcon:    stringColor,  // tm.getSelectedRequestIconColor(style.Name, stringColor),
-		LabelColor:             keywordColor, // Use keyword color (blueish) for form labels
-		ValueColor:             foreground,   // Use foreground color for form values
-		MethodColors: MethodColors{
-			GET:     stringColor,  // Green for GET
-			POST:    keywordColor, // Blue for POST
-			PUT:     numberColor,  // Orange for PUT
-			PATCH:   numberColor,  // Orange for PATCH
-			DELETE:  errorColor,   // Red for DELETE
-			OPTIONS: commentColor, // Gray for OPTIONS
-			HEAD:    commentColor, // Gray for HEAD
-			Default: foreground,   // Default foreground
-		},
-		StatusColors: StatusColors{
-			Success:         stringColor, // Green for 2xx
-			SuccessText:     background,  // Background color for text
-			Redirection:     numberColor, // Orange for 3xx
-			RedirectionText: background,  // Background color for text
-			ClientError:     errorColor,  // Red for 4xx
-			ClientErrorText: background,
-			ServerError:     tm.adjustBrightness(errorColor, 0.7), // Darker red for 5xx
-			ServerErrorText: background,
-			Default:         commentColor, // Gray for unknown
-			DefaultText:     foreground,   // Foreground color for text
-		},
+	return ThemePalette{
+		Name:        style.Name,
+		SyntaxTheme: style.Name,
+		Background:  background,
+		Foreground:  foreground,
+		SecondaryBg: tm.adjustBrightness(background, 1.2),
+		Black:       commentColor,
+		Red:         errorColor,
+		Orange:      coalesce(classColor, numberColor),
+		Yellow:      numberColor,
+		Green:       stringColor,
+		Teal:        coalesce(operatorColor, stringColor),
+		Cyan:        coalesce(literalColor, keyword),
+		LightBlue:   coalesce(attributeColor, keyword),
+		Blue:        coalesce(functionColor, keyword),
+		Magenta:     keyword,
+		White:       foreground,
+		Comment:     commentColor,
 	}
+}
+
+// coalesce returns the first non-empty color string.
+func coalesce(colors ...string) string {
+	for _, c := range colors {
+		if c != "" {
+			return c
+		}
+	}
+	return ""
 }
 
 // createDefaultTheme creates a default theme when extraction fails
@@ -289,38 +278,6 @@ func (tm *ThemeManager) colorToHex(color chroma.Colour) string {
 		return ""
 	}
 	return fmt.Sprintf("#%06x", int(color))
-}
-
-// createSelectionBackground creates an appropriate selection background color for tree highlighting
-func (tm *ThemeManager) createSelectionBackground(background, keywordColor string) string {
-	// Blend keyword color (accent) with background for a visible but subtle selection
-	// Use 30% keyword color + 70% background
-	return tm.blendColors(background, keywordColor, 0.30)
-}
-
-// blendColors blends two hex colors: result = (1-factor)*base + factor*overlay
-func (tm *ThemeManager) blendColors(base, overlay string, factor float64) string {
-	if base == "" {
-		return overlay
-	}
-	if overlay == "" {
-		return base
-	}
-
-	base = strings.TrimPrefix(base, "#")
-	overlay = strings.TrimPrefix(overlay, "#")
-
-	var br, bg, bb int
-	fmt.Sscanf(base, "%02x%02x%02x", &br, &bg, &bb)
-
-	var or, og, ob int
-	fmt.Sscanf(overlay, "%02x%02x%02x", &or, &og, &ob)
-
-	r := int(float64(br)*(1-factor) + float64(or)*factor)
-	g := int(float64(bg)*(1-factor) + float64(og)*factor)
-	b := int(float64(bb)*(1-factor) + float64(ob)*factor)
-
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
 
 // adjustBrightness adjusts the brightness of a hex color
