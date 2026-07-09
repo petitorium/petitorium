@@ -909,6 +909,16 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			return
 		}
 
+		if currentPage == "workspaceSearch" {
+			uiOrchestrator.FooterLeft.SetText(formatFooterHints(colors, []footerHint{
+				{"Enter", "Select / Move"},
+				{"↑/↓/j/k", "Navigate"},
+				{"Tab", "Search ↔ List"},
+				{"Esc/q", "Close"},
+			}))
+			return
+		}
+
 		// Check if experimental navigation is enabled
 		var expPrefix string = ""
 

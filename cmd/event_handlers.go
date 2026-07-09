@@ -1723,6 +1723,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 
 			currentPage, _ := ui.Pages.GetFrontPage()
+			if currentPage == "workspaceSearch" {
+				ui.Pages.RemovePage(currentPage)
+				ui.Pages.SwitchToPage("main")
+				ui.App.SetFocus(ui.WorkspaceSelector)
+				ui.UpdateFooter()
+				return nil
+			}
 			if currentPage != "main" && currentPage != "envVariables" {
 				// On modal, 'q' closes the modal
 				ui.Pages.RemovePage(currentPage)
@@ -1759,6 +1766,15 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Allow URLVariableInput to handle its own 'i' key events
 		if event.Rune() == 'i' && ui.App.GetFocus() == ui.URLInput {
 			return event
+		}
+
+		// Open workspace quick-search when '/' is pressed in the workspace dropdown context
+		if event.Rune() == '/' {
+			currentFocus := ui.App.GetFocus()
+			if currentFocus == ui.WorkspaceSelector || isDropdownOpen(ui.WorkspaceSelector) {
+				showWorkspaceSearchModal(ui)
+				return nil
+			}
 		}
 
 		// Allow dropdown lists to handle their own input when dropdown is open
@@ -1811,6 +1827,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			"renameEnvironment",
 			"renameWorkspace",
 			"workspaceModal",
+			"workspaceSearch",
 		}
 
 		isFormPopup := false

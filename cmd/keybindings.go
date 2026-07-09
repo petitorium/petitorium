@@ -779,6 +779,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"renameEnvironment",
 		"renameWorkspace",
 		"workspaceModal",
+		"workspaceSearch",
 		"commandRunnerModal",
 		"tagPickerModal",
 		"tagEditorModal",
