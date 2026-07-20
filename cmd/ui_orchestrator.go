@@ -924,11 +924,21 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 		switch uiOrchestrator.MainCycle.current {
 		case uiOrchestrator.PanelIndices.Workspace:
-			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
-				{"Enter", "Select Workspace"},
-				{"Tab", "Next Panel"},
-				{"q", "Quit"},
-			})) // Workspace
+			focused := uiOrchestrator.App.GetFocus()
+			if focused == uiOrchestrator.WorkspaceSelector {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"Enter", "Select Workspace"},
+					{"/", "Search Workspaces"},
+					{"Tab", "Next Panel"},
+					{"q", "Quit"},
+				})) // Workspace (dropdown focused)
+			} else {
+				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+					{"Enter", "Select Workspace"},
+					{"Tab", "Next Panel"},
+					{"q", "Quit"},
+				})) // Workspace (config button focused)
+			}
 		case uiOrchestrator.PanelIndices.Environment:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
 				{"Enter", "Select Environment"},
