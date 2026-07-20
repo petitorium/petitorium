@@ -1252,7 +1252,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// For multipart requests, collect the current UI state
 		if contentType == "Multipart" {
-			body = collectMultipartFieldsFromUI()
+			body = collectMultipartFieldsForSend()
 			// If no fields are filled, don't send as multipart
 			if body == "" {
 				contentType = ""
@@ -2070,6 +2070,12 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 		// Vim-style modal editing: 'i' to enter insert mode
 		if event.Rune() == 'i' && ui.MainCycle.current == ui.PanelIndices.Request && ui.CurrentTabIndex == 0 && !ui.BodyEditMode {
+			// For Multipart content type the body tab hosts dual-mode inputs (Name, Value)
+			// that handle 'i' themselves to switch those fields to edit mode. Falling through
+			// here would suspend the TUI and open the external editor instead, so skip it.
+			if getCurrentContentType(ui) == "Multipart" {
+				return event
+			}
 			if ui.CurrentRequest != nil {
 				ui.App.Suspend(func() {
 					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "json")
@@ -2183,15 +2189,13 @@ func getMaxSubchildForChild(container, child int, ui *UIOrchestrator) int {
 	return 0 // No subchildren by default
 }
 
-// getMaxFieldRowElement returns the maximum field row element index for a field row
+// getMaxFieldRowElement returns the maximum field row element index for a multipart field row.
+// Layout order: Name (0), Type (1), Value (2), Browse/Empty (3), Checkbox (4), X button (5).
 func getMaxFieldRowElement(fieldRow *MultipartFieldRow) int {
 	if fieldRow == nil {
 		return 0
 	}
-
-	// With consistent layout, we always have:
-	// Name (0), Type (1), Value (2), Browse/Empty (3), X button (4)
-	return 4
+	return 5
 }
 
 func getMaxHeaderRowElement(headerRow *HeaderRow) int {
@@ -2529,7 +2533,13 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 													// Navigation logic should have skipped this, but as fallback focus the row container or the whole tab
 													ui.App.SetFocus(ui.MultipartFieldsTab)
 												}
-											case 4: // X button (always at position 4)
+											case 4: // Checkbox (enable/disable)
+												if fieldRow.Checkbox != nil {
+													ui.App.SetFocus(fieldRow.Checkbox)
+												} else {
+													ui.App.SetFocus(ui.MultipartFieldsTab)
+												}
+											case 5: // X button (delete)
 												if fieldRow.DeleteButton != nil {
 													ui.App.SetFocus(fieldRow.DeleteButton)
 												} else {
@@ -3046,7 +3056,10 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 								fieldRow := currentMultipartFieldRows[fieldRowIndex]
 								selectedType, _ := fieldRow.TypeDropdown.GetCurrentOption()
 								if selectedType != 2 { // Not file
-									ui.NavCurrentFieldRowElement = 4 // Skip to Delete button
+									// Skip to Checkbox (4). Checkbox is always focusable, so this
+									// simply jumps over the empty filler slot where the Browse
+									// button would normally live for "file" type rows.
+									ui.NavCurrentFieldRowElement = 4
 								}
 							}
 						} else {

@@ -274,6 +274,11 @@ func createMultipartBodyWithWriter(bodyDef string, writer *multipart.Writer) err
 		}
 
 		name := strings.TrimSpace(parts[0])
+		// Disabled fields are persisted with a leading '!' marker; skip them on send
+		// (collectMultipartFieldsForSend already excludes them).
+		if strings.HasPrefix(name, "!") {
+			continue
+		}
 		value := strings.TrimSpace(parts[1])
 
 		// Validate field name

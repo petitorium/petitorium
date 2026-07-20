@@ -3390,15 +3390,20 @@ func (h *HeaderValueInput) IsEditMode() bool {
 	return h.currentMode == "edit"
 }
 
-// MultipartFieldRow represents a single multipart field row in the UI
+// MultipartFieldRow represents a single multipart field row in the UI.
+// Name and Value use dual-mode inputs (with environment-variable rendering and
+// view/edit modes) like Headers/Queries, while Type keeps its label + dropdown
+// layout. An optional file picker is shown when Type == "file", and an
+// enable/disable checkbox controls whether the row is sent.
 type MultipartFieldRow struct {
 	NameLabel        *tview.TextView
-	NameInput        *tview.InputField
+	NameInput        *HeaderKeyInput
 	TypeLabel        *tview.TextView
 	TypeDropdown     *tview.DropDown
 	ValueLabel       *tview.TextView
-	ValueInput       *tview.InputField
+	ValueInput       *HeaderValueInput
 	FilePickerButton *CustomButton
+	Checkbox         *CheckboxPrimitive
 	DeleteButton     *CustomButton
 	Row              *tview.Flex
 }
@@ -3456,7 +3461,7 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 	if initialBody != "" {
 		parsedFields := parseMultipartBody(initialBody)
 		for _, field := range parsedFields {
-			addMultipartFieldRowWithData(fieldsList, colors, field.Name, field.Type, field.Value, refreshMultipartFieldsUI, saveCallback, focusSetter, footerUpdater, app, pages)
+			addMultipartFieldRowWithData(fieldsList, colors, field.Name, field.Type, field.Value, field.Enabled, refreshMultipartFieldsUI, saveCallback, focusSetter, footerUpdater, app, pages)
 		}
 	}
 
@@ -3508,163 +3513,39 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 	return multipartContainer, refreshMultipartFieldsUI
 }
 
-// addMultipartFieldRow adds a new multipart field input row to the fields list
+// addMultipartFieldRow adds a new multipart field input row to the fields list.
+// The row uses dual-mode inputs (with variable rendering) like the Headers/Queries
+// sections, plus a Type dropdown (text/text_multiline/file), an optional file picker,
+// an enable/disable checkbox, and a delete button that opens a confirmation modal.
 func addMultipartFieldRow(fieldsList *tview.Flex, colors *ColorManager, refreshUI func(), saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) {
-	row := tview.NewFlex().SetDirection(tview.FlexColumn)
-	row.SetBackgroundColor(colors.Background)
-
-	// Create label separately for full control over background
-	nameLabel := tview.NewTextView().
-		SetText("Name: ")
-	nameLabel.SetTextColor(colors.LabelColor)
-	nameLabel.SetBackgroundColor(colors.Background)
-	nameLabel.SetTextAlign(tview.AlignRight)
-
-	nameInput := tview.NewInputField().
-		SetFieldWidth(multipartFieldWidth).
-		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.ValueColor)
-	nameInput.SetBackgroundColor(colors.Background)
-	nameInput.SetChangedFunc(func(text string) {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
-	// Create label separately for full control over background
-	valueLabel := tview.NewTextView().
-		SetText("Value: ")
-	valueLabel.SetTextColor(colors.LabelColor)
-	valueLabel.SetBackgroundColor(colors.Background)
-	valueLabel.SetTextAlign(tview.AlignRight)
-
-	valueInput := tview.NewInputField().
-		SetFieldWidth(multipartFieldWidth).
-		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.ValueColor)
-	valueInput.SetChangedFunc(func(text string) {
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
-	// File picker button
-	filePickerButton := createThemedButton("Browse", colors)
-	filePickerButton.SetSelectedFunc(func() {
-		openFilePickerModal(app, pages, valueInput, colors, saveCallback, filePickerButton)
-	})
-
-	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
-	removeButton.SetBackgroundColor(colors.Background)
-
-	// Create label separately for full control over background
-	typeLabel := tview.NewTextView().
-		SetText("Type: ")
-	typeLabel.SetTextColor(colors.LabelColor)
-	typeLabel.SetBackgroundColor(colors.Background)
-	typeLabel.SetTextAlign(tview.AlignRight)
-
-	typeDropdown := tview.NewDropDown().
-		SetOptions([]string{"text", "text_multiline", "file"}, nil).
-		SetCurrentOption(0).
-		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.ValueColor)
-	typeDropdown.SetBackgroundColor(colors.Background)
-	// Function to rebuild row layout based on current type
-	rebuildRowLayout := func() {
-		row.Clear()
-		// Add name label and input
-		row.AddItem(nameLabel, 6, 0, false)
-		row.AddItem(nameInput, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
-		// Add type label and dropdown
-		row.AddItem(typeLabel, 6, 0, false)
-		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
-		// Add value label and input
-		row.AddItem(valueLabel, 7, 0, false)
-		row.AddItem(valueInput, multipartFieldWidth, 0, false)
-
-		selectedType, _ := typeDropdown.GetCurrentOption()
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
-		if selectedType == 2 { // "file" is option 2
-			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
-		} else {
-			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), multipartFieldWidth, 0, false)
-		}
-
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
-		row.AddItem(removeButton, multipartRemoveButtonWidth, 0, false)
-	}
-
-	typeDropdown.SetSelectedFunc(func(text string, index int) {
-		rebuildRowLayout()
-		if saveCallback != nil {
-			saveCallback()
-		}
-	})
-
-	fieldRow := &MultipartFieldRow{
-		NameLabel:        nameLabel,
-		NameInput:        nameInput,
-		TypeLabel:        typeLabel,
-		TypeDropdown:     typeDropdown,
-		ValueLabel:       valueLabel,
-		ValueInput:       valueInput,
-		FilePickerButton: filePickerButton,
-		DeleteButton:     removeButton,
-		Row:              row,
-	}
-
-	removeButton.SetSelectedFunc(func() {
-		// Find and remove this row
-		for i, r := range currentMultipartFieldRows {
-			if r == fieldRow {
-				currentMultipartFieldRows = append(currentMultipartFieldRows[:i], currentMultipartFieldRows[i+1:]...)
-				refreshUI()
-				if saveCallback != nil {
-					saveCallback()
-				}
-				break
-			}
-		}
-	})
-
-	// Build initial layout
-	rebuildRowLayout()
-
-	currentMultipartFieldRows = append(currentMultipartFieldRows, fieldRow)
-	refreshUI()
-
-	if saveCallback != nil {
-		saveCallback()
-	}
+	addMultipartFieldRowWithData(fieldsList, colors, "", "text", "", true, refreshUI, saveCallback, focusSetter, footerUpdater, app, pages)
 }
 
-// addMultipartFieldRowWithData adds a multipart field row with pre-filled data
-func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, name, fieldType, value string, refreshUI func(), saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) {
+// addMultipartFieldRowWithData adds a multipart field row with pre-filled data.
+// Name and Value use dual-mode inputs (environment-variable rendering, view/edit modes),
+// matching Headers/Queries. Type keeps its label + dropdown layout. An optional file
+// picker is shown when Type == "file", an enable/disable checkbox controls whether the
+// row is sent, and the delete button opens a confirmation modal.
+func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, name, fieldType, value string, enabled bool, refreshUI func(), saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages) {
 	row := tview.NewFlex().SetDirection(tview.FlexColumn)
 	row.SetBackgroundColor(colors.Background)
 
-	// Create label separately for full control over background
-	nameLabel := tview.NewTextView().
-		SetText("Name: ")
+	// Name: label + dual-mode input (renders env variables like Headers/Queries)
+	nameLabel := tview.NewTextView().SetText("Name: ")
 	nameLabel.SetTextColor(colors.LabelColor)
 	nameLabel.SetBackgroundColor(colors.Background)
 	nameLabel.SetTextAlign(tview.AlignRight)
 
-	nameInput := tview.NewInputField().
-		SetFieldWidth(multipartFieldWidth).
-		SetText(name).
-		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.ValueColor)
-	nameInput.SetBackgroundColor(colors.Background)
+	nameInput := AppInputDualMode(colors)
+	nameInput.SetText(name)
 	nameInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
 		}
 	})
+	nameInput.onModeChange = footerUpdater
 
+	// Type: label + dropdown
 	typeOptions := []string{"text", "text_multiline", "file"}
 	typeIndex := 0
 	for i, opt := range typeOptions {
@@ -3674,9 +3555,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		}
 	}
 
-	// Create label separately for full control over background
-	typeLabel := tview.NewTextView().
-		SetText("Type: ")
+	typeLabel := tview.NewTextView().SetText("Type: ")
 	typeLabel.SetTextColor(colors.LabelColor)
 	typeLabel.SetBackgroundColor(colors.Background)
 	typeLabel.SetTextAlign(tview.AlignRight)
@@ -3688,30 +3567,47 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		SetFieldTextColor(colors.ValueColor)
 	typeDropdown.SetBackgroundColor(colors.Background)
 
-	// Create label separately for full control over background
-	valueLabel := tview.NewTextView().
-		SetText("Value: ")
+	// Value: label + dual-mode input
+	valueLabel := tview.NewTextView().SetText("Value: ")
 	valueLabel.SetTextColor(colors.LabelColor)
 	valueLabel.SetBackgroundColor(colors.Background)
 	valueLabel.SetTextAlign(tview.AlignRight)
 
-	valueInput := tview.NewInputField().
-		SetFieldWidth(multipartFieldWidth).
-		SetText(value).
-		SetFieldBackgroundColor(colors.Background).
-		SetFieldTextColor(colors.ValueColor)
-	valueInput.SetBackgroundColor(colors.Background)
+	valueInput := NewHeaderValueInput(colors)
+	valueInput.SetText(value)
 	valueInput.SetChangedFunc(func(text string) {
 		if saveCallback != nil {
 			saveCallback()
 		}
 	})
+	valueInput.onModeChange = footerUpdater
 
-	// File picker button
+	// File picker button (only shown when type == "file")
 	filePickerButton := createThemedButton("Browse", colors)
 	filePickerButton.SetSelectedFunc(func() {
-		openFilePickerModal(app, pages, valueInput, colors, saveCallback, filePickerButton)
+		openFilePickerModal(app, pages,
+			func() string { return valueInput.GetText() },
+			func(s string) { valueInput.SetText(s) },
+			colors, saveCallback, filePickerButton)
 	})
+
+	checkbox := AppCheckbox(config.C.UI.CheckboxOn, config.C.UI.CheckboxOff, enabled, colors)
+	checkbox.SetChangedFunc(func(enabled bool) {
+		if enabled {
+			nameInput.SetBackgroundColor(colors.InputBackground)
+			valueInput.SetBackgroundColor(colors.InputBackground)
+		} else {
+			nameInput.SetBackgroundColor(colors.Selection)
+			valueInput.SetBackgroundColor(colors.Selection)
+		}
+		if saveCallback != nil {
+			saveCallback()
+		}
+	})
+	if !enabled {
+		nameInput.SetBackgroundColor(colors.Selection)
+		valueInput.SetBackgroundColor(colors.Selection)
+	}
 
 	removeButton := createThemedButton(config.C.UI.MultipartRemoveIcon, colors)
 	removeButton.SetBackgroundColor(colors.Background)
@@ -3724,6 +3620,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		ValueLabel:       valueLabel,
 		ValueInput:       valueInput,
 		FilePickerButton: filePickerButton,
+		Checkbox:         checkbox,
 		DeleteButton:     removeButton,
 		Row:              row,
 	}
@@ -3731,27 +3628,35 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 	// Function to rebuild row layout based on current type
 	rebuildRowLayout := func() {
 		row.Clear()
-		// Add name label and input
+		bgBox := func() *tview.Box {
+			return tview.NewBox().SetBackgroundColor(colors.Background)
+		}
+		// Name label + input
 		row.AddItem(nameLabel, 6, 0, false)
 		row.AddItem(nameInput, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
-		// Add type label and dropdown
+		row.AddItem(bgBox(), 1, 0, false)
+		// Type label + dropdown
 		row.AddItem(typeLabel, 6, 0, false)
 		row.AddItem(typeDropdown, multipartFieldWidth, 0, false)
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
-		// Add value label and input
+		row.AddItem(bgBox(), 1, 0, false)
+		// Value label + dual-mode input
 		row.AddItem(valueLabel, 7, 0, false)
 		row.AddItem(valueInput, multipartFieldWidth, 0, false)
+		row.AddItem(bgBox(), 1, 0, false)
 
 		selectedType, _ := typeDropdown.GetCurrentOption()
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 		if selectedType == 2 { // "file" is option 2
 			row.AddItem(filePickerButton, multipartFieldWidth, 0, false)
 		} else {
-			row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), multipartFieldWidth, 0, false)
+			row.AddItem(bgBox(), multipartFieldWidth, 0, false)
 		}
+		row.AddItem(bgBox(), 1, 0, false)
 
-		row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
+		// Enable/disable checkbox
+		row.AddItem(checkbox, 3, 0, false)
+		row.AddItem(bgBox(), 1, 0, false)
+
+		// Delete button
 		row.AddItem(removeButton, multipartRemoveButtonWidth, 0, false)
 	}
 
@@ -3762,18 +3667,39 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 		}
 	})
 
+	// Per-row delete confirmation modal (mirrors delete-all confirm pattern).
 	removeButton.SetSelectedFunc(func() {
-		// Find and remove this row
-		for i, r := range currentMultipartFieldRows {
-			if r == fieldRow {
-				currentMultipartFieldRows = append(currentMultipartFieldRows[:i], currentMultipartFieldRows[i+1:]...)
-				refreshUI()
-				if saveCallback != nil {
-					saveCallback()
+		previousFocus := app.GetFocus()
+		deleteCallback := func() {
+			for i, r := range currentMultipartFieldRows {
+				if r == fieldRow {
+					currentMultipartFieldRows = append(currentMultipartFieldRows[:i], currentMultipartFieldRows[i+1:]...)
+					break
 				}
-				break
+			}
+			refreshUI()
+			if multipartFieldsCycle != nil {
+				multipartFieldsCycle.UpdateInputs()
+			}
+			if saveCallback != nil {
+				saveCallback()
 			}
 		}
+		form := createDeleteMultipartFieldConfirm(app, pages, colors, deleteCallback, previousFocus)
+		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		pages.AddPage("deleteMultipartField", modal, true, true)
+		app.SetFocus(form)
+	})
+
+	// Handle Tab navigation for delete button (cycle to first row's name input).
+	removeButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			if len(currentMultipartFieldRows) > 0 && focusSetter != nil {
+				focusSetter(currentMultipartFieldRows[0].NameInput)
+			}
+			return nil
+		}
+		return event
 	})
 
 	// Build initial layout
@@ -3781,11 +3707,26 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 
 	currentMultipartFieldRows = append(currentMultipartFieldRows, fieldRow)
 	refreshUI()
+
+	if multipartFieldsCycle != nil {
+		multipartFieldsCycle.UpdateInputs()
+	}
 }
 
-// parseMultipartBody parses the multipart body string into structured fields
-func parseMultipartBody(body string) []struct{ Name, Type, Value string } {
-	var fields []struct{ Name, Type, Value string }
+// MultipartParsedField represents a single parsed multipart field, including its enabled state.
+type MultipartParsedField struct {
+	Name    string
+	Type    string
+	Value   string
+	Enabled bool
+}
+
+// parseMultipartBody parses the multipart body string into structured fields.
+// A leading '!' on the name part marks the field as disabled (see todo.md for the
+// future structured migration). Disabled fields round-trip through save/load but are
+// excluded from the wire body at send time (collectMultipartFieldsForSend).
+func parseMultipartBody(body string) []MultipartParsedField {
+	var fields []MultipartParsedField
 
 	lines := strings.Split(body, "&")
 	for _, line := range lines {
@@ -3794,19 +3735,25 @@ func parseMultipartBody(body string) []struct{ Name, Type, Value string } {
 			continue
 		}
 
-		// Parse format: name=type:value or name=value (defaults to text)
+		// Parse format: [!]name=type:value or [!]name=value (defaults to text)
 		if strings.Contains(line, "=") {
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {
 				name := strings.TrimSpace(parts[0])
 				valuePart := strings.TrimSpace(parts[1])
 
+				enabled := true
+				if strings.HasPrefix(name, "!") {
+					enabled = false
+					name = strings.TrimPrefix(name, "!")
+				}
+
 				// Check if it's a file field
 				if strings.HasPrefix(valuePart, "file:") {
 					value := strings.TrimPrefix(valuePart, "file:")
-					fields = append(fields, struct{ Name, Type, Value string }{name, "file", value})
+					fields = append(fields, MultipartParsedField{Name: name, Type: "file", Value: value, Enabled: enabled})
 				} else {
-					fields = append(fields, struct{ Name, Type, Value string }{name, "text", valuePart})
+					fields = append(fields, MultipartParsedField{Name: name, Type: "text", Value: valuePart, Enabled: enabled})
 				}
 			}
 		}
@@ -3816,9 +3763,37 @@ func parseMultipartBody(body string) []struct{ Name, Type, Value string } {
 }
 
 // collectMultipartFieldsFromUI collects all multipart fields from the UI and formats them as a string
+// for persistence. Disabled rows are emitted with a leading '!' on the name part so the disabled
+// state round-trips through save/load (see todo.md for the future structured migration).
 func collectMultipartFieldsFromUI() string {
 	var fields []string
 	for _, row := range currentMultipartFieldRows {
+		name := strings.TrimSpace(row.NameInput.GetText())
+		fieldTypeIndex, _ := row.TypeDropdown.GetCurrentOption()
+		value := strings.TrimSpace(row.ValueInput.GetText())
+
+		prefix := ""
+		if row.Checkbox != nil && !row.Checkbox.IsEnabled() {
+			prefix = "!"
+		}
+
+		if fieldTypeIndex == 2 { // file
+			fields = append(fields, prefix+name+"=file:"+value)
+		} else {
+			fields = append(fields, prefix+name+"="+value)
+		}
+	}
+	return strings.Join(fields, "&")
+}
+
+// collectMultipartFieldsForSend collects only enabled multipart fields and formats them as a string
+// suitable for the wire body (no disabled markers). Disabled rows are excluded entirely.
+func collectMultipartFieldsForSend() string {
+	var fields []string
+	for _, row := range currentMultipartFieldRows {
+		if row.Checkbox != nil && !row.Checkbox.IsEnabled() {
+			continue
+		}
 		name := strings.TrimSpace(row.NameInput.GetText())
 		fieldTypeIndex, _ := row.TypeDropdown.GetCurrentOption()
 		value := strings.TrimSpace(row.ValueInput.GetText())
@@ -3853,7 +3828,7 @@ func updateMultipartFieldsFromBody(body string, ui *UIOrchestrator) {
 			}
 
 			for _, field := range parsedFields {
-				addMultipartFieldRowWithData(currentMultipartFieldsList, ui.Colors, field.Name, field.Type, field.Value, refreshFunc, saveCallback, focusSetter, ui.UpdateFooter, ui.App, ui.Pages)
+				addMultipartFieldRowWithData(currentMultipartFieldsList, ui.Colors, field.Name, field.Type, field.Value, field.Enabled, refreshFunc, saveCallback, focusSetter, ui.UpdateFooter, ui.App, ui.Pages)
 			}
 
 			// Refresh the UI after adding all fields - using the real refresh function
@@ -3886,13 +3861,15 @@ func updateMultipartFieldsFromBody(body string, ui *UIOrchestrator) {
 	// If body is empty/not multipart but we have existing rows, keep them
 }
 
-// openFilePickerModal opens a modal for selecting a file
-func openFilePickerModal(app *tview.Application, pages *tview.Pages, valueInput *tview.InputField, colors *ColorManager, callback func(), triggerPrimitive tview.Primitive) {
-	currentPath := valueInput.GetText()
+// openFilePickerModal opens a modal for selecting a file. The current value is read via
+// getText and the selected path is written via setText, allowing callers to pass dual-mode
+// inputs (e.g. *HeaderValueInput) as well as plain *tview.InputField instances.
+func openFilePickerModal(app *tview.Application, pages *tview.Pages, getText func() string, setText func(string), colors *ColorManager, callback func(), triggerPrimitive tview.Primitive) {
+	currentPath := getText()
 
 	// Callback when a file is selected
 	onSelect := func(path string) {
-		valueInput.SetText(path)
+		setText(path)
 		if callback != nil {
 			callback()
 		}

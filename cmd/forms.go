@@ -1735,6 +1735,50 @@ func openMultipartFieldsModal(app *tview.Application, pages *tview.Pages, bodyIn
 	pages.AddPage("multipartModal", modal, true, true)
 }
 
+// createDeleteMultipartFieldConfirm creates a confirmation dialog for deleting a single
+// multipart field. On confirm or cancel the modal page is removed and the previously-focused
+// primitive (captured before opening the modal) is restored per the AGENTS.md focus rule.
+func createDeleteMultipartFieldConfirm(app *tview.Application, pages *tview.Pages, colors *ColorManager, deleteCallback func(), previousFocus tview.Primitive) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddTextView("", "Are you sure you want to delete this multipart field?", 0, 3, false, false)
+
+	closeModalFunc := func() {
+		pages.RemovePage("deleteMultipartField")
+		if previousFocus != nil {
+			app.SetFocus(previousFocus)
+		}
+	}
+
+	form.AddButton("Delete", func() {
+		deleteCallback()
+		pages.RemovePage("deleteMultipartField")
+		if previousFocus != nil {
+			app.SetFocus(previousFocus)
+		}
+	})
+
+	form.AddButton("Cancel", closeModalFunc)
+	form.SetCancelFunc(closeModalFunc)
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			closeModalFunc()
+			return nil
+		}
+		return event
+	})
+
+	form.SetBorder(true).SetTitle(" Delete Multipart Field ")
+	return form
+}
+
 // addMultipartField adds a new multipart field to the fields list
 func addMultipartField(fieldsList *tview.Flex, colors *ColorManager) {
 	fieldContainer := tview.NewFlex().SetDirection(tview.FlexRow)

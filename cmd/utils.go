@@ -674,7 +674,8 @@ func generateCurlCommand(method, urlStr string, headers map[string]string, body,
 	// Add body if present
 	if body != "" {
 		if contentType == "Multipart" {
-			// Parse multipart fields and add as -F options
+			// Parse multipart fields and add as -F options.
+			// Fields prefixed with '!' are disabled and must not be sent.
 			fields := strings.Split(body, "&")
 			for _, field := range fields {
 				field = strings.TrimSpace(field)
@@ -684,6 +685,10 @@ func generateCurlCommand(method, urlStr string, headers map[string]string, body,
 				parts := strings.SplitN(field, "=", 2)
 				if len(parts) == 2 {
 					name := strings.TrimSpace(parts[0])
+					if strings.HasPrefix(name, "!") {
+						// Disabled field: skip on send.
+						continue
+					}
 					value := strings.TrimSpace(parts[1])
 					if strings.HasPrefix(value, "file:") {
 						filePath := strings.TrimPrefix(value, "file:")

@@ -155,7 +155,7 @@ type UIOrchestrator struct {
 	NavCurrentChild                     int
 	NavCurrentSubchild                  int
 	NavCurrentMultipartElement          int // For navigation within multipart fields (0: Add Field, 1: Delete All, 2+: field rows)
-	NavCurrentFieldRowElement           int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: X)
+	NavCurrentFieldRowElement           int // For navigation within a field row (0: Name, 1: Type, 2: Value, 3: Browse, 4: Checkbox, 5: X)
 	NavCurrentHeaderRowElement          int // For navigation within headers (0: Add Header, 1: Delete All, 2+: header rows)
 	NavCurrentHeaderElement             int // For navigation within a header row (0: Key input, 1: Value input, 2: Delete button)
 	NavCurrentQueryParamRowElement      int // For navigation within query params (0: Add Param, 1: Delete All, 2+: param rows)
@@ -564,6 +564,13 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	}
 
 	queryParamsCycle = &QueryParamsCycle{
+		inputs:   []tview.Primitive{},
+		current:  0,
+		parent:   mainCycle,
+		children: nil,
+	}
+
+	multipartFieldsCycle = &MultipartFieldsCycle{
 		inputs:   []tview.Primitive{},
 		current:  0,
 		parent:   mainCycle,
@@ -1000,7 +1007,37 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.PanelIndices.Request:
 			switch uiOrchestrator.CurrentTabIndex {
 			case uiOrchestrator.RPBodyTabIndex:
-				if uiOrchestrator.BodyEditMode {
+				contentType := getCurrentContentType(uiOrchestrator)
+				if contentType == "Multipart" {
+					// Multipart fields use dual-mode Name and Value inputs (like Headers/Queries):
+					// show dedicated hints depending on whether any row is currently in edit mode.
+					multipartInEditMode := false
+					for _, row := range currentMultipartFieldRows {
+						if (row.NameInput != nil && row.NameInput.IsEditMode()) ||
+							(row.ValueInput != nil && row.ValueInput.IsEditMode()) {
+							multipartInEditMode = true
+							break
+						}
+					}
+					if multipartInEditMode {
+						uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+							{"Esc", "Exit Edit"},
+							{"Tab", "Next Panel"},
+							{"q", "Quit"},
+						})) // Request Multipart (Edit)
+					} else {
+						uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+							{"i", "Edit Field"},
+							{"n", "New Field"},
+							{"d", "Delete Field"},
+							{"D", "Delete All"},
+							{"b", "Browse File"},
+							{"1-4/←/→", "Switch Tabs"},
+							{"Tab", "Next Panel"},
+							{"q", "Quit"},
+						})) // Request Multipart
+					}
+				} else if uiOrchestrator.BodyEditMode {
 					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
 						{"Esc", "Exit Edit"},
 						{"F4", "External Editor"},

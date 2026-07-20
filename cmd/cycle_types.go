@@ -205,6 +205,58 @@ func (c *QueryParamsCycle) UpdateInputs() {
 	}
 }
 
+// MultipartFieldsCycle handles cycling through multipart field inputs (Name, Type, Value, Checkbox).
+type MultipartFieldsCycle struct {
+	inputs   []tview.Primitive
+	current  int
+	parent   Cycle
+	children []tview.Primitive
+}
+
+func (c *MultipartFieldsCycle) Next() tview.Primitive {
+	if c.current < len(c.inputs)-1 {
+		c.current++
+		return c.inputs[c.current]
+	} else {
+		c.current = 0
+		return nil
+	}
+}
+
+func (c *MultipartFieldsCycle) Prev() tview.Primitive {
+	if c.current > 0 {
+		c.current--
+		return c.inputs[c.current]
+	} else {
+		c.current = len(c.inputs) - 1
+		return nil
+	}
+}
+
+func (c *MultipartFieldsCycle) GetCurrent() tview.Primitive {
+	return c.inputs[c.current]
+}
+
+func (c *MultipartFieldsCycle) Contains(p tview.Primitive) bool {
+	for _, input := range c.inputs {
+		if input == p {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *MultipartFieldsCycle) GetParent() Cycle {
+	return c.parent
+}
+
+func (c *MultipartFieldsCycle) UpdateInputs() {
+	c.inputs = []tview.Primitive{}
+	for _, row := range currentMultipartFieldRows {
+		c.inputs = append(c.inputs, row.NameInput, row.TypeDropdown, row.ValueInput, row.Checkbox)
+	}
+}
+
 // EnvironmentsCycle handles cycling through header inputs
 type EnvironmentsCycle struct {
 	inputs   []tview.Primitive
