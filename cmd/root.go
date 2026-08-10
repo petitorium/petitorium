@@ -7,13 +7,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
 	"github.com/petitorium/petitorium/config"
 	"github.com/petitorium/petitorium/plugins"
 	"github.com/petitorium/petitorium/version"
 )
+
+var configFileFlag string
+var dataDirFlag string
 
 var rootCmd = &cobra.Command{
 	Use:     "petitorium",
@@ -30,7 +32,37 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentFlags().StringVarP(&configFileFlag, "config", "c", "", "Path to config file (default: <data-dir>/config.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&dataDirFlag, "data-dir", "d", "", "Path to data directory (default: OS config dir/petitorium)")
+
 	cobra.OnInitialize(func() {
+		// Resolve data directory
+		dir, err := config.ResolveAppDir(dataDirFlag)
+		if err != nil {
+			fmt.Printf("Error resolving data directory: %v\n", err)
+			os.Exit(1)
+		}
+		config.AppDir = dir
+
+		// Auto-create data dir when --data-dir points to a non-existent path
+		if dataDirFlag != "" {
+			if _, err := os.Stat(dir); os.IsNotExist(err) {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					fmt.Printf("Error creating data directory: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Printf("Initialized data directory: %s\n", dir)
+			}
+		}
+
+		// Resolve config file path (defaults to <AppDir>/config.yaml)
+		cfgFile, err := config.ResolveConfigFile(configFileFlag)
+		if err != nil {
+			fmt.Printf("Error resolving config file: %v\n", err)
+			os.Exit(1)
+		}
+		config.ConfigFile = cfgFile
+
 		if err := config.LoadConfig(); err != nil {
 			fmt.Printf("Error loading config: %v\n", err)
 			os.Exit(1)
@@ -54,8 +86,7 @@ func runTUI(cmd *cobra.Command, args []string) {
 	}
 
 	// Setup plugin manager
-	home, _ := homedir.Dir()
-	pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
+	pluginDir := filepath.Join(config.AppDir, "plugins", "available")
 	os.MkdirAll(pluginDir, 0755)
 	pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
 	defer pm.Close()

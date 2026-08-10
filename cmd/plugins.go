@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
 	"github.com/petitorium/petitorium-plugin-sdk/types"
@@ -24,8 +23,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available plugins",
 	Run: func(cmd *cobra.Command, args []string) {
-		home, _ := homedir.Dir()
-		pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
+		pluginDir := filepath.Join(config.AppDir, "plugins", "available")
 
 		entries, err := os.ReadDir(pluginDir)
 		if err != nil {
@@ -60,8 +58,7 @@ var enableCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
-		home, _ := homedir.Dir()
-		pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
+		pluginDir := filepath.Join(config.AppDir, "plugins", "available")
 		pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
 
 		if err := pm.EnablePlugin(name); err != nil {
@@ -84,8 +81,7 @@ var disableCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
-		home, _ := homedir.Dir()
-		pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
+		pluginDir := filepath.Join(config.AppDir, "plugins", "available")
 		pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
 
 		if err := pm.DisablePlugin(name); err != nil {
@@ -186,8 +182,7 @@ var installCmd = &cobra.Command{
 			}
 		}
 
-		home, _ := homedir.Dir()
-		pluginDir := filepath.Join(home, ".config", "petitorium", "plugins", "available")
+		pluginDir := filepath.Join(config.AppDir, "plugins", "available")
 		pm := plugins.NewPluginManager(&config.C.Plugins, pluginDir)
 
 		fmt.Printf("Installing %s (%s)...\n", target.Name, version)

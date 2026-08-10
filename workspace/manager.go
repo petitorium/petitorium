@@ -10,20 +10,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
 
 	"github.com/petitorium/petitorium/config"
 )
 
 func getWorkspaceFilePath() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-
-	configDir := filepath.Join(home, ".config", "petitorium")
-	return filepath.Join(configDir, "workspace.yaml"), nil
+	return filepath.Join(config.AppDir, "workspace.yaml"), nil
 }
 
 // writeFileAtomic writes data to path atomically: it writes to a temp file in
@@ -67,18 +60,11 @@ func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 }
 
 func getWorkspaceManagerFilePath() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-
-	configDir := filepath.Join(home, ".config", "petitorium")
-	return filepath.Join(configDir, "workspaces.yaml"), nil
+	return filepath.Join(config.AppDir, "workspaces.yaml"), nil
 }
 
 func getWorkspaceDir(name string) string {
-	home, _ := homedir.Dir()
-	return filepath.Join(home, ".config", "petitorium", "workspaces", name)
+	return filepath.Join(config.AppDir, "workspaces", name)
 }
 
 func migrateFromOldFormat() error {
@@ -576,13 +562,7 @@ func SaveWorkspaceLegacy(workspace *Workspace) error {
 
 // Helper function to get expansion state file path
 func getEnvironmentsFilePath() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-
-	configDir := filepath.Join(home, ".config", "petitorium")
-	return filepath.Join(configDir, "environments.yaml"), nil
+	return filepath.Join(config.AppDir, "environments.yaml"), nil
 }
 
 func createDefaultEnvironments() []Environment {
@@ -708,13 +688,7 @@ func SaveEnvironments(environments []Environment) error {
 }
 
 func getExpansionStateFilePath() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-
-	configDir := filepath.Join(home, ".config", "petitorium")
-	return filepath.Join(configDir, "expansion_state.yaml"), nil
+	return filepath.Join(config.AppDir, "expansion_state.yaml"), nil
 }
 
 // SaveExpansionState saves the expansion state of collections

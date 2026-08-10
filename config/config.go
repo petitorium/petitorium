@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
@@ -247,15 +246,7 @@ func LoadConfig() error {
 		return err
 	}
 
-	home, err := homedir.Dir()
-	if err != nil {
-		return err
-	}
-
-	configPath := filepath.Join(home, ".config", "petitorium")
-	viper.AddConfigPath(configPath)
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
+	viper.SetConfigFile(ConfigFile)
 
 	_ = viper.ReadInConfig()
 
@@ -321,12 +312,7 @@ func LoadConfig() error {
 }
 
 func SaveConfig(config *AppConfig) error {
-	home, err := homedir.Dir()
-	if err != nil {
-		return err
-	}
-	configDir := filepath.Join(home, ".config", "petitorium")
-	configFile := filepath.Join(configDir, "config.yaml")
+	configDir := filepath.Dir(ConfigFile)
 
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return err
@@ -339,7 +325,7 @@ func SaveConfig(config *AppConfig) error {
 
 	data = fixNerdFontEscapes(data)
 
-	return os.WriteFile(configFile, data, 0644)
+	return os.WriteFile(ConfigFile, data, 0644)
 }
 
 func fixNerdFontEscapes(data []byte) []byte {
@@ -891,18 +877,12 @@ func fixNerdFontEscapes(data []byte) []byte {
 	return []byte(result)
 }
 
-func InitConfig() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-	configDir := filepath.Join(home, ".config", "petitorium")
-	configFile := filepath.Join(configDir, "config.yaml")
-
+func InitConfig(configFile string) (string, error) {
 	if _, err := os.Stat(configFile); !os.IsNotExist(err) {
 		return configFile, errors.New("configuration file already exists")
 	}
 
+	configDir := filepath.Dir(configFile)
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return "", err
 	}
