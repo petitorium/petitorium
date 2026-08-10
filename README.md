@@ -145,7 +145,7 @@ Fields can have **dependencies** (e.g., the JSONPath field is only enabled when 
 
 **Configuring the shortcut:**
 
-Edit `~/.config/petitorium/config.yaml`:
+Edit your config file (default: `~/.config/petitorium/config.yaml`):
 ```yaml
 shortcuts:
   openCommandRunner: "ctrl+m"  # or "ctrl+shift+r", "f5", etc.
@@ -180,11 +180,44 @@ _Note: The new theme will be applied when you restart Petitorium._
 
 ## Configuration
 
-Configuration files are stored in `~/.config/petitorium/`:
+Petitorium separates **settings** (config file) from **data** (workspaces, plugins, environments). Both default to the same OS-appropriate directory:
 
-- `config.yaml` - Application settings and themes
-- `collections.yaml` - API collections and requests
+| OS | Default data directory |
+|----|----------------------|
+| Linux | `~/.config/petitorium/` |
+| macOS | `~/Library/Application Support/petitorium/` |
+| Windows | `%AppData%\petitorium\` |
+
+### CLI Flags
+
+```bash
+petitorium                              # use defaults
+petitorium -c ~/my-configs/dark.yaml    # custom config file, shared data dir
+petitorium -d ~/project/.petitorium     # custom data dir, config inside it
+petitorium -c ~/configs/test.yaml -d ~/project/.petitorium  # both custom
+```
+
+- `-c, --config` — Path to a **config file**. Defaults to `<data-dir>/config.yaml`. Useful for testing config variants without touching the main one.
+- `-d, --data-dir` — Path to a **data directory**. Defaults to the OS config dir + `/petitorium`. Contains workspaces, plugins, and environments. Auto-created if missing.
+
+### Initializing a Config File
+
+```bash
+petitorium init                    # <data-dir>/config.yaml
+petitorium init .                  # ./config.yaml
+petitorium init ./pet.yaml         # ./pet.yaml
+petitorium init ~/my-configs/      # ~/my-configs/config.yaml
+```
+
+The `init` command accepts an optional `[path]` argument. If the path is an existing directory (or ends with `/`), `config.yaml` is created inside it. Otherwise the path is treated as a file path. Existing files are never overwritten.
+
+### Config File Contents
+
+- `config.yaml` - Application settings, theme, shortcuts, plugin config
+- `workspaces.yaml` - Workspace index
+- `workspaces/<name>/` - Per-workspace collections and data
 - `expansion_state.yaml` - Collection expansion states
+- `plugins/available/` - Plugin binaries
 
 ## Documentation
 
