@@ -2687,6 +2687,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 		colors,
 	)
 	contentTypeDropdown.SetBorder(false)
+	contentTypeDropdown.SetCurrentOption(0)
 
 	// Create tab pages
 	tabPages := tview.NewPages()
