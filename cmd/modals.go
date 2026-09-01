@@ -11,6 +11,36 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
+// modalSize defines a standard modal dimension. New modals must use one of
+// the predefined sizes below via createSizedModal. Fall back to createModal
+// with explicit dimensions only when the height must adapt to the content
+// (e.g. a list sized to its number of entries).
+type modalSize struct {
+	Width  int
+	Height int
+}
+
+// Standard modal sizes.
+var (
+	// modalSizeConfirm: yes/no confirmations, deletions, short notices, progress.
+	modalSizeConfirm = modalSize{Width: 50, Height: 8}
+	// modalSizeForm: single-field forms (rename, duplicate, create item, row editors).
+	modalSizeForm = modalSize{Width: 50, Height: 10}
+	// modalSizeEditor: multi-field forms (new request, duplicate request, move item).
+	modalSizeEditor = modalSize{Width: 60, Height: 15}
+	// modalSizeSearch: search overlays with a results list.
+	modalSizeSearch = modalSize{Width: 100, Height: 20}
+	// modalSizeLarge: complex editors (tag editor, command runner, file pickers).
+	modalSizeLarge = modalSize{Width: 80, Height: 25}
+	// modalSizeFullscreen: split-panel modals (environments, workspaces, marketplace).
+	modalSizeFullscreen = modalSize{Width: 120, Height: 40}
+)
+
+// createSizedModal creates a centered modal dialog with a standard size.
+func createSizedModal(p tview.Primitive, size modalSize, backgroundColor tcell.Color) tview.Primitive {
+	return createModal(p, size.Width, size.Height, backgroundColor)
+}
+
 // showEnvironmentModal displays the environment variables modal
 func showEnvironmentModal(
 	ui *UIOrchestrator,
@@ -324,7 +354,7 @@ func showEnvironmentModal(
 			}
 			return event
 		})
-		modal := createModal(form, 50, 8, ui.Colors.Background)
+		modal := createSizedModal(form, modalSizeConfirm, ui.Colors.Background)
 		ui.Pages.AddPage("deleteEnvironment", modal, true, true)
 		ui.App.SetFocus(form)
 	}
@@ -340,7 +370,7 @@ func showEnvironmentModal(
 			}
 			return event
 		})
-		modal := createModal(form, 24, 10, ui.Colors.Background)
+		modal := createSizedModal(form, modalSizeForm, ui.Colors.Background)
 		ui.Pages.AddPage("renameEnvironment", modal, true, true)
 		ui.App.SetFocus(form)
 	}
@@ -356,7 +386,7 @@ func showEnvironmentModal(
 			}
 			return event
 		})
-		modal := createModal(form, 24, 10, ui.Colors.Background)
+		modal := createSizedModal(form, modalSizeForm, ui.Colors.Background)
 		ui.Pages.AddPage("cloneEnvironment", modal, true, true)
 		ui.App.SetFocus(form)
 	}
@@ -400,7 +430,7 @@ func showEnvironmentModal(
 		// Rebuild the modal content with the refreshed list.
 		content := buildModalContent(newLeftPanel)
 
-		modal := createModal(content, 120, 40, ui.Colors.Background)
+		modal := createSizedModal(content, modalSizeFullscreen, ui.Colors.Background)
 		ui.EnvModalEditor = nil
 		ui.Pages.RemovePage("envVariables")
 		ui.Pages.AddPage("envVariables", modal, true, true)
@@ -436,7 +466,7 @@ func showEnvironmentModal(
 		}
 	}
 
-	modal := createModal(content, 120, 40, ui.Colors.Background)
+	modal := createSizedModal(content, modalSizeFullscreen, ui.Colors.Background)
 	ui.Pages.AddPage("envVariables", modal, true, true)
 	ui.EnvModalEditor = envEditPanel
 	ui.EnvModalViewPanel = envViewPanel
@@ -504,7 +534,7 @@ func showWorkspaceModal(
 			}
 			return event
 		})
-		modal := createModal(form, 50, 8, ui.Colors.Background)
+		modal := createSizedModal(form, modalSizeConfirm, ui.Colors.Background)
 		ui.Pages.AddPage("deleteWorkspace", modal, true, true)
 		ui.App.SetFocus(form)
 	}
@@ -520,7 +550,7 @@ func showWorkspaceModal(
 			}
 			return event
 		})
-		modal := createModal(form, 50, 8, ui.Colors.Background)
+		modal := createSizedModal(form, modalSizeForm, ui.Colors.Background)
 		ui.Pages.AddPage("renameWorkspace", modal, true, true)
 		ui.App.SetFocus(form)
 	}
@@ -536,7 +566,7 @@ func showWorkspaceModal(
 			}
 			return event
 		})
-		modal := createModal(form, 50, 10, ui.Colors.Background)
+		modal := createSizedModal(form, modalSizeForm, ui.Colors.Background)
 		ui.Pages.AddPage("duplicateWorkspace", modal, true, true)
 		ui.App.SetFocus(form)
 	}
@@ -552,7 +582,7 @@ func showWorkspaceModal(
 			}
 			return event
 		})
-		modal := createModal(form, 50, 8, ui.Colors.Background)
+		modal := createSizedModal(form, modalSizeForm, ui.Colors.Background)
 		ui.Pages.AddPage("createWorkspace", modal, true, true)
 		ui.App.SetFocus(form)
 	}
@@ -590,7 +620,7 @@ func showWorkspaceModal(
 		return event
 	})
 
-	modal := createModal(content, 120, 40, ui.Colors.Background)
+	modal := createSizedModal(content, modalSizeFullscreen, ui.Colors.Background)
 	ui.Pages.RemovePage("workspaceModal")
 	ui.Pages.AddPage("workspaceModal", modal, true, true)
 	ui.UpdateFooter()
@@ -710,7 +740,7 @@ func showProgressModal(app *tview.Application, pages *tview.Pages, title string,
 		}
 	}()
 
-	modal := createModal(textView, 40, 7, colors.Background)
+	modal := createSizedModal(textView, modalSizeConfirm, colors.Background)
 	pages.AddPage("progress", modal, true, true)
 
 	stop := func() {
@@ -768,7 +798,7 @@ func showConfirmModal(
 	flex.SetBorderColor(colors.BorderFocus)
 	flex.SetTitleColor(colors.Title)
 
-	modal := createModal(flex, 50, 10, colors.Background)
+	modal := createSizedModal(flex, modalSizeConfirm, colors.Background)
 	pages.AddPage("confirm", modal, true, true)
 
 	return form

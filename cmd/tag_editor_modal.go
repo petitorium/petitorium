@@ -315,7 +315,7 @@ func showTagEditorModal(ui *UIOrchestrator, target *textInputTarget, dt *Detecte
 	form.SetBorderColor(colors.BorderFocus)
 	form.SetTitleColor(colors.Title)
 
-	modal := createModal(form, 80, 20, colors.Background)
+	modal := createSizedModal(form, modalSizeLarge, colors.Background)
 	pages.AddPage("tagEditorModal", modal, true, true)
 	app.SetFocus(form)
 }

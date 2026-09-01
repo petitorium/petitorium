@@ -842,7 +842,7 @@ func createQueryParamsTabWithData(colors *ColorManager,
 			}
 		}
 		form := createDeleteAllQueryParamsConfirm(app, pages, colors, deleteCallback)
-		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("deleteAllQueryParams", modal, true, true)
 		app.SetFocus(form)
 	})
@@ -1241,7 +1241,7 @@ func createHeadersTabWithData(colors *ColorManager,
 			}
 		}
 		form := createDeleteAllHeadersConfirm(app, pages, colors, deleteCallback)
-		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("deleteAllHeaders", modal, true, true)
 		app.SetFocus(form)
 	})
@@ -1449,7 +1449,7 @@ func createCookiesTabWithData(colors *ColorManager,
 			}
 		}
 		form := createDeleteAllCookiesConfirm(app, pages, colors, clearCallback)
-		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("clearAllCookies", modal, true, true)
 		app.SetFocus(form)
 	})
@@ -1652,7 +1652,7 @@ func addCookieRow(cookiesList *tview.Flex,
 			}
 		}
 		form := createDeleteCookieConfirm(app, pages, colors, "this cookie", deleteCallback)
-		modal := createModal(form, 40, 8, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("deleteCookie", modal, true, true)
 		app.SetFocus(form)
 	})
@@ -1827,7 +1827,7 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 			}
 		}
 		form := createDeleteCookieConfirm(app, pages, colors, name, deleteCallback)
-		modal := createModal(form, 40, 8, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("deleteCookie", modal, true, true)
 		app.SetFocus(form)
 	})
@@ -3494,7 +3494,7 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 			}
 		}
 		form := createDeleteAllMultipartFieldsConfirm(app, pages, colors, deleteCallback)
-		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("deleteAllMultipartFields", modal, true, true)
 		app.SetFocus(form)
 	})
@@ -3687,7 +3687,7 @@ func addMultipartFieldRowWithData(fieldsList *tview.Flex, colors *ColorManager, 
 			}
 		}
 		form := createDeleteMultipartFieldConfirm(app, pages, colors, deleteCallback, previousFocus)
-		modal := createModal(form, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("deleteMultipartField", modal, true, true)
 		app.SetFocus(form)
 	})
@@ -3927,7 +3927,7 @@ func openFilePickerModal(app *tview.Application, pages *tview.Pages, getText fun
 		return event
 	})
 
-	modal := createModal(flex, 70, 25, colors.Background)
+	modal := createSizedModal(flex, modalSizeLarge, colors.Background)
 	pages.AddPage("filePickerModal", modal, true, true)
 	app.SetFocus(fb.tree)
 }
@@ -4034,7 +4034,7 @@ func openSaveFileModal(app *tview.Application, pages *tview.Pages, colors *Color
 		return event
 	})
 
-	modal := createModal(flex, 80, 30, colors.Background)
+	modal := createSizedModal(flex, modalSizeLarge, colors.Background)
 	pages.AddPage("saveResponseModal", modal, true, true)
 	app.SetFocus(fb.tree)
 }

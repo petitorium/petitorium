@@ -1897,7 +1897,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Collection shortcuts (only when not in input fields and no form popup is active)
 		if ui.MainCycle.current == ui.PanelIndices.Collections && event.Rune() == 'N' && !isFormPopupActive {
 			form := createCollectionFormWithLocation(ui)
-			modal := createModal(form, 50, 12, tcell.ColorDefault)
+			modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 			setFormPopupActive(true)
 			ui.Pages.AddPage("newCollection", modal, true, true)
 			ui.App.SetFocus(form)
@@ -1920,7 +1920,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 				if selectedCollection != nil {
 					form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-					modal := createModal(form, 60, 14, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 					setFormPopupActive(true)
 					ui.Pages.AddPage("newRequest", modal, true, true)
 					ui.App.SetFocus(form)
@@ -1945,7 +1945,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 					// Normal operation - create new collection/request
 					if event.Rune() == 'N' {
 						form := createCollectionFormWithLocation(ui)
-						modal := createModal(form, 50, 12, tcell.ColorDefault)
+						modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 						setFormPopupActive(true)
 						ui.Pages.AddPage("newCollection", modal, true, true)
 						ui.App.SetFocus(form)
@@ -1966,7 +1966,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 							if selectedCollection != nil {
 								form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-								modal := createModal(form, 60, 14, tcell.ColorDefault)
+								modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 								setFormPopupActive(true)
 								ui.Pages.AddPage("newRequest", modal, true, true)
 								ui.App.SetFocus(form)
@@ -1985,14 +1985,14 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				if col := ui.collectionFromNode(node); col != nil {
 					// Rename collection
 					form := createRenameCollectionForm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-					modal := createModal(form, 25, 10, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 					ui.Pages.AddPage("renameCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req := ui.requestFromNode(node); req != nil {
 					// Rename request - need to find parent collection
 					form := createRenameRequestForm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-					modal := createModal(form, 47, 10, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 					ui.Pages.AddPage("renameRequest", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
@@ -2006,13 +2006,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if node != nil {
 				if col := ui.collectionFromNode(node); col != nil {
 					form := createMoveCollectionForm(ui, col)
-					modal := createModal(form, 40, 12, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 					ui.Pages.AddPage("moveCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req := ui.requestFromNode(node); req != nil {
 					form := createMoveRequestForm(ui, req)
-					modal := createModal(form, 40, 10, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 					ui.Pages.AddPage("moveRequest", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
@@ -2026,13 +2026,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if node != nil {
 				if col := ui.collectionFromNode(node); col != nil {
 					form := createDeleteCollectionConfirm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-					modal := createModal(form, 50, 8, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
 					ui.Pages.AddPage("deleteCollection", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
 				} else if req := ui.requestFromNode(node); req != nil {
 					form := createDeleteRequestConfirm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-					modal := createModal(form, 50, 8, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
 					ui.Pages.AddPage("deleteRequest", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil

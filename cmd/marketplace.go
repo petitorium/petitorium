@@ -449,6 +449,6 @@ func (ui *UIOrchestrator) ShowMarketplace() {
 		})
 	}()
 
-	ui.Pages.AddPage("marketplace", createModal(m, 130, 30, ui.Colors.Background), true, true)
+	ui.Pages.AddPage("marketplace", createSizedModal(m, modalSizeFullscreen, ui.Colors.Background), true, true)
 	ui.App.SetFocus(m.searchField)
 }

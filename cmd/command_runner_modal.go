@@ -426,7 +426,7 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 	layout.SetBorderColor(colors.BorderFocus)
 	layout.SetTitleColor(colors.Title)
 
-	modal := createModal(layout, 80, 25, colors.Background)
+	modal := createSizedModal(layout, modalSizeLarge, colors.Background)
 	pages.AddPage("commandRunnerModal", modal, true, true)
 	app.SetFocus(form)
 }

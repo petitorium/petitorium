@@ -648,7 +648,7 @@ func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
 		form := createCollectionFormWithLocation(ui)
-		modal := createModal(form, 30, 9, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 		ui.Pages.AddPage("newCollection", modal, true, true)
 		ui.App.SetFocus(form)
 		return nil
@@ -677,7 +677,7 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 			if selectedCollection != nil {
 				form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-				modal := createModal(form, 60, 15, tcell.ColorDefault)
+				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 				ui.Pages.AddPage("newRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
@@ -702,7 +702,7 @@ func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 
 				if selectedCollection != nil {
 					form := createDuplicateRequestForm(ui.App, ui.Pages, req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-					modal := createModal(form, 60, 15, tcell.ColorDefault)
+					modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 					ui.Pages.AddPage("duplicateRequest", modal, true, true)
 					ui.App.SetFocus(form)
 					return nil
@@ -724,14 +724,14 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 			if col := ui.collectionFromNode(node); col != nil {
 				// Rename collection
 				form := createRenameCollectionForm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createModal(form, 25, 7, tcell.ColorDefault)
+				modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 				ui.Pages.AddPage("renameCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req := ui.requestFromNode(node); req != nil {
 				// Rename request - need to find parent collection
 				form := createRenameRequestForm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createModal(form, 25, 7, tcell.ColorDefault)
+				modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 				ui.Pages.AddPage("renameRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
@@ -746,7 +746,7 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 
 			// Create a simple rename form
 			form := createRenameEnvironmentForm(ui.App, ui.Pages, env, ui.EnvironmentsData, ui.WorkspaceData, ui.EnvDropdown, ui.EnvConfigButton, ui.Colors, ui.EnvConfigButton)
-			modal := createModal(form, 30, 8, tcell.ColorDefault)
+			modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 			ui.Pages.AddPage("renameEnvironment", modal, true, true)
 			ui.App.SetFocus(form)
 			return nil
@@ -803,13 +803,13 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		if node != nil {
 			if col := ui.collectionFromNode(node); col != nil {
 				form := createMoveCollectionForm(ui, col)
-				modal := createModal(form, 40, 12, tcell.ColorDefault)
+				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 				ui.Pages.AddPage("moveCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req := ui.requestFromNode(node); req != nil {
 				form := createMoveRequestForm(ui, req)
-				modal := createModal(form, 30, 7, tcell.ColorDefault)
+				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
 				ui.Pages.AddPage("moveRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
@@ -829,13 +829,13 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 		if node != nil {
 			if col := ui.collectionFromNode(node); col != nil {
 				form := createDeleteCollectionConfirm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-				modal := createModal(form, 66, 8, tcell.ColorDefault)
+				modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteCollection", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
 			} else if req := ui.requestFromNode(node); req != nil {
 				form := createDeleteRequestConfirm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-				modal := createModal(form, 40, 8, tcell.ColorDefault)
+				modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
 				ui.Pages.AddPage("deleteRequest", modal, true, true)
 				ui.App.SetFocus(form)
 				return nil
@@ -1883,7 +1883,7 @@ func openCollectionSearch(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Even
 		ui.EnterModal()
 		m := NewCollectionSearchModal(ui)
 		m.returnFocus = currentFocus
-		ui.Pages.AddPage("collectionSearch", createModal(m, 100, 20, ui.Colors.Background), true, true)
+		ui.Pages.AddPage("collectionSearch", createSizedModal(m, modalSizeSearch, ui.Colors.Background), true, true)
 		ui.App.SetFocus(m.searchField)
 		return nil
 	}

@@ -1096,7 +1096,7 @@ func createWorkspaceManagementForm(
 	form.AddButton("Create New Workspace", func() {
 		pages.RemovePage("workspaceMenu")
 		createForm := createNewWorkspaceForm(app, pages, ui, rootNode, collectionsTreeView, colors)
-		modal := createModal(createForm, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(createForm, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("createWorkspace", modal, true, true)
 		app.SetFocus(createForm)
 	})
@@ -1109,7 +1109,7 @@ func createWorkspaceManagementForm(
 	form.AddButton("Rename Current Workspace", func() {
 		pages.RemovePage("workspaceMenu")
 		renameForm := createRenameWorkspaceForm(app, pages, currentWorkspace, ui.WorkspaceConfigButton, colors)
-		modal := createModal(renameForm, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(renameForm, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("renameWorkspace", modal, true, true)
 		app.SetFocus(renameForm)
 	})
@@ -1117,7 +1117,7 @@ func createWorkspaceManagementForm(
 	form.AddButton("Duplicate Workspace", func() {
 		pages.RemovePage("workspaceMenu")
 		duplicateForm := createDuplicateWorkspaceForm(app, pages, currentWorkspace, ui.WorkspaceConfigButton, colors)
-		modal := createModal(duplicateForm, 50, 10, tcell.ColorDefault)
+		modal := createSizedModal(duplicateForm, modalSizeForm, tcell.ColorDefault)
 		pages.AddPage("duplicateWorkspace", modal, true, true)
 		app.SetFocus(duplicateForm)
 	})
@@ -1125,7 +1125,7 @@ func createWorkspaceManagementForm(
 	form.AddButton("Delete Workspace", func() {
 		pages.RemovePage("workspaceMenu")
 		deleteForm := createDeleteWorkspaceForm(app, pages, currentWorkspace, ui.WorkspaceConfigButton, colors)
-		modal := createModal(deleteForm, 50, 8, tcell.ColorDefault)
+		modal := createSizedModal(deleteForm, modalSizeConfirm, tcell.ColorDefault)
 		pages.AddPage("deleteWorkspace", modal, true, true)
 		app.SetFocus(deleteForm)
 	})
@@ -1293,8 +1293,8 @@ func createDuplicateWorkspaceForm(
 	form.SetButtonTextColor(colors.Foreground)
 
 	nameInput := tview.NewInputField().
-		SetLabel("New Workspace Name: ").
-		SetFieldWidth(30)
+		SetLabel("NeX Workspace Name: ").
+		SetFieldWidth(25)
 
 	form.AddFormItem(nameInput)
 

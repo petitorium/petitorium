@@ -105,7 +105,22 @@ Group imports into three blocks separated by newlines:
 
 ### Creating a New Modal
 
-Use `createModal` from `cmd/modals.go` to wrap forms or text views. Modals should be added to the `Pages` primitive.
+Use `createModal` from `cmd/ui.go` to wrap forms or text views. Modals should be added to the `Pages` primitive.
+
+### Standard Modal Sizes
+
+All modals must use one of the standard sizes defined in `cmd/modals.go` via `createSizedModal(p tview.Primitive, size modalSize, backgroundColor tcell.Color)`:
+
+| Size | Dimensions | Used for |
+| --- | --- | --- |
+| `modalSizeConfirm` | 50x8 | yes/no confirmations, deletions, short notices, progress |
+| `modalSizeForm` | 50x10 | single-field forms (rename, duplicate, create item, row editors) |
+| `modalSizeEditor` | 60x15 | multi-field forms (new request, duplicate request, move item) |
+| `modalSizeSearch` | 100x20 | search overlays with a results list |
+| `modalSizeLarge` | 80x25 | complex editors (tag editor, command runner, file pickers) |
+| `modalSizeFullscreen` | 120x40 | split-panel modals (environments, workspaces, marketplace) |
+
+Only fall back to `createModal` with explicit dimensions when the height must adapt to the content (e.g. a list sized to its number of entries, as in the tag picker and plugin version picker).
 
 ### External Editor Integration
 

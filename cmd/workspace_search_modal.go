@@ -251,7 +251,7 @@ func (m *WorkspaceSearchModal) close() {
 func showWorkspaceSearchModal(ui *UIOrchestrator) {
 	ui.EnterModal()
 	m := NewWorkspaceSearchModal(ui)
-	ui.Pages.AddPage(workspaceSearchPageName, createModal(m, 110, 20, ui.Colors.Background), true, true)
+	ui.Pages.AddPage(workspaceSearchPageName, createSizedModal(m, modalSizeSearch, ui.Colors.Background), true, true)
 	ui.App.SetFocus(m.searchField)
 }
 
