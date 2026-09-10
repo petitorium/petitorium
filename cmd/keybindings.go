@@ -164,6 +164,12 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Description: "Show plugin marketplace",
 			Context:     "global",
 		},
+		{
+			Key:         tcell.KeyCtrlP,
+			Action:      openCommandPalette,
+			Description: "Open command palette",
+			Context:     "global",
+		},
 	}
 
 	// Body view panel keybindings (vim-style navigation)
@@ -780,6 +786,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"renameWorkspace",
 		"workspaceModal",
 		"workspaceSearch",
+		"commandPalette",
 		"commandRunnerModal",
 		"tagPickerModal",
 		"tagEditorModal",
@@ -1646,6 +1653,14 @@ func saveResponseAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 
 func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	ui.ShowMarketplace()
+	return nil
+}
+
+func openCommandPalette(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+	showCommandPaletteModal(ui)
 	return nil
 }
 

@@ -23,6 +23,7 @@ A powerful Terminal API Testing Client
 - `Ctrl+b` - Jump to request panel
 - `Ctrl+s` - Jump to response panel
 - `Ctrl+o` - Open plugin marketplace
+- `Ctrl+p` - Open command palette
 - `Alt+r` (configurable) - Open tag editor for plugin variables
 - `q` / `Q` - Quit application
 

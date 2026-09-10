@@ -85,6 +85,27 @@ func TestHandleFxKey(t *testing.T) {
 	}
 }
 
+func TestCommandPaletteKeybinding(t *testing.T) {
+	kbm := NewKeyBindingManager()
+
+	event := tcell.NewEventKey(tcell.KeyCtrlP, 0, tcell.ModCtrl)
+
+	found := false
+	for _, b := range kbm.globalBindings {
+		if b.Matches(event) {
+			found = true
+			if b.Description != "Open command palette" {
+				t.Errorf("expected description 'Open command palette', got '%s'", b.Description)
+			}
+			break
+		}
+	}
+
+	if !found {
+		t.Error("Ctrl+P not bound in global context for the command palette")
+	}
+}
+
 func TestShowCommandRunnerModalActionPassesThroughOnButton(t *testing.T) {
 	app := tview.NewApplication()
 	btn := createThemedButton(" Send ", &ColorManager{})
