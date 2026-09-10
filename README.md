@@ -22,7 +22,7 @@ A powerful Terminal API Testing Client
 - `Ctrl+u` - Jump to URL bar
 - `Ctrl+b` - Jump to request panel
 - `Ctrl+s` - Jump to response panel
-- `Ctrl+p` - Open plugin marketplace
+- `Ctrl+o` - Open plugin marketplace
 - `Alt+r` (configurable) - Open tag editor for plugin variables
 - `q` / `Q` - Quit application
 

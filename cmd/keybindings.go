@@ -159,7 +159,7 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "global",
 		},
 		{
-			Key:         tcell.KeyCtrlP,
+			Key:         tcell.KeyCtrlO,
 			Action:      showMarketplaceAction,
 			Description: "Show plugin marketplace",
 			Context:     "global",
