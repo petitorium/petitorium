@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -10,7 +11,7 @@ func TestNewCommandPaletteModalRendering(t *testing.T) {
 	ui := &UIOrchestrator{
 		App:          tview.NewApplication(),
 		Pages:        tview.NewPages(),
-		Colors:       &ColorManager{},
+		Colors:       &ColorManager{Placeholder: tcell.ColorTeal},
 		UpdateFooter: func() {},
 	}
 
@@ -36,10 +37,15 @@ func TestNewCommandPaletteModalRendering(t *testing.T) {
 		t.Errorf("expected first command row at index 1, got %d", m.firstCommandRow)
 	}
 
-	// Row 0 is the first category section header: not selectable and not
-	// mapped to a command.
+	// Row 0 is the first category section header: not selectable, not mapped
+	// to a command, and rendered in the subdued placeholder color so section
+	// headers don't compete with commands for attention. NewTableCell parks
+	// text colors in the cell Style, so compare against a reference cell.
 	if c := m.table.GetCell(0, 0); !c.NotSelectable {
 		t.Error("category section row should not be selectable")
+	}
+	if want, got := tview.NewTableCell("").SetTextColor(tcell.ColorTeal).Style, m.table.GetCell(0, 0).Style; got != want {
+		t.Errorf("category section row should use the subdued placeholder color, got style %v, want %v", got, want)
 	}
 	if _, ok := m.rowCommands[0]; ok {
 		t.Error("category section row must not map to a command")

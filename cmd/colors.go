@@ -108,6 +108,9 @@ func NewColorManager() *ColorManager {
 	if overrides.ValueColor != "" {
 		theme.ValueColor = overrides.ValueColor
 	}
+	if overrides.PlaceholderColor != "" {
+		theme.PlaceholderColor = overrides.PlaceholderColor
+	}
 
 	// Set up tview borders from theme configuration
 	setupBorders(theme)
@@ -132,6 +135,12 @@ func NewColorManager() *ColorManager {
 	valueColor := theme.ValueColor
 	if valueColor == "" {
 		valueColor = theme.ForegroundColor // Default to foreground color
+	}
+
+	// Set subdued text color with fallback for configs predating the field
+	placeholderColor := theme.PlaceholderColor
+	if placeholderColor == "" {
+		placeholderColor = "#4A5053"
 	}
 
 	// Set selected colors with fallbacks to maintain backward compatibility
@@ -160,7 +169,7 @@ func NewColorManager() *ColorManager {
 		DropdownFocus:          hexToColor(theme.DropdownFocusedBackground),
 		InputBackground:        hexToColor(inputBackground),
 		InputBackgroundLighter: hexToColor(inputBackgroundLighter),
-		Placeholder:            hexToColor("#4A5053"),
+		Placeholder:            hexToColor(placeholderColor),
 		Success:                hexToColor(status.Success),
 		Error:                  hexToColor(status.ClientError),
 		Warning:                hexToColor(status.Redirection),

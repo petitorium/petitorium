@@ -130,7 +130,7 @@ func (m *CommandPaletteModal) renderCommands() {
 			lastCategory = cmd.Category
 			row := m.table.GetRowCount()
 			m.table.SetCell(row, 0, tview.NewTableCell(" "+cmd.Category+" ").
-				SetTextColor(m.ui.Colors.Title).
+				SetTextColor(m.ui.Colors.Placeholder).
 				SetSelectable(false).
 				SetExpansion(1).
 				SetAlign(tview.AlignLeft))

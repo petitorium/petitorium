@@ -46,6 +46,7 @@ type ThemeConfig struct {
 	InputBackgroundLighterColor string       `mapstructure:"inputBackgroundLighterColor"` // Lighter variant of input background for additional contrast states
 	LabelColor                  string       `mapstructure:"labelColor"`                  // Color for form labels
 	ValueColor                  string       `mapstructure:"valueColor"`                  // Color for form values
+	PlaceholderColor            string       `mapstructure:"placeholderColor"`            // Subdued text color for placeholders and secondary text
 	Borders                     BorderConfig `mapstructure:"borders"`
 	BordersFocus                BorderConfig `mapstructure:"bordersFocus"`
 }
@@ -157,6 +158,7 @@ themeOverrides:
   # inputBackgroundColor: "#153035"
   # labelColor: "#95CEDA"
   # valueColor: "#e4e4e4"
+  # placeholderColor: "#565f89"
 
 ui:
   collectionExpansion: "closed"       # "closed", "expanded", or "remember"

@@ -3,6 +3,8 @@ package cmd
 import (
 	"strings"
 	"testing"
+
+	"github.com/petitorium/petitorium/config"
 )
 
 func TestTokyoNightNightTheme(t *testing.T) {
@@ -87,6 +89,47 @@ func TestGenericExtractionStillBuildsTheme(t *testing.T) {
 	}
 	if theme.UIColors.MethodColors.GET == "" {
 		t.Error("expected non-empty GET method color")
+	}
+}
+
+func TestColorManagerPlaceholderColor(t *testing.T) {
+	oldPlaceholder := config.C.Theme.PlaceholderColor
+	defer func() { config.C.Theme.PlaceholderColor = oldPlaceholder }()
+
+	config.C.Theme.PlaceholderColor = "#565f89"
+	cm := NewColorManager()
+	if got := colorToHex(cm.Placeholder); !strings.EqualFold(got, "#565f89") {
+		t.Errorf("Placeholder = %q, want theme placeholderColor #565f89", got)
+	}
+
+	// Configs predating the field keep the previous hardcoded default.
+	config.C.Theme.PlaceholderColor = ""
+	cm = NewColorManager()
+	if got := colorToHex(cm.Placeholder); !strings.EqualFold(got, "#4A5053") {
+		t.Errorf("Placeholder fallback = %q, want #4A5053", got)
+	}
+}
+
+func TestApplyThemePropagatesPlaceholderColor(t *testing.T) {
+	tm := GetThemeManager()
+
+	oldSyntaxTheme := config.C.SyntaxTheme
+	oldPlaceholder := config.C.Theme.PlaceholderColor
+	defer func() {
+		config.C.SyntaxTheme = oldSyntaxTheme
+		config.C.Theme.PlaceholderColor = oldPlaceholder
+	}()
+
+	if err := tm.ApplyTheme("tokyonight-night"); err != nil {
+		t.Fatalf("failed to apply tokyonight-night: %v", err)
+	}
+
+	theme, err := tm.GetTheme("tokyonight-night")
+	if err != nil {
+		t.Fatalf("failed to get theme: %v", err)
+	}
+	if got, want := config.C.Theme.PlaceholderColor, theme.UIColors.Placeholder; !strings.EqualFold(got, want) {
+		t.Errorf("config placeholderColor = %q, want %q", got, want)
 	}
 }
 
