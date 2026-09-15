@@ -105,3 +105,22 @@ func TestNewCollectionCommandUsesRealHandler(t *testing.T) {
 		t.Error("file.newCollection should use the real openNewCollectionForm handler, not a dummy")
 	}
 }
+
+func TestNewRequestCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var newReq *Command
+	for i := range commands {
+		if commands[i].ID == "file.newRequest" {
+			newReq = &commands[i]
+			break
+		}
+	}
+	if newReq == nil {
+		t.Fatal("file.newRequest command not found in registry")
+	}
+
+	if reflect.ValueOf(newReq.Handler).Pointer() != reflect.ValueOf(newRequestCommand).Pointer() {
+		t.Error("file.newRequest should use the real newRequestCommand handler, not a dummy")
+	}
+}

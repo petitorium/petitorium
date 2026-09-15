@@ -659,26 +659,8 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		// New request - check if a collection or request is selected
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			var selectedCollection *workspace.Collection
-
-			if col := ui.collectionFromNode(node); col != nil {
-				// Collection is selected
-				selectedCollection = col
-			} else if req := ui.requestFromNode(node); req != nil {
-				// Request is selected - find its parent collection by ID
-				selectedCollection = workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
-			}
-
-			if selectedCollection != nil {
-				form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-				ui.Pages.AddPage("newRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openNewRequestForm(ui) {
+			return nil
 		}
 	}
 	return event

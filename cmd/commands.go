@@ -31,7 +31,7 @@ func getCommands() []Command {
 	return []Command{
 		// File
 		{ID: "file.newCollection", Label: "New Collection", Category: "File", Description: "Create a new collection or folder", Handler: openNewCollectionForm},
-		{ID: "file.newRequest", Label: "New Request", Category: "File", Description: "Create a new request", Handler: dummyCommandHandler("New Request")},
+		{ID: "file.newRequest", Label: "New Request", Category: "File", Description: "Create a new request", Handler: newRequestCommand},
 		{ID: "file.duplicateRequest", Label: "Duplicate Request", Category: "File", Description: "Duplicate the selected request", Handler: dummyCommandHandler("Duplicate Request")},
 
 		// Edit
@@ -83,6 +83,42 @@ func openNewCollectionForm(ui *UIOrchestrator) {
 	modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
 	ui.Pages.AddPage("newCollection", modal, true, true)
 	ui.App.SetFocus(form)
+}
+
+// openNewRequestForm opens the "New Request" form for the collection implied
+// by the current tree selection (a selected collection, or the parent
+// collection of a selected request). It returns false when no target
+// collection can be determined, so callers can choose how to respond.
+func openNewRequestForm(ui *UIOrchestrator) bool {
+	node := ui.CollectionsTreeView.GetCurrentNode()
+	if node == nil {
+		return false
+	}
+
+	var selectedCollection *workspace.Collection
+	if col := ui.collectionFromNode(node); col != nil {
+		selectedCollection = col
+	} else if req := ui.requestFromNode(node); req != nil {
+		selectedCollection = workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
+	}
+	if selectedCollection == nil {
+		return false
+	}
+
+	form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+	modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
+	ui.Pages.AddPage("newRequest", modal, true, true)
+	ui.App.SetFocus(form)
+	return true
+}
+
+// newRequestCommand is the command palette handler for "New Request". It
+// reports an error when no collection can be determined from the current
+// selection.
+func newRequestCommand(ui *UIOrchestrator) {
+	if !openNewRequestForm(ui) {
+		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection to create the request in", ui.App.GetFocus(), ui.Colors)
+	}
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.
