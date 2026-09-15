@@ -1799,7 +1799,7 @@ func jumpToURLBarPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 }
 
 func jumpToRequestPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 4)
+	jumpToRequestCommand(ui)
 	return nil
 }
 

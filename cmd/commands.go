@@ -44,7 +44,7 @@ func getCommands() []Command {
 		{ID: "view.jumpToEnvironment", Label: "Jump to Environment", Category: "View", Description: "Focus the environment panel", Handler: jumpToEnvironmentCommand},
 		{ID: "view.jumpToCollections", Label: "Jump to Collections", Category: "View", Description: "Focus the collections tree", Handler: jumpToCollectionsCommand},
 		{ID: "view.jumpToURLBar", Label: "Jump to URL Bar", Category: "View", Description: "Focus the URL bar", Handler: jumpToURLBarCommand},
-		{ID: "view.jumpToRequest", Label: "Jump to Request", Category: "View", Description: "Focus the request panel", Handler: dummyCommandHandler("Jump to Request")},
+		{ID: "view.jumpToRequest", Label: "Jump to Request", Category: "View", Description: "Focus the request panel", Handler: jumpToRequestCommand},
 		{ID: "view.jumpToResponse", Label: "Jump to Response", Category: "View", Description: "Focus the response panel", Handler: dummyCommandHandler("Jump to Response")},
 
 		// Navigate
@@ -285,6 +285,12 @@ func jumpToCollectionsCommand(ui *UIOrchestrator) {
 // It focuses the URL bar.
 func jumpToURLBarCommand(ui *UIOrchestrator) {
 	jumpToContainer(ui, 3)
+}
+
+// jumpToRequestCommand is the command palette handler for "Jump to Request".
+// It focuses the request panel.
+func jumpToRequestCommand(ui *UIOrchestrator) {
+	jumpToContainer(ui, 4)
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.
