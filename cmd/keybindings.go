@@ -1794,7 +1794,7 @@ func jumpToCollectionsPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tc
 }
 
 func jumpToURLBarPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 3)
+	jumpToURLBarCommand(ui)
 	return nil
 }
 
