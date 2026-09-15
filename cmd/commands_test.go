@@ -1,6 +1,9 @@
 package cmd
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestGetCommandsRegistry(t *testing.T) {
 	commands := getCommands()
@@ -43,5 +46,24 @@ func TestGetCommandsRegistry(t *testing.T) {
 			seenCategories[cmd.Category] = true
 			lastCategory = cmd.Category
 		}
+	}
+}
+
+func TestQuitCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var quit *Command
+	for i := range commands {
+		if commands[i].ID == "app.quit" {
+			quit = &commands[i]
+			break
+		}
+	}
+	if quit == nil {
+		t.Fatal("app.quit command not found in registry")
+	}
+
+	if reflect.ValueOf(quit.Handler).Pointer() != reflect.ValueOf(quitApplication).Pointer() {
+		t.Error("app.quit should use the real quitApplication handler, not a dummy")
 	}
 }

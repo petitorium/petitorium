@@ -1,6 +1,11 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/petitorium/petitorium/config"
+	"github.com/petitorium/petitorium/workspace"
+)
 
 // Command represents a single entry in the command palette.
 type Command struct {
@@ -48,8 +53,20 @@ func getCommands() []Command {
 		{ID: "plugins.openMarketplace", Label: "Open Plugin Marketplace", Category: "Plugins", Description: "Browse and manage plugins", Handler: dummyCommandHandler("Open Plugin Marketplace")},
 
 		// Application
-		{ID: "app.quit", Label: "Quit Petitorium", Category: "Application", Description: "Exit the application", Handler: dummyCommandHandler("Quit Petitorium")},
+		{ID: "app.quit", Label: "Quit Petitorium", Category: "Application", Description: "Exit the application", Handler: quitApplication},
 	}
+}
+
+// quitApplication saves the collection expansion state (when "remember" mode
+// is enabled) and stops the application. Shared by the 'q' keybinding and the
+// command palette "Quit" command.
+func quitApplication(ui *UIOrchestrator) {
+	if config.C.UI.CollectionExpansion == "remember" {
+		if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
+			// Could log error but for now just continue
+		}
+	}
+	ui.App.Stop()
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.

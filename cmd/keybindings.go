@@ -629,13 +629,7 @@ func (kbm *KeyBindingManager) GetAllKeyBindings() []KeyBinding {
 
 // Global actions
 func quitApp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// Save expansion state before quitting if in "remember" mode
-	if config.C.UI.CollectionExpansion == "remember" {
-		if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
-			// Could log error but for now just continue
-		}
-	}
-	ui.App.Stop()
+	quitApplication(ui)
 	return nil
 }
 
