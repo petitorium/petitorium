@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -15,6 +17,7 @@ type CommandPaletteModal struct {
 	searchField     *tview.InputField
 	table           *tview.Table
 	commands        []Command
+	filtered        []Command
 	rowCommands     map[int]*Command
 	firstCommandRow int
 	returnFocus     tview.Primitive
@@ -46,15 +49,24 @@ func NewCommandPaletteModal(ui *UIOrchestrator) *CommandPaletteModal {
 		SetFieldTextColor(ui.Colors.Foreground)
 	m.searchField.SetBackgroundColor(ui.Colors.Background)
 
-	// Filtering is not wired yet: the search field is passive for now.
+	m.searchField.SetChangedFunc(func(text string) {
+		m.filterCommands(text)
+	})
 
 	m.searchField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			m.close()
 			return nil
 		}
-		if event.Key() == tcell.KeyDown || event.Key() == tcell.KeyTab || event.Key() == tcell.KeyEnter {
+		if event.Key() == tcell.KeyDown || event.Key() == tcell.KeyTab {
 			m.focusTable()
+			return nil
+		}
+		if event.Key() == tcell.KeyEnter {
+			if len(m.rowCommands) > 0 {
+				m.table.Select(m.firstCommandRow, 0)
+				m.selectCurrentRow()
+			}
 			return nil
 		}
 		return event
@@ -110,21 +122,50 @@ func NewCommandPaletteModal(ui *UIOrchestrator) *CommandPaletteModal {
 		return event
 	})
 
-	m.renderCommands()
+	m.filterCommands("")
 
 	return m
 }
 
+// filterCommands narrows the visible commands to those whose label,
+// description or category contain the query (case-insensitive) and re-renders
+// the table. An empty query shows every command.
+func (m *CommandPaletteModal) filterCommands(query string) {
+	query = strings.ToLower(query)
+	m.filtered = m.filtered[:0]
+	for i := range m.commands {
+		cmd := m.commands[i]
+		if query == "" ||
+			strings.Contains(strings.ToLower(cmd.Label), query) ||
+			strings.Contains(strings.ToLower(cmd.Description), query) ||
+			strings.Contains(strings.ToLower(cmd.Category), query) {
+			m.filtered = append(m.filtered, cmd)
+		}
+	}
+	m.renderCommands()
+}
+
 // renderCommands populates the table with one non-selectable section row per
-// category, followed by the commands of that category.
+// category, followed by the commands of that category. When the filter
+// matches nothing, a placeholder row is shown instead. The first command row
+// is pre-selected so Enter runs the top match.
 func (m *CommandPaletteModal) renderCommands() {
 	m.table.Clear()
 	m.rowCommands = make(map[int]*Command)
 	m.firstCommandRow = -1
 
+	if len(m.filtered) == 0 {
+		m.table.SetCell(0, 0, tview.NewTableCell(" No matching commands ").
+			SetTextColor(m.ui.Colors.Placeholder).
+			SetSelectable(false).
+			SetExpansion(1).
+			SetAlign(tview.AlignLeft))
+		return
+	}
+
 	lastCategory := ""
-	for i := range m.commands {
-		cmd := &m.commands[i]
+	for i := range m.filtered {
+		cmd := &m.filtered[i]
 
 		if cmd.Category != lastCategory {
 			lastCategory = cmd.Category
@@ -154,6 +195,8 @@ func (m *CommandPaletteModal) renderCommands() {
 			SetExpansion(3).
 			SetAlign(tview.AlignLeft))
 	}
+
+	m.table.Select(m.firstCommandRow, 0)
 }
 
 // focusTable moves focus to the results table if it has any command rows.

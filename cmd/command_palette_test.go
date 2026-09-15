@@ -52,6 +52,66 @@ func TestNewCommandPaletteModalRendering(t *testing.T) {
 	}
 }
 
+func TestCommandPaletteFilterCommands(t *testing.T) {
+	ui := &UIOrchestrator{
+		App:          tview.NewApplication(),
+		Pages:        tview.NewPages(),
+		Colors:       &ColorManager{},
+		UpdateFooter: func() {},
+	}
+
+	m := NewCommandPaletteModal(ui)
+	commands := getCommands()
+
+	if got := len(m.filtered); got != len(commands) {
+		t.Errorf("empty query should show all %d commands, got %d", len(commands), got)
+	}
+	if got := len(m.rowCommands); got != len(commands) {
+		t.Errorf("empty query should map all %d command rows, got %d", len(commands), got)
+	}
+
+	// Filtering is case-insensitive and matches labels.
+	m.filterCommands("RENAME")
+	if got := len(m.filtered); got != 1 {
+		t.Fatalf("expected 1 command matching 'RENAME', got %d", got)
+	}
+	if m.filtered[0].ID != "edit.renameItem" {
+		t.Errorf("expected edit.renameItem, got %s", m.filtered[0].ID)
+	}
+	if row, _ := m.table.GetSelection(); row != m.firstCommandRow {
+		t.Errorf("expected selection on first command row %d, got %d", m.firstCommandRow, row)
+	}
+
+	// Queries also match against descriptions and categories.
+	m.filterCommands("workspace")
+	if got := len(m.filtered); got != 2 {
+		t.Errorf("expected 2 commands matching 'workspace', got %d", got)
+	}
+	m.filterCommands("file")
+	if got := len(m.filtered); got != 3 {
+		t.Errorf("expected 3 commands in the File category, got %d", got)
+	}
+
+	// A query with no matches clears the command rows and shows the
+	// placeholder row instead.
+	m.filterCommands("zzz-nothing-matches")
+	if got := len(m.rowCommands); got != 0 {
+		t.Errorf("expected no mapped command rows for a non-matching query, got %d", got)
+	}
+	if m.firstCommandRow != -1 {
+		t.Errorf("expected firstCommandRow -1 for a non-matching query, got %d", m.firstCommandRow)
+	}
+	if c := m.table.GetCell(0, 0); c.Text != " No matching commands " || !c.NotSelectable {
+		t.Errorf("expected non-selectable placeholder row, got %q (NotSelectable=%v)", c.Text, c.NotSelectable)
+	}
+
+	// Clearing the query restores the full list.
+	m.filterCommands("")
+	if got := len(m.filtered); got != len(commands) {
+		t.Errorf("expected full list of %d commands after clearing the query, got %d", len(commands), got)
+	}
+}
+
 func TestCommandPaletteExecuteCommand(t *testing.T) {
 	app := tview.NewApplication()
 	pages := tview.NewPages()
