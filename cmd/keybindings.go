@@ -764,21 +764,8 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if col := ui.collectionFromNode(node); col != nil {
-				form := createDeleteCollectionConfirm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-				modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
-				ui.Pages.AddPage("deleteCollection", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			} else if req := ui.requestFromNode(node); req != nil {
-				form := createDeleteRequestConfirm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-				modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
-				ui.Pages.AddPage("deleteRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openDeleteItemForm(ui) {
+			return nil
 		}
 	}
 	return event

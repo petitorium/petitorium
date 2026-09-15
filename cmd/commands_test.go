@@ -181,3 +181,22 @@ func TestMoveItemCommandUsesRealHandler(t *testing.T) {
 		t.Error("edit.moveItem should use the real moveItemCommand handler, not a dummy")
 	}
 }
+
+func TestDeleteItemCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var del *Command
+	for i := range commands {
+		if commands[i].ID == "edit.deleteItem" {
+			del = &commands[i]
+			break
+		}
+	}
+	if del == nil {
+		t.Fatal("edit.deleteItem command not found in registry")
+	}
+
+	if reflect.ValueOf(del.Handler).Pointer() != reflect.ValueOf(deleteItemCommand).Pointer() {
+		t.Error("edit.deleteItem should use the real deleteItemCommand handler, not a dummy")
+	}
+}

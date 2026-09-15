@@ -37,7 +37,7 @@ func getCommands() []Command {
 		// Edit
 		{ID: "edit.renameItem", Label: "Rename Item", Category: "Edit", Description: "Rename the selected collection, folder or request", Handler: renameItemCommand},
 		{ID: "edit.moveItem", Label: "Move Item", Category: "Edit", Description: "Move the selected collection, folder or request", Handler: moveItemCommand},
-		{ID: "edit.deleteItem", Label: "Delete Item", Category: "Edit", Description: "Delete the selected collection, folder or request", Handler: dummyCommandHandler("Delete Item")},
+		{ID: "edit.deleteItem", Label: "Delete Item", Category: "Edit", Description: "Delete the selected collection, folder or request", Handler: deleteItemCommand},
 
 		// View
 		{ID: "view.jumpToWorkspace", Label: "Jump to Workspace", Category: "View", Description: "Focus the workspace panel", Handler: dummyCommandHandler("Jump to Workspace")},
@@ -224,6 +224,42 @@ func openMoveItemForm(ui *UIOrchestrator) bool {
 func moveItemCommand(ui *UIOrchestrator) {
 	if !openMoveItemForm(ui) {
 		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection, folder or request to move", ui.App.GetFocus(), ui.Colors)
+	}
+}
+
+// openDeleteItemForm opens the appropriate delete confirmation for the
+// collection, folder or request selected in the tree. It returns false when
+// the current node is neither a collection nor a request.
+func openDeleteItemForm(ui *UIOrchestrator) bool {
+	node := ui.CollectionsTreeView.GetCurrentNode()
+	if node == nil {
+		return false
+	}
+
+	if col := ui.collectionFromNode(node); col != nil {
+		form := createDeleteCollectionConfirm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+		modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
+		ui.Pages.AddPage("deleteCollection", modal, true, true)
+		ui.App.SetFocus(form)
+		return true
+	}
+
+	if req := ui.requestFromNode(node); req != nil {
+		form := createDeleteRequestConfirm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
+		modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
+		ui.Pages.AddPage("deleteRequest", modal, true, true)
+		ui.App.SetFocus(form)
+		return true
+	}
+
+	return false
+}
+
+// deleteItemCommand is the command palette handler for "Delete Item". It
+// reports an error when no collection or request is selected.
+func deleteItemCommand(ui *UIOrchestrator) {
+	if !openDeleteItemForm(ui) {
+		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection, folder or request to delete", ui.App.GetFocus(), ui.Colors)
 	}
 }
 
