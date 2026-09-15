@@ -35,7 +35,7 @@ func getCommands() []Command {
 		{ID: "file.duplicateRequest", Label: "Duplicate Request", Category: "File", Description: "Duplicate the selected request", Handler: duplicateRequestCommand},
 
 		// Edit
-		{ID: "edit.renameItem", Label: "Rename Item", Category: "Edit", Description: "Rename the selected collection, folder or request", Handler: dummyCommandHandler("Rename Item")},
+		{ID: "edit.renameItem", Label: "Rename Item", Category: "Edit", Description: "Rename the selected collection, folder or request", Handler: renameItemCommand},
 		{ID: "edit.moveItem", Label: "Move Item", Category: "Edit", Description: "Move the selected collection, folder or request", Handler: dummyCommandHandler("Move Item")},
 		{ID: "edit.deleteItem", Label: "Delete Item", Category: "Edit", Description: "Delete the selected collection, folder or request", Handler: dummyCommandHandler("Delete Item")},
 
@@ -152,6 +152,42 @@ func openDuplicateRequestForm(ui *UIOrchestrator) bool {
 func duplicateRequestCommand(ui *UIOrchestrator) {
 	if !openDuplicateRequestForm(ui) {
 		showErrorModalWithFocus(ui.App, ui.Pages, "Select a request to duplicate", ui.App.GetFocus(), ui.Colors)
+	}
+}
+
+// openRenameItemForm opens the appropriate rename form for the collection,
+// folder or request selected in the tree. It returns false when the current
+// node is neither a collection nor a request.
+func openRenameItemForm(ui *UIOrchestrator) bool {
+	node := ui.CollectionsTreeView.GetCurrentNode()
+	if node == nil {
+		return false
+	}
+
+	if col := ui.collectionFromNode(node); col != nil {
+		form := createRenameCollectionForm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
+		ui.Pages.AddPage("renameCollection", modal, true, true)
+		ui.App.SetFocus(form)
+		return true
+	}
+
+	if req := ui.requestFromNode(node); req != nil {
+		form := createRenameRequestForm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
+		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
+		ui.Pages.AddPage("renameRequest", modal, true, true)
+		ui.App.SetFocus(form)
+		return true
+	}
+
+	return false
+}
+
+// renameItemCommand is the command palette handler for "Rename Item". It
+// reports an error when no collection or request is selected.
+func renameItemCommand(ui *UIOrchestrator) {
+	if !openRenameItemForm(ui) {
+		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection, folder or request to rename", ui.App.GetFocus(), ui.Colors)
 	}
 }
 

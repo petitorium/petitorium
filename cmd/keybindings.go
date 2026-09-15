@@ -685,23 +685,8 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if col := ui.collectionFromNode(node); col != nil {
-				// Rename collection
-				form := createRenameCollectionForm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
-				ui.Pages.AddPage("renameCollection", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			} else if req := ui.requestFromNode(node); req != nil {
-				// Rename request - need to find parent collection
-				form := createRenameRequestForm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
-				ui.Pages.AddPage("renameRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openRenameItemForm(ui) {
+			return nil
 		}
 	} else if ui.MainCycle.current == ui.PanelIndices.Environment {
 		// Rename environment

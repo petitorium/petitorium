@@ -143,3 +143,22 @@ func TestDuplicateRequestCommandUsesRealHandler(t *testing.T) {
 		t.Error("file.duplicateRequest should use the real duplicateRequestCommand handler, not a dummy")
 	}
 }
+
+func TestRenameItemCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var rename *Command
+	for i := range commands {
+		if commands[i].ID == "edit.renameItem" {
+			rename = &commands[i]
+			break
+		}
+	}
+	if rename == nil {
+		t.Fatal("edit.renameItem command not found in registry")
+	}
+
+	if reflect.ValueOf(rename.Handler).Pointer() != reflect.ValueOf(renameItemCommand).Pointer() {
+		t.Error("edit.renameItem should use the real renameItemCommand handler, not a dummy")
+	}
+}
