@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/gdamore/tcell/v2"
+
 	"github.com/petitorium/petitorium/config"
 	"github.com/petitorium/petitorium/workspace"
 )
@@ -28,7 +30,7 @@ type Command struct {
 func getCommands() []Command {
 	return []Command{
 		// File
-		{ID: "file.newCollection", Label: "New Collection", Category: "File", Description: "Create a new collection or folder", Handler: dummyCommandHandler("New Collection")},
+		{ID: "file.newCollection", Label: "New Collection", Category: "File", Description: "Create a new collection or folder", Handler: openNewCollectionForm},
 		{ID: "file.newRequest", Label: "New Request", Category: "File", Description: "Create a new request", Handler: dummyCommandHandler("New Request")},
 		{ID: "file.duplicateRequest", Label: "Duplicate Request", Category: "File", Description: "Duplicate the selected request", Handler: dummyCommandHandler("Duplicate Request")},
 
@@ -72,6 +74,15 @@ func quitApplication(ui *UIOrchestrator) {
 // openMarketplace opens the plugin marketplace modal.
 func openMarketplace(ui *UIOrchestrator) {
 	ui.ShowMarketplace()
+}
+
+// openNewCollectionForm opens the "New Collection" form as a modal. Shared by
+// the 'N' keybinding and the command palette "New Collection" command.
+func openNewCollectionForm(ui *UIOrchestrator) {
+	form := createCollectionFormWithLocation(ui)
+	modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
+	ui.Pages.AddPage("newCollection", modal, true, true)
+	ui.App.SetFocus(form)
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.

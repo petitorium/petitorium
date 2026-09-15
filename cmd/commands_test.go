@@ -86,3 +86,22 @@ func TestOpenMarketplaceCommandUsesRealHandler(t *testing.T) {
 		t.Error("plugins.openMarketplace should use the real openMarketplace handler, not a dummy")
 	}
 }
+
+func TestNewCollectionCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var newCol *Command
+	for i := range commands {
+		if commands[i].ID == "file.newCollection" {
+			newCol = &commands[i]
+			break
+		}
+	}
+	if newCol == nil {
+		t.Fatal("file.newCollection command not found in registry")
+	}
+
+	if reflect.ValueOf(newCol.Handler).Pointer() != reflect.ValueOf(openNewCollectionForm).Pointer() {
+		t.Error("file.newCollection should use the real openNewCollectionForm handler, not a dummy")
+	}
+}

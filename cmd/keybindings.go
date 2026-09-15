@@ -647,10 +647,7 @@ func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		form := createCollectionFormWithLocation(ui)
-		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
-		ui.Pages.AddPage("newCollection", modal, true, true)
-		ui.App.SetFocus(form)
+		openNewCollectionForm(ui)
 		return nil
 	}
 	return event
