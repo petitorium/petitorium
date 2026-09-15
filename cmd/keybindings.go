@@ -672,21 +672,8 @@ func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		// Duplicate request - check if a request is selected
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if req := ui.requestFromNode(node); req != nil {
-				// Request is selected - find its parent collection by ID
-				selectedCollection := workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
-
-				if selectedCollection != nil {
-					form := createDuplicateRequestForm(ui.App, ui.Pages, req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-					modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-					ui.Pages.AddPage("duplicateRequest", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				}
-			}
+		if openDuplicateRequestForm(ui) {
+			return nil
 		}
 	}
 	return event

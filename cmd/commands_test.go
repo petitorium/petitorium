@@ -124,3 +124,22 @@ func TestNewRequestCommandUsesRealHandler(t *testing.T) {
 		t.Error("file.newRequest should use the real newRequestCommand handler, not a dummy")
 	}
 }
+
+func TestDuplicateRequestCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var dup *Command
+	for i := range commands {
+		if commands[i].ID == "file.duplicateRequest" {
+			dup = &commands[i]
+			break
+		}
+	}
+	if dup == nil {
+		t.Fatal("file.duplicateRequest command not found in registry")
+	}
+
+	if reflect.ValueOf(dup.Handler).Pointer() != reflect.ValueOf(duplicateRequestCommand).Pointer() {
+		t.Error("file.duplicateRequest should use the real duplicateRequestCommand handler, not a dummy")
+	}
+}

@@ -32,7 +32,7 @@ func getCommands() []Command {
 		// File
 		{ID: "file.newCollection", Label: "New Collection", Category: "File", Description: "Create a new collection or folder", Handler: openNewCollectionForm},
 		{ID: "file.newRequest", Label: "New Request", Category: "File", Description: "Create a new request", Handler: newRequestCommand},
-		{ID: "file.duplicateRequest", Label: "Duplicate Request", Category: "File", Description: "Duplicate the selected request", Handler: dummyCommandHandler("Duplicate Request")},
+		{ID: "file.duplicateRequest", Label: "Duplicate Request", Category: "File", Description: "Duplicate the selected request", Handler: duplicateRequestCommand},
 
 		// Edit
 		{ID: "edit.renameItem", Label: "Rename Item", Category: "Edit", Description: "Rename the selected collection, folder or request", Handler: dummyCommandHandler("Rename Item")},
@@ -118,6 +118,40 @@ func openNewRequestForm(ui *UIOrchestrator) bool {
 func newRequestCommand(ui *UIOrchestrator) {
 	if !openNewRequestForm(ui) {
 		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection to create the request in", ui.App.GetFocus(), ui.Colors)
+	}
+}
+
+// openDuplicateRequestForm opens the "Duplicate Request" form for the request
+// selected in the tree. It returns false when no request is selected or its
+// parent collection cannot be determined.
+func openDuplicateRequestForm(ui *UIOrchestrator) bool {
+	node := ui.CollectionsTreeView.GetCurrentNode()
+	if node == nil {
+		return false
+	}
+
+	req := ui.requestFromNode(node)
+	if req == nil {
+		return false
+	}
+
+	selectedCollection := workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
+	if selectedCollection == nil {
+		return false
+	}
+
+	form := createDuplicateRequestForm(ui.App, ui.Pages, req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
+	modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
+	ui.Pages.AddPage("duplicateRequest", modal, true, true)
+	ui.App.SetFocus(form)
+	return true
+}
+
+// duplicateRequestCommand is the command palette handler for "Duplicate
+// Request". It reports an error when no request is selected.
+func duplicateRequestCommand(ui *UIOrchestrator) {
+	if !openDuplicateRequestForm(ui) {
+		showErrorModalWithFocus(ui.App, ui.Pages, "Select a request to duplicate", ui.App.GetFocus(), ui.Colors)
 	}
 }
 
