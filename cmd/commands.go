@@ -42,7 +42,7 @@ func getCommands() []Command {
 		// View
 		{ID: "view.jumpToWorkspace", Label: "Jump to Workspace", Category: "View", Description: "Focus the workspace panel", Handler: jumpToWorkspaceCommand},
 		{ID: "view.jumpToEnvironment", Label: "Jump to Environment", Category: "View", Description: "Focus the environment panel", Handler: jumpToEnvironmentCommand},
-		{ID: "view.jumpToCollections", Label: "Jump to Collections", Category: "View", Description: "Focus the collections tree", Handler: dummyCommandHandler("Jump to Collections")},
+		{ID: "view.jumpToCollections", Label: "Jump to Collections", Category: "View", Description: "Focus the collections tree", Handler: jumpToCollectionsCommand},
 		{ID: "view.jumpToURLBar", Label: "Jump to URL Bar", Category: "View", Description: "Focus the URL bar", Handler: dummyCommandHandler("Jump to URL Bar")},
 		{ID: "view.jumpToRequest", Label: "Jump to Request", Category: "View", Description: "Focus the request panel", Handler: dummyCommandHandler("Jump to Request")},
 		{ID: "view.jumpToResponse", Label: "Jump to Response", Category: "View", Description: "Focus the response panel", Handler: dummyCommandHandler("Jump to Response")},
@@ -273,6 +273,12 @@ func jumpToWorkspaceCommand(ui *UIOrchestrator) {
 // Environment". It focuses the environment panel.
 func jumpToEnvironmentCommand(ui *UIOrchestrator) {
 	jumpToContainer(ui, 1)
+}
+
+// jumpToCollectionsCommand is the command palette handler for "Jump to
+// Collections". It focuses the collections tree.
+func jumpToCollectionsCommand(ui *UIOrchestrator) {
+	jumpToContainer(ui, 2)
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.

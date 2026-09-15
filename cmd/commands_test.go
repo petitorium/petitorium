@@ -238,3 +238,22 @@ func TestJumpToEnvironmentCommandUsesRealHandler(t *testing.T) {
 		t.Error("view.jumpToEnvironment should use the real jumpToEnvironmentCommand handler, not a dummy")
 	}
 }
+
+func TestJumpToCollectionsCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var jump *Command
+	for i := range commands {
+		if commands[i].ID == "view.jumpToCollections" {
+			jump = &commands[i]
+			break
+		}
+	}
+	if jump == nil {
+		t.Fatal("view.jumpToCollections command not found in registry")
+	}
+
+	if reflect.ValueOf(jump.Handler).Pointer() != reflect.ValueOf(jumpToCollectionsCommand).Pointer() {
+		t.Error("view.jumpToCollections should use the real jumpToCollectionsCommand handler, not a dummy")
+	}
+}
