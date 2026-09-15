@@ -50,7 +50,7 @@ func getCommands() []Command {
 		{ID: "navigate.searchWorkspaces", Label: "Search Workspaces", Category: "Navigate", Description: "Quick-search and switch workspaces", Handler: dummyCommandHandler("Search Workspaces")},
 
 		// Plugins
-		{ID: "plugins.openMarketplace", Label: "Open Plugin Marketplace", Category: "Plugins", Description: "Browse and manage plugins", Handler: dummyCommandHandler("Open Plugin Marketplace")},
+		{ID: "plugins.openMarketplace", Label: "Open Plugin Marketplace", Category: "Plugins", Description: "Browse and manage plugins", Handler: openMarketplace},
 
 		// Application
 		{ID: "app.quit", Label: "Quit Petitorium", Category: "Application", Description: "Exit the application", Handler: quitApplication},
@@ -67,6 +67,11 @@ func quitApplication(ui *UIOrchestrator) {
 		}
 	}
 	ui.App.Stop()
+}
+
+// openMarketplace opens the plugin marketplace modal.
+func openMarketplace(ui *UIOrchestrator) {
+	ui.ShowMarketplace()
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.

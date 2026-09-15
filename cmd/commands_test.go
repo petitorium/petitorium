@@ -67,3 +67,22 @@ func TestQuitCommandUsesRealHandler(t *testing.T) {
 		t.Error("app.quit should use the real quitApplication handler, not a dummy")
 	}
 }
+
+func TestOpenMarketplaceCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var open *Command
+	for i := range commands {
+		if commands[i].ID == "plugins.openMarketplace" {
+			open = &commands[i]
+			break
+		}
+	}
+	if open == nil {
+		t.Fatal("plugins.openMarketplace command not found in registry")
+	}
+
+	if reflect.ValueOf(open.Handler).Pointer() != reflect.ValueOf(openMarketplace).Pointer() {
+		t.Error("plugins.openMarketplace should use the real openMarketplace handler, not a dummy")
+	}
+}
