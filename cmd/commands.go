@@ -48,7 +48,7 @@ func getCommands() []Command {
 		{ID: "view.jumpToResponse", Label: "Jump to Response", Category: "View", Description: "Focus the response panel", Handler: jumpToResponseCommand},
 
 		// Navigate
-		{ID: "navigate.searchRequests", Label: "Search Requests", Category: "Navigate", Description: "Quick-search collections and requests", Handler: dummyCommandHandler("Search Requests")},
+		{ID: "navigate.searchRequests", Label: "Search Requests", Category: "Navigate", Description: "Quick-search collections and requests", Handler: searchRequestsCommand},
 		{ID: "navigate.searchWorkspaces", Label: "Search Workspaces", Category: "Navigate", Description: "Quick-search and switch workspaces", Handler: dummyCommandHandler("Search Workspaces")},
 
 		// Plugins
@@ -297,6 +297,23 @@ func jumpToRequestCommand(ui *UIOrchestrator) {
 // It focuses the response panel.
 func jumpToResponseCommand(ui *UIOrchestrator) {
 	jumpToContainer(ui, 5)
+}
+
+// showCollectionSearchModal opens the collection/request quick-search modal,
+// capturing the current focus so it can be restored when the modal closes.
+func showCollectionSearchModal(ui *UIOrchestrator) {
+	currentFocus := ui.App.GetFocus()
+	ui.EnterModal()
+	m := NewCollectionSearchModal(ui)
+	m.returnFocus = currentFocus
+	ui.Pages.AddPage("collectionSearch", createSizedModal(m, modalSizeSearch, ui.Colors.Background), true, true)
+	ui.App.SetFocus(m.searchField)
+}
+
+// searchRequestsCommand is the command palette handler for "Search Requests".
+// It opens the collection/request quick-search modal.
+func searchRequestsCommand(ui *UIOrchestrator) {
+	showCollectionSearchModal(ui)
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.

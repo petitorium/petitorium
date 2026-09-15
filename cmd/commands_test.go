@@ -314,3 +314,22 @@ func TestJumpToResponseCommandUsesRealHandler(t *testing.T) {
 		t.Error("view.jumpToResponse should use the real jumpToResponseCommand handler, not a dummy")
 	}
 }
+
+func TestSearchRequestsCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var search *Command
+	for i := range commands {
+		if commands[i].ID == "navigate.searchRequests" {
+			search = &commands[i]
+			break
+		}
+	}
+	if search == nil {
+		t.Fatal("navigate.searchRequests command not found in registry")
+	}
+
+	if reflect.ValueOf(search.Handler).Pointer() != reflect.ValueOf(searchRequestsCommand).Pointer() {
+		t.Error("navigate.searchRequests should use the real searchRequestsCommand handler, not a dummy")
+	}
+}

@@ -1813,12 +1813,7 @@ func openCollectionSearch(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Even
 		return event
 	}
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		currentFocus := ui.App.GetFocus()
-		ui.EnterModal()
-		m := NewCollectionSearchModal(ui)
-		m.returnFocus = currentFocus
-		ui.Pages.AddPage("collectionSearch", createSizedModal(m, modalSizeSearch, ui.Colors.Background), true, true)
-		ui.App.SetFocus(m.searchField)
+		showCollectionSearchModal(ui)
 		return nil
 	}
 	return event
