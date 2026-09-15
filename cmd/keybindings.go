@@ -1779,7 +1779,7 @@ func jumpToContainer(ui *UIOrchestrator, containerIndex int) {
 }
 
 func jumpToWorkspacePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 0)
+	jumpToWorkspaceCommand(ui)
 	return nil
 }
 

@@ -200,3 +200,22 @@ func TestDeleteItemCommandUsesRealHandler(t *testing.T) {
 		t.Error("edit.deleteItem should use the real deleteItemCommand handler, not a dummy")
 	}
 }
+
+func TestJumpToWorkspaceCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var jump *Command
+	for i := range commands {
+		if commands[i].ID == "view.jumpToWorkspace" {
+			jump = &commands[i]
+			break
+		}
+	}
+	if jump == nil {
+		t.Fatal("view.jumpToWorkspace command not found in registry")
+	}
+
+	if reflect.ValueOf(jump.Handler).Pointer() != reflect.ValueOf(jumpToWorkspaceCommand).Pointer() {
+		t.Error("view.jumpToWorkspace should use the real jumpToWorkspaceCommand handler, not a dummy")
+	}
+}

@@ -40,7 +40,7 @@ func getCommands() []Command {
 		{ID: "edit.deleteItem", Label: "Delete Item", Category: "Edit", Description: "Delete the selected collection, folder or request", Handler: deleteItemCommand},
 
 		// View
-		{ID: "view.jumpToWorkspace", Label: "Jump to Workspace", Category: "View", Description: "Focus the workspace panel", Handler: dummyCommandHandler("Jump to Workspace")},
+		{ID: "view.jumpToWorkspace", Label: "Jump to Workspace", Category: "View", Description: "Focus the workspace panel", Handler: jumpToWorkspaceCommand},
 		{ID: "view.jumpToEnvironment", Label: "Jump to Environment", Category: "View", Description: "Focus the environment panel", Handler: dummyCommandHandler("Jump to Environment")},
 		{ID: "view.jumpToCollections", Label: "Jump to Collections", Category: "View", Description: "Focus the collections tree", Handler: dummyCommandHandler("Jump to Collections")},
 		{ID: "view.jumpToURLBar", Label: "Jump to URL Bar", Category: "View", Description: "Focus the URL bar", Handler: dummyCommandHandler("Jump to URL Bar")},
@@ -261,6 +261,12 @@ func deleteItemCommand(ui *UIOrchestrator) {
 	if !openDeleteItemForm(ui) {
 		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection, folder or request to delete", ui.App.GetFocus(), ui.Colors)
 	}
+}
+
+// jumpToWorkspaceCommand is the command palette handler for "Jump to
+// Workspace". It focuses the workspace panel.
+func jumpToWorkspaceCommand(ui *UIOrchestrator) {
+	jumpToContainer(ui, 0)
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.
