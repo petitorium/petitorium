@@ -295,3 +295,22 @@ func TestJumpToRequestCommandUsesRealHandler(t *testing.T) {
 		t.Error("view.jumpToRequest should use the real jumpToRequestCommand handler, not a dummy")
 	}
 }
+
+func TestJumpToResponseCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var jump *Command
+	for i := range commands {
+		if commands[i].ID == "view.jumpToResponse" {
+			jump = &commands[i]
+			break
+		}
+	}
+	if jump == nil {
+		t.Fatal("view.jumpToResponse command not found in registry")
+	}
+
+	if reflect.ValueOf(jump.Handler).Pointer() != reflect.ValueOf(jumpToResponseCommand).Pointer() {
+		t.Error("view.jumpToResponse should use the real jumpToResponseCommand handler, not a dummy")
+	}
+}

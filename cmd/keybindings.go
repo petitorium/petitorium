@@ -1804,7 +1804,7 @@ func jumpToRequestPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.
 }
 
 func jumpToResponsePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 5)
+	jumpToResponseCommand(ui)
 	return nil
 }
 
