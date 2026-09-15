@@ -36,7 +36,7 @@ func getCommands() []Command {
 
 		// Edit
 		{ID: "edit.renameItem", Label: "Rename Item", Category: "Edit", Description: "Rename the selected collection, folder or request", Handler: renameItemCommand},
-		{ID: "edit.moveItem", Label: "Move Item", Category: "Edit", Description: "Move the selected collection, folder or request", Handler: dummyCommandHandler("Move Item")},
+		{ID: "edit.moveItem", Label: "Move Item", Category: "Edit", Description: "Move the selected collection, folder or request", Handler: moveItemCommand},
 		{ID: "edit.deleteItem", Label: "Delete Item", Category: "Edit", Description: "Delete the selected collection, folder or request", Handler: dummyCommandHandler("Delete Item")},
 
 		// View
@@ -188,6 +188,42 @@ func openRenameItemForm(ui *UIOrchestrator) bool {
 func renameItemCommand(ui *UIOrchestrator) {
 	if !openRenameItemForm(ui) {
 		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection, folder or request to rename", ui.App.GetFocus(), ui.Colors)
+	}
+}
+
+// openMoveItemForm opens the appropriate move form for the collection, folder
+// or request selected in the tree. It returns false when the current node is
+// neither a collection nor a request.
+func openMoveItemForm(ui *UIOrchestrator) bool {
+	node := ui.CollectionsTreeView.GetCurrentNode()
+	if node == nil {
+		return false
+	}
+
+	if col := ui.collectionFromNode(node); col != nil {
+		form := createMoveCollectionForm(ui, col)
+		modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
+		ui.Pages.AddPage("moveCollection", modal, true, true)
+		ui.App.SetFocus(form)
+		return true
+	}
+
+	if req := ui.requestFromNode(node); req != nil {
+		form := createMoveRequestForm(ui, req)
+		modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
+		ui.Pages.AddPage("moveRequest", modal, true, true)
+		ui.App.SetFocus(form)
+		return true
+	}
+
+	return false
+}
+
+// moveItemCommand is the command palette handler for "Move Item". It reports
+// an error when no collection or request is selected.
+func moveItemCommand(ui *UIOrchestrator) {
+	if !openMoveItemForm(ui) {
+		showErrorModalWithFocus(ui.App, ui.Pages, "Select a collection, folder or request to move", ui.App.GetFocus(), ui.Colors)
 	}
 }
 

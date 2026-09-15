@@ -751,21 +751,8 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if col := ui.collectionFromNode(node); col != nil {
-				form := createMoveCollectionForm(ui, col)
-				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-				ui.Pages.AddPage("moveCollection", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			} else if req := ui.requestFromNode(node); req != nil {
-				form := createMoveRequestForm(ui, req)
-				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-				ui.Pages.AddPage("moveRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openMoveItemForm(ui) {
+			return nil
 		}
 	}
 	return event
