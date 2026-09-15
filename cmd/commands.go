@@ -41,7 +41,7 @@ func getCommands() []Command {
 
 		// View
 		{ID: "view.jumpToWorkspace", Label: "Jump to Workspace", Category: "View", Description: "Focus the workspace panel", Handler: jumpToWorkspaceCommand},
-		{ID: "view.jumpToEnvironment", Label: "Jump to Environment", Category: "View", Description: "Focus the environment panel", Handler: dummyCommandHandler("Jump to Environment")},
+		{ID: "view.jumpToEnvironment", Label: "Jump to Environment", Category: "View", Description: "Focus the environment panel", Handler: jumpToEnvironmentCommand},
 		{ID: "view.jumpToCollections", Label: "Jump to Collections", Category: "View", Description: "Focus the collections tree", Handler: dummyCommandHandler("Jump to Collections")},
 		{ID: "view.jumpToURLBar", Label: "Jump to URL Bar", Category: "View", Description: "Focus the URL bar", Handler: dummyCommandHandler("Jump to URL Bar")},
 		{ID: "view.jumpToRequest", Label: "Jump to Request", Category: "View", Description: "Focus the request panel", Handler: dummyCommandHandler("Jump to Request")},
@@ -267,6 +267,12 @@ func deleteItemCommand(ui *UIOrchestrator) {
 // Workspace". It focuses the workspace panel.
 func jumpToWorkspaceCommand(ui *UIOrchestrator) {
 	jumpToContainer(ui, 0)
+}
+
+// jumpToEnvironmentCommand is the command palette handler for "Jump to
+// Environment". It focuses the environment panel.
+func jumpToEnvironmentCommand(ui *UIOrchestrator) {
+	jumpToContainer(ui, 1)
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.

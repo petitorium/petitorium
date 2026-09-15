@@ -1784,7 +1784,7 @@ func jumpToWorkspacePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcel
 }
 
 func jumpToEnvironmentPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 1)
+	jumpToEnvironmentCommand(ui)
 	return nil
 }
 
