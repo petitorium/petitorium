@@ -49,7 +49,7 @@ func getCommands() []Command {
 
 		// Navigate
 		{ID: "navigate.searchRequests", Label: "Search Requests", Category: "Navigate", Description: "Quick-search collections and requests", Handler: searchRequestsCommand},
-		{ID: "navigate.searchWorkspaces", Label: "Search Workspaces", Category: "Navigate", Description: "Quick-search and switch workspaces", Handler: dummyCommandHandler("Search Workspaces")},
+		{ID: "navigate.searchWorkspaces", Label: "Search Workspaces", Category: "Navigate", Description: "Quick-search and switch workspaces", Handler: searchWorkspacesCommand},
 
 		// Plugins
 		{ID: "plugins.openMarketplace", Label: "Open Plugin Marketplace", Category: "Plugins", Description: "Browse and manage plugins", Handler: openMarketplace},
@@ -314,6 +314,12 @@ func showCollectionSearchModal(ui *UIOrchestrator) {
 // It opens the collection/request quick-search modal.
 func searchRequestsCommand(ui *UIOrchestrator) {
 	showCollectionSearchModal(ui)
+}
+
+// searchWorkspacesCommand is the command palette handler for "Search
+// Workspaces". It opens the workspace quick-search modal.
+func searchWorkspacesCommand(ui *UIOrchestrator) {
+	showWorkspaceSearchModal(ui)
 }
 
 // dummyCommandHandler returns a placeholder handler that confirms execution.

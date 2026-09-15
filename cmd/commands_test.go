@@ -333,3 +333,22 @@ func TestSearchRequestsCommandUsesRealHandler(t *testing.T) {
 		t.Error("navigate.searchRequests should use the real searchRequestsCommand handler, not a dummy")
 	}
 }
+
+func TestSearchWorkspacesCommandUsesRealHandler(t *testing.T) {
+	commands := getCommands()
+
+	var search *Command
+	for i := range commands {
+		if commands[i].ID == "navigate.searchWorkspaces" {
+			search = &commands[i]
+			break
+		}
+	}
+	if search == nil {
+		t.Fatal("navigate.searchWorkspaces command not found in registry")
+	}
+
+	if reflect.ValueOf(search.Handler).Pointer() != reflect.ValueOf(searchWorkspacesCommand).Pointer() {
+		t.Error("navigate.searchWorkspaces should use the real searchWorkspacesCommand handler, not a dummy")
+	}
+}
