@@ -272,6 +272,10 @@ func formatBodyContent(content string) string {
 		// Go code
 		formatted := formatWithChromaTheme(content, "go", getSyntaxTheme())
 		return formatted
+	} else if strings.HasPrefix(content, "<") {
+		// XML (or generic markup not matching the HTML heuristic below)
+		formatted := formatWithChromaTheme(content, "xml", getSyntaxTheme())
+		return formatted
 	} else if strings.Contains(content, "<html") || strings.Contains(content, "<!DOCTYPE") {
 		// HTML
 		formatted := formatWithChromaTheme(content, "html", getSyntaxTheme())
