@@ -163,6 +163,26 @@ func createInputField(title string, colors *ColorManager) *tview.InputField {
 	return input
 }
 
+// createSearchField creates a search input field with the unified search-box
+// style shared by every search modal (command palette, Search Requests,
+// Search Workspaces, marketplace). The field background uses InputBackground,
+// the same color as the other input fields, customizable via the
+// themeOverrides inputBackgroundColor setting. tview draws the input area
+// with the field style once text is present but with the placeholder style
+// while the field is empty, so both styles are given the same background to
+// keep the box visually stable whether or not text has been typed.
+func createSearchField(label, placeholder string, colors *ColorManager) *tview.InputField {
+	input := tview.NewInputField().
+		SetLabel(label).
+		SetLabelColor(colors.LabelColor).
+		SetPlaceholder(placeholder).
+		SetPlaceholderStyle(tcell.StyleDefault.Background(colors.InputBackground).Foreground(colors.Placeholder)).
+		SetFieldBackgroundColor(colors.InputBackground).
+		SetFieldTextColor(colors.Foreground)
+	input.SetBackgroundColor(colors.Background)
+	return input
+}
+
 // createDropDown creates a dropdown with consistent styling
 func createDropDown(title string,
 	options []string,
@@ -4045,13 +4065,7 @@ func createCollectionSearchPanel(colors *ColorManager) (*tview.Flex, *tview.Inpu
 	container.SetBorder(true)
 	container.SetBorderColor(colors.BorderFocus)
 
-	input := tview.NewInputField()
-	input.SetLabel("/ ")
-	input.SetPlaceholder("Search requests...")
-	input.SetBackgroundColor(colors.InputBackground)
-	input.SetFieldBackgroundColor(colors.InputBackground)
-	input.SetFieldTextColor(colors.Foreground)
-	input.SetLabelColor(colors.BorderFocus)
+	input := createSearchField("/ ", "Search requests...", colors)
 	input.SetBorder(false)
 	input.SetBorderPadding(0, 0, 1, 1)
 

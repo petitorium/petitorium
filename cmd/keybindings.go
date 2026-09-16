@@ -159,9 +159,15 @@ func NewKeyBindingManager() *KeyBindingManager {
 			Context:     "global",
 		},
 		{
-			Key:         tcell.KeyCtrlP,
+			Key:         tcell.KeyCtrlO,
 			Action:      showMarketplaceAction,
 			Description: "Show plugin marketplace",
+			Context:     "global",
+		},
+		{
+			Key:         tcell.KeyCtrlP,
+			Action:      openCommandPalette,
+			Description: "Open command palette",
 			Context:     "global",
 		},
 	}
@@ -623,13 +629,7 @@ func (kbm *KeyBindingManager) GetAllKeyBindings() []KeyBinding {
 
 // Global actions
 func quitApp(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	// Save expansion state before quitting if in "remember" mode
-	if config.C.UI.CollectionExpansion == "remember" {
-		if err := workspace.SaveExpansionState(&ui.WorkspaceData.Collections); err != nil {
-			// Could log error but for now just continue
-		}
-	}
-	ui.App.Stop()
+	quitApplication(ui)
 	return nil
 }
 
@@ -647,10 +647,7 @@ func newCollection(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		form := createCollectionFormWithLocation(ui)
-		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
-		ui.Pages.AddPage("newCollection", modal, true, true)
-		ui.App.SetFocus(form)
+		openNewCollectionForm(ui)
 		return nil
 	}
 	return event
@@ -662,26 +659,8 @@ func newRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		// New request - check if a collection or request is selected
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			var selectedCollection *workspace.Collection
-
-			if col := ui.collectionFromNode(node); col != nil {
-				// Collection is selected
-				selectedCollection = col
-			} else if req := ui.requestFromNode(node); req != nil {
-				// Request is selected - find its parent collection by ID
-				selectedCollection = workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
-			}
-
-			if selectedCollection != nil {
-				form := createRequestForm(ui.App, ui.Pages, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-				ui.Pages.AddPage("newRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openNewRequestForm(ui) {
+			return nil
 		}
 	}
 	return event
@@ -693,21 +672,8 @@ func duplicateRequest(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		// Duplicate request - check if a request is selected
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if req := ui.requestFromNode(node); req != nil {
-				// Request is selected - find its parent collection by ID
-				selectedCollection := workspace.FindParentCollectionOfRequest(&ui.WorkspaceData.Collections, req.ID)
-
-				if selectedCollection != nil {
-					form := createDuplicateRequestForm(ui.App, ui.Pages, req, selectedCollection, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, ui.Colors)
-					modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-					ui.Pages.AddPage("duplicateRequest", modal, true, true)
-					ui.App.SetFocus(form)
-					return nil
-				}
-			}
+		if openDuplicateRequestForm(ui) {
+			return nil
 		}
 	}
 	return event
@@ -719,23 +685,8 @@ func renameItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if col := ui.collectionFromNode(node); col != nil {
-				// Rename collection
-				form := createRenameCollectionForm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
-				ui.Pages.AddPage("renameCollection", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			} else if req := ui.requestFromNode(node); req != nil {
-				// Rename request - need to find parent collection
-				form := createRenameRequestForm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors)
-				modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
-				ui.Pages.AddPage("renameRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openRenameItemForm(ui) {
+			return nil
 		}
 	} else if ui.MainCycle.current == ui.PanelIndices.Environment {
 		// Rename environment
@@ -780,6 +731,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"renameWorkspace",
 		"workspaceModal",
 		"workspaceSearch",
+		"commandPalette",
 		"commandRunnerModal",
 		"tagPickerModal",
 		"tagEditorModal",
@@ -799,21 +751,8 @@ func moveItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if col := ui.collectionFromNode(node); col != nil {
-				form := createMoveCollectionForm(ui, col)
-				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-				ui.Pages.AddPage("moveCollection", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			} else if req := ui.requestFromNode(node); req != nil {
-				form := createMoveRequestForm(ui, req)
-				modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
-				ui.Pages.AddPage("moveRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openMoveItemForm(ui) {
+			return nil
 		}
 	}
 	return event
@@ -825,21 +764,8 @@ func deleteItem(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	}
 
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		node := ui.CollectionsTreeView.GetCurrentNode()
-		if node != nil {
-			if col := ui.collectionFromNode(node); col != nil {
-				form := createDeleteCollectionConfirm(ui.App, ui.Pages, col, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-				modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
-				ui.Pages.AddPage("deleteCollection", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			} else if req := ui.requestFromNode(node); req != nil {
-				form := createDeleteRequestConfirm(ui.App, ui.Pages, req, ui.WorkspaceData, ui.RootNode, ui.CollectionsTreeView, node, ui.Colors, ui.DataManager)
-				modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
-				ui.Pages.AddPage("deleteRequest", modal, true, true)
-				ui.App.SetFocus(form)
-				return nil
-			}
+		if openDeleteItemForm(ui) {
+			return nil
 		}
 	}
 	return event
@@ -1649,6 +1575,14 @@ func showMarketplaceAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Eve
 	return nil
 }
 
+func openCommandPalette(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if isInFormPopup(ui) {
+		return event
+	}
+	showCommandPaletteModal(ui)
+	return nil
+}
+
 func showCommandRunnerModalAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	// Only consume the event when an editable text input actually has focus.
 	// If focus is on a button (e.g. SendButton), let the button handle Enter.
@@ -1845,32 +1779,32 @@ func jumpToContainer(ui *UIOrchestrator, containerIndex int) {
 }
 
 func jumpToWorkspacePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 0)
+	jumpToWorkspaceCommand(ui)
 	return nil
 }
 
 func jumpToEnvironmentPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 1)
+	jumpToEnvironmentCommand(ui)
 	return nil
 }
 
 func jumpToCollectionsPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 2)
+	jumpToCollectionsCommand(ui)
 	return nil
 }
 
 func jumpToURLBarPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 3)
+	jumpToURLBarCommand(ui)
 	return nil
 }
 
 func jumpToRequestPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 4)
+	jumpToRequestCommand(ui)
 	return nil
 }
 
 func jumpToResponsePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	jumpToContainer(ui, 5)
+	jumpToResponseCommand(ui)
 	return nil
 }
 
@@ -1879,12 +1813,7 @@ func openCollectionSearch(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Even
 		return event
 	}
 	if ui.MainCycle.current == ui.PanelIndices.Collections {
-		currentFocus := ui.App.GetFocus()
-		ui.EnterModal()
-		m := NewCollectionSearchModal(ui)
-		m.returnFocus = currentFocus
-		ui.Pages.AddPage("collectionSearch", createSizedModal(m, modalSizeSearch, ui.Colors.Background), true, true)
-		ui.App.SetFocus(m.searchField)
+		showCollectionSearchModal(ui)
 		return nil
 	}
 	return event

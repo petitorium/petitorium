@@ -387,6 +387,7 @@ func (tm *ThemeManager) ApplyTheme(themeName string) error {
 	config.C.Theme.InputBackgroundLighterColor = theme.UIColors.InputBackgroundLighter
 	config.C.Theme.LabelColor = theme.UIColors.LabelColor
 	config.C.Theme.ValueColor = theme.UIColors.ValueColor
+	config.C.Theme.PlaceholderColor = theme.UIColors.Placeholder
 	config.C.UI.SelectedRequestIconColor = theme.UIColors.SelectedRequestIcon
 
 	// Update method colors

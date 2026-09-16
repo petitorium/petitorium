@@ -333,14 +333,7 @@ func NewCollectionSearchModal(ui *UIOrchestrator) *CollectionSearchModal {
 	m.table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.Foreground))
 	m.table.SetBackgroundColor(ui.Colors.Background)
 
-	m.searchField = tview.NewInputField().
-		SetLabel(" / ").
-		SetLabelColor(ui.Colors.BorderFocus).
-		SetPlaceholder("Search requests...").
-		SetPlaceholderTextColor(ui.Colors.Placeholder).
-		SetFieldBackgroundColor(ui.Colors.InputBackground).
-		SetFieldTextColor(ui.Colors.Foreground)
-	m.searchField.SetBackgroundColor(ui.Colors.Background)
+	m.searchField = createSearchField(" / ", "Search requests...", ui.Colors)
 
 	m.searchField.SetChangedFunc(func(text string) {
 		if collectionSearchDebounceTimer != nil {
@@ -1791,14 +1784,15 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		focus := ui.App.GetFocus()
 
 		// If we're in a form input field, don't handle collection shortcuts
-		// BUT allow Tab, Backtab, and the command runner shortcut to pass through
+		// BUT allow Tab, Backtab, the command runner shortcut and the command
+		// palette (Ctrl+P) to pass through
 		if _, isInput := focus.(*tview.InputField); isInput {
-			if event.Key() != tcell.KeyTab && event.Key() != tcell.KeyBacktab && !isCommandRunnerEvent(event) {
+			if event.Key() != tcell.KeyTab && event.Key() != tcell.KeyBacktab && !isCommandRunnerEvent(event) && event.Key() != tcell.KeyCtrlP {
 				return event // Let input fields handle their own keys
 			}
 		}
 		if _, isTextArea := focus.(*tview.TextArea); isTextArea {
-			if !isCommandRunnerEvent(event) {
+			if !isCommandRunnerEvent(event) && event.Key() != tcell.KeyCtrlP {
 				return event // Let text areas handle their own keys
 			}
 		}
@@ -1828,6 +1822,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			"renameWorkspace",
 			"workspaceModal",
 			"workspaceSearch",
+			"commandPalette",
 		}
 
 		isFormPopup := false

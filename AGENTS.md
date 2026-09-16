@@ -73,6 +73,7 @@ Group imports into three blocks separated by newlines:
 
 - **ColorManager**: Use `ColorManager` (from `cmd/colors.go`) for all component colors.
 - **Helper Functions**: Prefer using helper functions in `cmd/ui.go` (e.g., `createPanel`, `createInputField`, `createThemedButton`) to maintain consistency.
+- **Search Boxes**: Every search input (command palette, Search Requests, Search Workspaces, marketplace) must be created with `createSearchField` from `cmd/ui.go` so all search boxes share the same style: `InputBackground` as the field background (honors the `themeOverrides.inputBackgroundColor` setting), `LabelColor` for the label, `Placeholder` for placeholder text, and `Foreground` for typed text. Never style a search input by hand. Note: tview draws an empty input with its *placeholder* style and a filled input with its *field* style — `createSearchField` sets both backgrounds to `InputBackground`; any hand-styled input must do the same or its background will change color as soon as the user types.
 
 ### Focus Management
 
