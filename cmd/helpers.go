@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-xmlfmt/xmlfmt"
 	"github.com/rivo/tview"
 
 	"github.com/petitorium/petitorium/config"
@@ -125,8 +126,8 @@ func syncContentTypeDropdown(currentRequest *workspace.Request, contentTypeDropd
 	}
 }
 
-// getPrettyResponseBody returns the response body as clean text with JSON
-// pretty-printed when possible.
+// getPrettyResponseBody returns the response body as clean text with JSON and
+// XML pretty-printed when possible.
 func getPrettyResponseBody(resp *HTTPResponse) string {
 	if resp == nil || resp.Body == "" {
 		return ""
@@ -140,6 +141,8 @@ func getPrettyResponseBody(resp *HTTPResponse) string {
 				body = string(prettyJSON)
 			}
 		}
+	} else if len(trimmed) > 0 && trimmed[0] == '<' && config.C.PrettyPrintXML {
+		body = xmlfmt.FormatXML(resp.Body, "", "  ")
 	}
 	return body
 }
