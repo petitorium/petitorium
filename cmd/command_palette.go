@@ -40,14 +40,7 @@ func NewCommandPaletteModal(ui *UIOrchestrator) *CommandPaletteModal {
 	m.table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.ActiveTab))
 	m.table.SetBackgroundColor(ui.Colors.Background)
 
-	m.searchField = tview.NewInputField().
-		SetLabel(" > ").
-		SetLabelColor(ui.Colors.LabelColor).
-		SetPlaceholder("Type to filter commands...").
-		SetPlaceholderTextColor(ui.Colors.Placeholder).
-		SetFieldBackgroundColor(ui.Colors.Selection).
-		SetFieldTextColor(ui.Colors.Foreground)
-	m.searchField.SetBackgroundColor(ui.Colors.Background)
+	m.searchField = createSearchField(" > ", "Type to filter commands...", ui.Colors)
 
 	m.searchField.SetChangedFunc(func(text string) {
 		m.filterCommands(text)

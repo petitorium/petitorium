@@ -333,14 +333,7 @@ func NewCollectionSearchModal(ui *UIOrchestrator) *CollectionSearchModal {
 	m.table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.Foreground))
 	m.table.SetBackgroundColor(ui.Colors.Background)
 
-	m.searchField = tview.NewInputField().
-		SetLabel(" / ").
-		SetLabelColor(ui.Colors.BorderFocus).
-		SetPlaceholder("Search requests...").
-		SetPlaceholderTextColor(ui.Colors.Placeholder).
-		SetFieldBackgroundColor(ui.Colors.InputBackground).
-		SetFieldTextColor(ui.Colors.Foreground)
-	m.searchField.SetBackgroundColor(ui.Colors.Background)
+	m.searchField = createSearchField(" / ", "Search requests...", ui.Colors)
 
 	m.searchField.SetChangedFunc(func(text string) {
 		if collectionSearchDebounceTimer != nil {

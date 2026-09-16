@@ -45,12 +45,7 @@ func NewWorkspaceSearchModal(ui *UIOrchestrator) *WorkspaceSearchModal {
 	m.table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.ActiveTab))
 	m.table.SetBackgroundColor(ui.Colors.Background)
 
-	m.searchField = tview.NewInputField().
-		SetLabel(" Search Workspaces: ").
-		SetLabelColor(ui.Colors.LabelColor).
-		SetFieldBackgroundColor(ui.Colors.Selection).
-		SetFieldTextColor(ui.Colors.Foreground)
-	m.searchField.SetBackgroundColor(ui.Colors.Background)
+	m.searchField = createSearchField(" Search Workspaces: ", "", ui.Colors)
 
 	m.loadWorkspaces()
 

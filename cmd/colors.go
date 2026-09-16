@@ -115,10 +115,14 @@ func NewColorManager() *ColorManager {
 	// Set up tview borders from theme configuration
 	setupBorders(theme)
 
-	// Set input background color with fallback
-	inputBackground := theme.TreeSelectionBackground
+	// Set input background color with fallbacks: the inputBackgroundColor
+	// theme key, then the selection background, then the plain background.
+	inputBackground := theme.InputBackgroundColor
 	if inputBackground == "" {
-		inputBackground = adjustBrightness(inputBackground, 0.5)
+		inputBackground = theme.SelectionBackground
+	}
+	if inputBackground == "" {
+		inputBackground = theme.BackgroundColor
 	}
 
 	// Set lighter input background color with fallback (50% brighter than inputBackground)

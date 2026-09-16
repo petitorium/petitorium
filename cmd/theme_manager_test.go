@@ -110,6 +110,34 @@ func TestColorManagerPlaceholderColor(t *testing.T) {
 	}
 }
 
+func TestColorManagerInputBackgroundFromConfig(t *testing.T) {
+	oldInput := config.C.Theme.InputBackgroundColor
+	oldSelection := config.C.Theme.SelectionBackground
+	oldTreeSelection := config.C.Theme.TreeSelectionBackground
+	defer func() {
+		config.C.Theme.InputBackgroundColor = oldInput
+		config.C.Theme.SelectionBackground = oldSelection
+		config.C.Theme.TreeSelectionBackground = oldTreeSelection
+	}()
+
+	// The InputBackground token must honor the inputBackgroundColor key, not
+	// treeSelectionBackground.
+	config.C.Theme.InputBackgroundColor = "#1d1f2c"
+	config.C.Theme.TreeSelectionBackground = "#4a4165"
+	cm := NewColorManager()
+	if got := colorToHex(cm.InputBackground); !strings.EqualFold(got, "#1d1f2c") {
+		t.Errorf("InputBackground = %q, want inputBackgroundColor #1d1f2c", got)
+	}
+
+	// Fallback to the selection background when inputBackgroundColor is unset.
+	config.C.Theme.InputBackgroundColor = ""
+	config.C.Theme.SelectionBackground = "#1f202e"
+	cm = NewColorManager()
+	if got := colorToHex(cm.InputBackground); !strings.EqualFold(got, "#1f202e") {
+		t.Errorf("InputBackground fallback = %q, want selectionBackground #1f202e", got)
+	}
+}
+
 func TestApplyThemePropagatesPlaceholderColor(t *testing.T) {
 	tm := GetThemeManager()
 
