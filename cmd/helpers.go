@@ -142,9 +142,97 @@ func getPrettyResponseBody(resp *HTTPResponse) string {
 			}
 		}
 	} else if len(trimmed) > 0 && trimmed[0] == '<' && config.C.PrettyPrintXML {
-		body = xmlfmt.FormatXML(resp.Body, "", "  ")
+		body = formatXML(resp.Body, config.C.XMLFormatStyle)
 	}
 	return body
+}
+
+// formatXML pretty-prints XML body content according to the given style.
+func formatXML(content, style string) string {
+	switch style {
+	case "split":
+		return formatXMLSplit(content)
+	case "split-empty":
+		return formatXMLSplitEmpty(content)
+	default:
+		return xmlfmt.FormatXML(content, "", "  ")
+	}
+}
+
+// formatXMLSplit places every element tag and text node on its own line.
+func formatXMLSplit(content string) string {
+	// xmlfmt normalizes indentation of elements; then we break inline
+	// text-bearing elements onto separate lines.
+	formatted := xmlfmt.FormatXML(content, "", "  ")
+
+	var b strings.Builder
+	for _, line := range strings.Split(formatted, "\n") {
+		if !strings.ContainsRune(line, '>') || !strings.ContainsRune(line, '<') {
+			b.WriteString(line)
+			b.WriteString("\n")
+			continue
+		}
+		b.WriteString(splitInlineTags(line))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// splitInlineTags breaks an already-indented line like
+// "  <tag>text</tag>" into "<tag>", "text", "</tag>" on separate lines,
+// preserving the line's leading indentation.
+func splitInlineTags(line string) string {
+	// Only act on lines that have an opening tag followed by non-tag text
+	// followed by a closing tag on the same line.
+	indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+	rest := strings.TrimSpace(line)
+	if !strings.HasPrefix(rest, "<") || strings.HasPrefix(rest, "<!") || strings.HasPrefix(rest, "<?") {
+		return line
+	}
+	if strings.HasSuffix(rest, "/>") {
+		return line
+	}
+
+	// Find the opening tag end.
+	end := strings.Index(rest, ">")
+	if end < 0 {
+		return line
+	}
+	openTag := rest[:end+1]
+
+	// The remaining should be text + a closing tag.
+	remaining := rest[end+1:]
+	if remaining == "" {
+		return line
+	}
+	closeIdx := strings.LastIndex(remaining, "</")
+	if closeIdx < 0 {
+		return line
+	}
+	text := remaining[:closeIdx]
+	closeTag := remaining[closeIdx:]
+	if text == "" {
+		return line
+	}
+
+	// Avoid splitting when the "text" actually contains child tags
+	// (mixed content), which xmlfmt would have already put on separate lines.
+	if strings.ContainsRune(text, '<') {
+		return line
+	}
+
+	return indent + openTag + "\n" +
+		indent + "  " + strings.TrimSpace(text) + "\n" +
+		indent + closeTag
+}
+
+// formatXMLSplitEmpty places empty/self-closing elements on their own line
+// while keeping text-bearing leaves inline (standard xmlfmt behavior).
+func formatXMLSplitEmpty(content string) string {
+	// self-closing elements (e.g. <tag />) and empty element pairs
+	// (e.g. <tag></tag>) are already on their own lines via xmlfmt; this is
+	// effectively the standard formatting.
+	return xmlfmt.FormatXML(content, "", "  ")
 }
 
 // updateResponseTabs updates the response tabs with new response data

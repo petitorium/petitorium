@@ -27,6 +27,7 @@ type AppConfig struct {
 	DisableVersionCheck bool                 `mapstructure:"disableVersionCheck"` // Disable latest version check
 	ShowPreparationTime bool                 `mapstructure:"showPreparationTime"` // Show total preparation time alongside HTTP duration in response panel
 	PrettyPrintXML      bool                 `mapstructure:"prettyPrintXML"`      // Pretty-print XML response bodies in the response panel
+	XMLFormatStyle      string               `mapstructure:"xmlFormatStyle"`      // XML pretty-print style: "inline", "split", or "split-empty"
 }
 
 type ThemeConfig struct {
@@ -205,6 +206,12 @@ showPreparationTime: false
 # Pretty-print XML response bodies in the response panel (default: true)
 prettyPrintXML: true
 
+# XML pretty-print style (default: "inline")
+#   inline:      leaf elements with text stay on one line (xmllint --format style)
+#   split:       every element tag and text node on its own line
+#   split-empty: only empty/self-closing and container elements get newlines
+xmlFormatStyle: "inline"
+
 plugins:
   registry_url: "http://localhost:8080"
   enabled: []
@@ -275,6 +282,9 @@ func LoadConfig() error {
 	}
 	if C.UI.CheckboxOff == "" {
 		C.UI.CheckboxOff = "○"
+	}
+	if C.XMLFormatStyle == "" {
+		C.XMLFormatStyle = "inline"
 	}
 
 	if C.Shortcuts.JumpToWorkspace == "" {
