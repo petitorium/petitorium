@@ -210,7 +210,7 @@ func openMoveItemForm(ui *UIOrchestrator) bool {
 
 	if req := ui.requestFromNode(node); req != nil {
 		form := createMoveRequestForm(ui, req)
-		modal := createSizedModal(form, modalSizeEditor, tcell.ColorDefault)
+		modal := createSizedModal(form, modalSizeConfirm, tcell.ColorDefault)
 		ui.Pages.AddPage("moveRequest", modal, true, true)
 		ui.App.SetFocus(form)
 		return true
