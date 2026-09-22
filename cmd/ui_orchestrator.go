@@ -899,6 +899,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				{"r", "Rename Environment"},
 				{"d", "Delete Environment"},
 				{"Tab", "Switch Panel"},
+				{"i", "Edit"},
+				{"F4", "External Editor"},
 				{"Esc/q", "Close"},
 			})) // Environment Config
 			return

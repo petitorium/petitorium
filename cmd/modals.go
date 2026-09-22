@@ -3,6 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -57,16 +59,14 @@ func showEnvironmentModal(
 				break
 			}
 		}
-		// If Base environment doesn't exist, create new environment
-		if env == nil {
-			env = nil
-		}
 	} else if currentEnvIndex > 0 && currentEnvIndex <= len(*ui.EnvironmentsData) {
 		// Other environment is selected - edit existing environment
 		env = &(*ui.EnvironmentsData)[currentEnvIndex-1] // -1 because dropdown has "Base Environment" at index 0
-	} else {
-		// Fallback - create new environment
-		env = nil
+	}
+
+	currentEnvName := ""
+	if env != nil {
+		currentEnvName = env.Name
 	}
 
 	// Determine initial JSON content (own variables, not effective/merged)
@@ -148,9 +148,14 @@ func showEnvironmentModal(
 		SetDirection(tview.FlexRow).
 		AddItem(errorText, 1, 0, false)
 
-	// Create left panel (environment list)
+	// Create the marketplace-style environment table and search field.
+	searchField := createSearchField(" Search Environments: ", "", ui.Colors)
+	table := tview.NewTable().SetSelectable(true, false).SetFixed(1, 0)
+	table.SetSelectedStyle(tcell.StyleDefault.Background(ui.Colors.Selection).Foreground(ui.Colors.ActiveTab))
+	table.SetBackgroundColor(ui.Colors.Background)
+
 	var selectedEnvironment *workspace.Environment
-	var leftPanel *tview.List
+	var filtered []workspace.Environment
 
 	// Define callbacks
 	onEnvironmentSelected := func(env *workspace.Environment) {
@@ -164,6 +169,58 @@ func showEnvironmentModal(
 		}
 		envEditPanel.SetText(content, false)
 		ui.SyncEnvModalContent(content)
+	}
+
+	// filterEnvironments rebuilds the environment table for the given query.
+	filterEnvironments := func(query string) {
+		table.Clear()
+		filtered = nil
+		query = strings.ToLower(strings.TrimSpace(query))
+
+		headers := []string{"Name", "Base", "Vars", "Current"}
+		for i, h := range headers {
+			table.SetCell(0, i, tview.NewTableCell(" "+h+" ").
+				SetTextColor(ui.Colors.Title).
+				SetSelectable(false).
+				SetExpansion(1).
+				SetAlign(tview.AlignCenter))
+		}
+		table.GetCell(0, 0).SetAlign(tview.AlignLeft)
+
+		for _, e := range *ui.EnvironmentsData {
+			if query != "" && !strings.Contains(strings.ToLower(e.Name), query) {
+				continue
+			}
+
+			filtered = append(filtered, e)
+			row := table.GetRowCount()
+
+			base := e.Base
+			if base == "" {
+				base = "-"
+			}
+			currentText := ""
+			if e.Name == currentEnvName {
+				currentText = "*"
+			}
+
+			table.SetCell(row, 0, tview.NewTableCell(" "+e.Name+" ").
+				SetExpansion(3).
+				SetTextColor(ui.Colors.Foreground).
+				SetAlign(tview.AlignLeft))
+			table.SetCell(row, 1, tview.NewTableCell(" "+base+" ").
+				SetExpansion(1).
+				SetTextColor(ui.Colors.Foreground).
+				SetAlign(tview.AlignCenter))
+			table.SetCell(row, 2, tview.NewTableCell(" "+strconv.Itoa(len(e.Variables))+" ").
+				SetExpansion(1).
+				SetTextColor(ui.Colors.Foreground).
+				SetAlign(tview.AlignCenter))
+			table.SetCell(row, 3, tview.NewTableCell(" "+currentText+" ").
+				SetExpansion(1).
+				SetTextColor(ui.Colors.Foreground).
+				SetAlign(tview.AlignCenter))
+		}
 	}
 
 	// Function to save environment variables
@@ -251,7 +308,7 @@ func showEnvironmentModal(
 	}
 
 	// makeContentCapture wires Tab/Esc/q/i/F4 handling for the modal content.
-	makeContentCapture := func(lp *tview.List) func(event *tcell.EventKey) *tcell.EventKey {
+	makeContentCapture := func() func(event *tcell.EventKey) *tcell.EventKey {
 		return func(event *tcell.EventKey) *tcell.EventKey {
 			// F4: external editor (only when an env panel is focused)
 			if event.Key() == tcell.KeyF4 {
@@ -262,12 +319,12 @@ func showEnvironmentModal(
 				}
 				return event
 			}
-			// Tab: toggle focus between the list and the active env panel
+			// Tab: toggle focus between the environment table and the active env panel
 			if event.Key() == tcell.KeyTab {
-				if ui.App.GetFocus() == lp {
+				if ui.App.GetFocus() == table {
 					ui.App.SetFocus(activeEnvPanel())
 				} else {
-					ui.App.SetFocus(lp)
+					ui.App.SetFocus(table)
 				}
 				return nil
 			}
@@ -302,16 +359,22 @@ func showEnvironmentModal(
 		}
 	}
 
-	// buildModalContent assembles the modal content (list | env container + status bar).
-	buildModalContent := func(lp *tview.List) *tview.Flex {
+	// buildModalContent assembles the modal content (search | table + editor + status bar).
+	buildModalContent := func() *tview.Flex {
+		tableAndEditor := tview.NewFlex().
+			AddItem(table, 0, 2, true).
+			AddItem(envContainer, 0, 3, false)
+
 		c := tview.NewFlex().
 			SetDirection(tview.FlexRow).
-			AddItem(tview.NewFlex().
-				AddItem(lp, 0, 4, false).
-				AddItem(envContainer, 0, 6, false),
-				0, 1, false).
+			AddItem(searchField, 1, 0, true).
+			AddItem(tableAndEditor, 0, 1, false).
 			AddItem(statusBar, 1, 0, false)
-		c.SetInputCapture(makeContentCapture(lp))
+		c.SetBackgroundColor(ui.Colors.Background)
+		c.SetBorder(true).SetTitle(" Environment Configuration ")
+		c.SetBorderColor(ui.Colors.BorderFocus)
+		c.SetTitleColor(ui.Colors.Title)
+		c.SetInputCapture(makeContentCapture())
 		return c
 	}
 
@@ -405,65 +468,111 @@ func showEnvironmentModal(
 		// Save workspace data (which includes environments)
 		ui.WorkspaceData.Environments = *ui.EnvironmentsData
 		if err := workspace.SaveWorkspace(ui.WorkspaceData); err != nil {
-			// Handle error
 			return
 		}
 
 		// Refresh the environment dropdown
 		updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
 
-		// Refresh the environment list in place
-		newLeftPanel := createEnvironmentListPanel(
-			ui.Colors,
-			*ui.EnvironmentsData,
-			onEnvironmentSelected,
-			onEnvironmentChosen,
-			onCreateNew,
-			onDelete,
-			onRename,
-			onClone,
-		)
-
-		// Select the newly created environment (index = number of environments, since 0 is "Create New")
-		newLeftPanel.SetCurrentItem(len(*ui.EnvironmentsData))
-
-		// Rebuild the modal content with the refreshed list.
-		content := buildModalContent(newLeftPanel)
-
-		modal := createSizedModal(content, modalSizeFullscreen, ui.Colors.Background)
-		ui.EnvModalEditor = nil
-		ui.Pages.RemovePage("envVariables")
-		ui.Pages.AddPage("envVariables", modal, true, true)
-		ui.EnvModalEditor = envEditPanel
-		ui.EnvModalViewPanel = envViewPanel
-		ui.EnvModalContainer = envContainer
-		ui.EnvModalEditMode = false
-		ui.UpdateFooter()
-		ui.App.SetFocus(newLeftPanel)
-	}
-
-	leftPanel = createEnvironmentListPanel(
-		ui.Colors,
-		*ui.EnvironmentsData,
-		onEnvironmentSelected,
-		onEnvironmentChosen,
-		onCreateNew,
-		onDelete,
-		onRename,
-		onClone,
-	)
-
-	// Build the modal content (list | env container + status bar) with key handling.
-	content := buildModalContent(leftPanel)
-
-	// Find the index of the selected environment in the list (add 1 because index 0 is "Create New Environment")
-	if env != nil {
-		for i, listEnv := range *ui.EnvironmentsData {
-			if listEnv.Name == env.Name {
-				leftPanel.SetCurrentItem(i + 1) // +1 because index 0 is "Create New Environment"
+		// Refresh the environment table in place and select the new environment.
+		filterEnvironments(searchField.GetText())
+		for i, e := range filtered {
+			if e.Name == "New Environment" {
+				table.Select(i+1, 0)
 				break
 			}
 		}
+		ui.App.SetFocus(table)
+	}
+
+	table.SetSelectionChangedFunc(func(row, column int) {
+		if row > 0 && row-1 < len(filtered) {
+			onEnvironmentSelected(&filtered[row-1])
+		}
+	})
+
+	table.SetSelectedFunc(func(row, column int) {
+		if row > 0 && row-1 < len(filtered) {
+			onEnvironmentChosen(filtered[row-1].Name)
+		}
+	})
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := table.GetSelection()
+		if event.Key() == tcell.KeyUp && row == 1 {
+			ui.App.SetFocus(searchField)
+			return nil
+		}
+		if event.Key() == tcell.KeyBacktab {
+			ui.App.SetFocus(searchField)
+			return nil
+		}
+		if event.Rune() == 'j' {
+			return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+		}
+		if event.Rune() == 'k' {
+			return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+		}
+		switch event.Rune() {
+		case 'N':
+			onCreateNew()
+			return nil
+		case 'd':
+			if row > 0 && row-1 < len(filtered) {
+				env := &filtered[row-1]
+				if env.Name != "Base" {
+					onDelete(env)
+				}
+			}
+			return nil
+		case 'r':
+			if row > 0 && row-1 < len(filtered) {
+				env := &filtered[row-1]
+				if env.Name != "Base" {
+					onRename(env)
+				}
+			}
+			return nil
+		case 'c', 'C':
+			if row > 0 && row-1 < len(filtered) {
+				env := &filtered[row-1]
+				if env.Name != "Base" {
+					onClone(env)
+				}
+			}
+			return nil
+		}
+		return event
+	})
+
+	searchField.SetChangedFunc(func(text string) {
+		filterEnvironments(text)
+	})
+
+	searchField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyDown {
+			if table.GetRowCount() > 1 {
+				ui.App.SetFocus(table)
+			}
+			return nil
+		}
+		return event
+	})
+
+	// Build the modal content (search | table + editor + status bar) with key handling.
+	content := buildModalContent()
+
+	// Populate the table and select the active environment.
+	filterEnvironments("")
+	if env != nil {
+		for i, e := range filtered {
+			if e.Name == env.Name {
+				table.Select(i+1, 0)
+				break
+			}
+		}
+	} else if len(filtered) > 0 {
+		table.Select(1, 0)
 	}
 
 	modal := createSizedModal(content, modalSizeFullscreen, ui.Colors.Background)
@@ -473,7 +582,7 @@ func showEnvironmentModal(
 	ui.EnvModalContainer = envContainer
 	ui.EnvModalEditMode = false
 	ui.UpdateFooter()
-	ui.App.SetFocus(leftPanel)
+	ui.App.SetFocus(searchField)
 }
 
 // showErrorModal displays an error message modal
