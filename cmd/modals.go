@@ -257,7 +257,26 @@ func showEnvironmentModal(
 			return fmt.Errorf("invalid JSON: %v", err)
 		}
 
+		// Keep the selected reference in sync so any follow-up action (e.g.
+		// clone) reads the latest values.
 		envToSave.Variables = newVars
+
+		// Update the actual environment in EnvironmentsData. envToSave may
+		// point to a copy held in the filtered table list, so write back by
+		// name to the source slice to make the change persistent.
+		envName := envToSave.Name
+		updated := false
+		for i := range *ui.EnvironmentsData {
+			if (*ui.EnvironmentsData)[i].Name == envName {
+				(*ui.EnvironmentsData)[i].Variables = newVars
+				updated = true
+				break
+			}
+		}
+		if !updated {
+			return fmt.Errorf("environment %q not found", envName)
+		}
+
 		ui.WorkspaceData.Environments = *ui.EnvironmentsData
 		if saveErr := workspace.SaveWorkspace(ui.WorkspaceData); saveErr != nil {
 			return fmt.Errorf("failed to save workspace: %v", saveErr)
