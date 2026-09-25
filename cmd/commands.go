@@ -46,6 +46,7 @@ func getCommands() []Command {
 		{ID: "view.jumpToURLBar", Label: "Jump to URL Bar", Category: "View", Description: "Focus the URL bar", Handler: jumpToURLBarCommand},
 		{ID: "view.jumpToRequest", Label: "Jump to Request", Category: "View", Description: "Focus the request panel", Handler: jumpToRequestCommand},
 		{ID: "view.jumpToResponse", Label: "Jump to Response", Category: "View", Description: "Focus the response panel", Handler: jumpToResponseCommand},
+		{ID: "view.selectTheme", Label: "Select Theme...", Category: "View", Description: "Preview and switch UI theme", Handler: showThemePickerModal},
 
 		// Navigate
 		{ID: "navigate.searchRequests", Label: "Search Requests", Category: "Navigate", Description: "Quick-search collections and requests", Handler: searchRequestsCommand},

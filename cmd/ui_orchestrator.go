@@ -93,6 +93,10 @@ type UIOrchestrator struct {
 	BodyViewPanel              *tview.TextView
 	BodyEditPanel              *tview.TextArea
 	BodyContainer              *tview.Flex
+	AuthTab                    *tview.TextView
+	QueryTab                   *tview.Flex
+	HeadersTab                 *tview.Flex
+	CookiesTab                 *tview.Flex
 	MultipartFieldsTab         *tview.Flex
 	MultipartAddButton         *CustomButton
 	MultipartDeleteAllButton   *CustomButton
@@ -630,7 +634,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	var tabIndexSetter func(int)
 	var saveCallbackProxy func()
 
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, _, _, _, _, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI :=
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, authTab, queryTab, headersTab, cookiesTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
@@ -699,6 +703,10 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		BodyViewPanel:                  bodyViewPanel,
 		BodyEditPanel:                  bodyEditPanel,
 		BodyContainer:                  bodyContainer,
+		AuthTab:                        authTab,
+		QueryTab:                       queryTab,
+		HeadersTab:                     headersTab,
+		CookiesTab:                     cookiesTab,
 		MultipartFieldsTab:             multipartFieldsTab,
 		Response:                       responsePanel,
 		Footer:                         footer,
