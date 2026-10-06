@@ -157,9 +157,9 @@ func recolorPrimitive(p tview.Primitive, c *ColorManager) {
 		v.SetLabelColor(c.LabelColor)
 	case *tview.DropDown:
 		v.SetBackgroundColor(c.Background)
-		v.SetFieldBackgroundColor(c.InputBackground)
 		v.SetFieldTextColor(c.Foreground)
 		v.SetLabelColor(c.LabelColor)
+		styleDropDown(v, c)
 	case *tview.TextArea:
 		v.SetBackgroundColor(c.Background)
 		v.SetTextStyle(tcell.StyleDefault.Background(c.Background).Foreground(c.Foreground))

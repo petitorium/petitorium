@@ -123,7 +123,7 @@ func showTagEditorModal(ui *UIOrchestrator, target *textInputTarget, dt *Detecte
 				}
 			}
 			formItems[f.Key] = dd
-			form.AddFormItem(dd)
+			form.AddFormItem(newFormDropDown(dd, colors))
 
 		case "checkbox":
 			chk := tview.NewCheckbox().SetLabel(label)

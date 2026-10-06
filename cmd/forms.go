@@ -73,13 +73,17 @@ func createCollectionFormWithLocation(ui *UIOrchestrator) *tview.Form {
 	form.AddInputField("Name: ", "", 0, nil, nil).SetFieldBackgroundColor(colors.Border)
 	// The title follows the selected Location: Root creates a "Collection",
 	// any nested target creates a "Folder".
-	form.AddDropDown("Location:", locationOptions, defaultLocationIdx, func(_ string, optionIndex int) {
-		if optionIndex == 0 {
-			form.SetTitle(" New Collection ")
-		} else {
-			form.SetTitle(" New Folder ")
-		}
-	})
+	locationDropdown := tview.NewDropDown().
+		SetLabel("Location:").
+		SetOptions(locationOptions, func(_ string, optionIndex int) {
+			if optionIndex == 0 {
+				form.SetTitle(" New Collection ")
+			} else {
+				form.SetTitle(" New Folder ")
+			}
+		}).
+		SetCurrentOption(defaultLocationIdx)
+	form.AddFormItem(newFormDropDown(locationDropdown, colors))
 
 	cancelFunc := func() {
 		pages.RemovePage("newCollection")
@@ -89,7 +93,7 @@ func createCollectionFormWithLocation(ui *UIOrchestrator) *tview.Form {
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
-		selectedIdx, _ := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+		selectedIdx, _ := form.GetFormItem(1).(*formDropDown).GetCurrentOption()
 		if strings.TrimSpace(name) == "" {
 			return
 		}
@@ -159,7 +163,11 @@ func createRequestForm(app *tview.Application,
 	form.SetButtonTextColor(colors.Foreground)
 
 	form.AddInputField("Name: ", "", 0, nil, nil).SetFieldBackgroundColor(colors.Border)
-	form.AddDropDown("Method: ", workspace.HTTPMethods, 0, nil)
+	methodDropdown := tview.NewDropDown().
+		SetLabel("Method: ").
+		SetOptions(workspace.HTTPMethods, nil).
+		SetCurrentOption(0)
+	form.AddFormItem(newFormDropDown(methodDropdown, colors))
 	form.AddInputField("URL: ", "", 0, nil, nil)
 
 	bodyInput := tview.NewInputField().
@@ -186,7 +194,9 @@ func createRequestForm(app *tview.Application,
 	contentTypeDropdown := tview.NewDropDown().
 		SetLabel("Content Type: ").
 		SetOptions([]string{"JSON", "Multipart", "No Body"}, nil).
+		SetFieldBackgroundColor(colors.Background).
 		SetCurrentOption(0)
+	contentTypeDropdown.SetBackgroundColor(colors.Background)
 	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
 		switch text {
 		case "JSON":
@@ -198,14 +208,14 @@ func createRequestForm(app *tview.Application,
 		}
 	})
 
-	form.AddFormItem(contentTypeDropdown)
+	form.AddFormItem(newFormDropDown(contentTypeDropdown, colors))
 	form.AddFormItem(bodyInput)
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
-		_, method := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+		_, method := form.GetFormItem(1).(*formDropDown).GetCurrentOption()
 		url := form.GetFormItem(2).(*tview.InputField).GetText()
-		_, contentType := form.GetFormItem(3).(*tview.DropDown).GetCurrentOption()
+		_, contentType := form.GetFormItem(3).(*formDropDown).GetCurrentOption()
 		body := form.GetFormItem(4).(*tview.InputField).GetText()
 
 		if strings.TrimSpace(name) == "" || strings.TrimSpace(url) == "" {
@@ -779,7 +789,7 @@ func createMoveCollectionForm(ui *UIOrchestrator, selectedCollection *workspace.
 	parentDropdown.SetFieldTextColor(colors.Foreground)
 	parentDropdown.SetLabelColor(colors.Foreground)
 
-	form.AddFormItem(parentDropdown)
+	form.AddFormItem(newFormDropDown(parentDropdown, colors))
 
 	form.AddButton("Move", func() {
 		selectedIndex, _ := parentDropdown.GetCurrentOption()
@@ -906,7 +916,7 @@ func createMoveRequestForm(ui *UIOrchestrator, selectedRequest *workspace.Reques
 	collectionDropdown.SetFieldTextColor(colors.Foreground)
 	collectionDropdown.SetLabelColor(colors.Foreground)
 
-	form.AddFormItem(collectionDropdown)
+	form.AddFormItem(newFormDropDown(collectionDropdown, colors))
 
 	form.AddButton("Move", func() {
 		selectedIndex, _ := collectionDropdown.GetCurrentOption()
@@ -1402,7 +1412,11 @@ func createDuplicateRequestForm(
 	}
 
 	form.AddInputField("Name: ", duplicatedName, 41, nil, nil)
-	form.AddDropDown("Method: ", workspace.HTTPMethods, methodIndex, nil)
+	duplicateMethodDropdown := tview.NewDropDown().
+		SetLabel("Method: ").
+		SetOptions(workspace.HTTPMethods, nil).
+		SetCurrentOption(methodIndex)
+	form.AddFormItem(newFormDropDown(duplicateMethodDropdown, colors))
 	form.AddInputField("URL: ", originalRequest.URL, 41, nil, nil)
 
 	bodyInput := tview.NewInputField().
@@ -1427,14 +1441,14 @@ func createDuplicateRequestForm(
 		}
 	})
 
-	form.AddFormItem(contentTypeDropdown)
+	form.AddFormItem(newFormDropDown(contentTypeDropdown, colors))
 	form.AddFormItem(bodyInput)
 
 	form.AddButton("Save", func() {
 		name := form.GetFormItem(0).(*tview.InputField).GetText()
-		_, method := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
+		_, method := form.GetFormItem(1).(*formDropDown).GetCurrentOption()
 		url := form.GetFormItem(2).(*tview.InputField).GetText()
-		_, contentType := form.GetFormItem(3).(*tview.DropDown).GetCurrentOption()
+		_, contentType := form.GetFormItem(3).(*formDropDown).GetCurrentOption()
 		body := form.GetFormItem(4).(*tview.InputField).GetText()
 
 		if strings.TrimSpace(name) == "" || strings.TrimSpace(url) == "" {
@@ -1796,7 +1810,9 @@ func addMultipartField(fieldsList *tview.Flex, colors *ColorManager) {
 	typeDropdown := tview.NewDropDown().
 		SetLabel("Type: ").
 		SetOptions([]string{"text", "text_multiline", "file"}, nil).
+		SetFieldBackgroundColor(colors.Background).
 		SetCurrentOption(0)
+	typeDropdown.SetBackgroundColor(colors.Background)
 	fieldControls.AddItem(typeDropdown, 12, 0, false)
 
 	// Value input (changes based on type)
