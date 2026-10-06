@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"math"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -166,4 +168,89 @@ func assertColor(t *testing.T, name, got, want string) {
 	if !strings.EqualFold(got, want) {
 		t.Errorf("%s = %q, want %q", name, got, want)
 	}
+}
+
+// TestExtractedColorsAccountForChromaOffset guards against the regression where
+// Chroma colours (stored with a +1 offset) were converted without subtracting
+// it. White (#ffffff) overflowed to the invalid "#1000000", which downstream
+// colour parsers masked back to black, producing black text on dark
+// backgrounds for themes such as vim, xcode-dark and modus-vivendi.
+func TestExtractedColorsAccountForChromaOffset(t *testing.T) {
+	tm := GetThemeManager()
+
+	cases := []struct {
+		theme      string
+		background string
+		foreground string
+	}{
+		{"modus-vivendi", "#000000", "#ffffff"},
+		{"xcode-dark", "#1f1f24", "#ffffff"},
+		{"vim", "#000000", "#cccccc"},
+	}
+
+	for _, tc := range cases {
+		theme, err := tm.GetTheme(tc.theme)
+		if err != nil {
+			t.Fatalf("expected theme %q: %v", tc.theme, err)
+		}
+		assertColor(t, tc.theme+" Background", theme.UIColors.Background, tc.background)
+		assertColor(t, tc.theme+" Foreground", theme.UIColors.Foreground, tc.foreground)
+	}
+}
+
+// TestSupportedThemesAreReadable ensures every theme offered by the picker
+// emits valid #rrggbb colours and keeps text legible against its background.
+func TestSupportedThemesAreReadable(t *testing.T) {
+	tm := GetThemeManager()
+	hexColor := regexp.MustCompile(`^#[0-9a-f]{6}$`)
+
+	for _, name := range getSupportedUnifiedThemes() {
+		theme, err := tm.GetTheme(name)
+		if err != nil {
+			t.Fatalf("expected theme %q: %v", name, err)
+		}
+		c := theme.UIColors
+
+		for field, color := range map[string]string{
+			"Background":      c.Background,
+			"Foreground":      c.Foreground,
+			"Border":          c.Border,
+			"Title":           c.Title,
+			"Selection":       c.Selection,
+			"InputBackground": c.InputBackground,
+		} {
+			if !hexColor.MatchString(strings.ToLower(color)) {
+				t.Errorf("theme %q %s = %q, want #rrggbb", name, field, color)
+			}
+		}
+
+		if ratio := contrastRatio(c.Foreground, c.Background); ratio < 3.0 {
+			t.Errorf("theme %q foreground/background contrast %.2f is too low", name, ratio)
+		}
+		if strings.EqualFold(c.Selection, c.Background) {
+			t.Errorf("theme %q selection colour matches its background, selections would be invisible", name)
+		}
+	}
+}
+
+// contrastRatio returns the WCAG contrast ratio between two #rrggbb colours.
+func contrastRatio(a, b string) float64 {
+	la, lb := relativeLuminance(a), relativeLuminance(b)
+	if la < lb {
+		la, lb = lb, la
+	}
+	return (la + 0.05) / (lb + 0.05)
+}
+
+// relativeLuminance returns the relative luminance of a #rrggbb colour.
+func relativeLuminance(hexColor string) float64 {
+	r, g, b := hexToRGB(hexColor)
+	channel := func(v int) float64 {
+		s := float64(v) / 255
+		if s <= 0.03928 {
+			return s / 12.92
+		}
+		return math.Pow((s+0.055)/1.055, 2.4)
+	}
+	return 0.2126*channel(r) + 0.7152*channel(g) + 0.0722*channel(b)
 }

@@ -1,5 +1,7 @@
 package cmd
 
+import "fmt"
+
 // ThemePalette defines the canonical terminal/ansi-like colors for a theme.
 // It is the single source of truth from which all UI colors are derived.
 // Keeping palettes as editable Go values makes the theme configurable in code
@@ -41,7 +43,7 @@ func buildThemeFromPalette(p ThemePalette) *UnifiedTheme {
 	}
 	secondaryBg := p.SecondaryBg
 	if secondaryBg == "" {
-		secondaryBg = adjustBrightness(background, 1.2)
+		secondaryBg = secondarySurface(background)
 	}
 
 	black := fallbackColor(p.Black, "#414868")
@@ -113,6 +115,32 @@ func fallbackColor(color, fallback string) string {
 		return fallback
 	}
 	return color
+}
+
+// secondarySurface returns a background tone for selections and inputs that is
+// guaranteed to be distinguishable from the base background. Scaling cannot
+// lighten a (near-)black background, which would leave selections and inputs
+// invisible, so a small absolute lift is applied when scaling alone produces no
+// change.
+func secondarySurface(hexColor string) string {
+	scaled := adjustBrightness(hexColor, 1.2)
+	if scaled != hexColor {
+		return scaled
+	}
+
+	r, g, b := hexToRGB(hexColor)
+	if r < 0 || g < 0 || b < 0 {
+		return scaled
+	}
+
+	lift := func(v int) int {
+		v += 0x1a
+		if v > 255 {
+			v = 255
+		}
+		return v
+	}
+	return fmt.Sprintf("#%02x%02x%02x", lift(r), lift(g), lift(b))
 }
 
 // tokyoNightNightPalette is the canonical Tokyo Night "Night" palette from
