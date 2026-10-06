@@ -320,7 +320,7 @@ func recolorCollectionsTree(ui *UIOrchestrator) {
 
 	var walk func(*tview.TreeNode)
 	walk = func(node *tview.TreeNode) {
-		node.SetTextStyle(tcell.StyleDefault.Background(bg))
+		node.SetTextStyle(tcell.StyleDefault.Background(bg).Foreground(fg))
 		node.SetSelectedTextStyle(tcell.StyleDefault.Background(selBg).Foreground(fg))
 
 		if req := ui.requestFromNode(node); req != nil {
