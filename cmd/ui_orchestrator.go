@@ -215,7 +215,6 @@ type UIOrchestrator struct {
 	URLBarSendButtonIndex        int
 	URLBarCurlButtonIndex        int
 	RPBodyTabIndex               int
-	RPAuthTabIndex               int
 	RPQueryTabIndex              int
 	RPHeadersTabIndex            int
 	EnterModal                   func()
@@ -540,9 +539,8 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	urlBarCurlButtonIndex := 3
 
 	RPBodyTabIndex := 0
-	RPAuthTabIndex := 1
-	RPQueryTabIndex := 2
-	RPHeadersTabIndex := 3
+	RPQueryTabIndex := 1
+	RPHeadersTabIndex := 2
 
 	// Additional UI variables
 	var requestDataTabs *tview.Flex
@@ -788,7 +786,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		URLBarSendButtonIndex:        urlBarSendButtonIndex,
 		URLBarCurlButtonIndex:        urlBarCurlButtonIndex,
 		RPBodyTabIndex:               RPBodyTabIndex,
-		RPAuthTabIndex:               RPAuthTabIndex,
 		RPQueryTabIndex:              RPQueryTabIndex,
 		RPHeadersTabIndex:            RPHeadersTabIndex,
 		RefreshMultipartFieldsUI:     refreshMultipartFieldsUI,
@@ -1063,12 +1060,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 						{"q", "Quit"},
 					})) // Request Body
 				}
-			case uiOrchestrator.RPAuthTabIndex:
-				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
-					{"1-4/←/→", "Switch Tabs"},
-					{"Tab", "Next Panel"},
-					{"q", "Quit"},
-				})) // Request Auth
 			case uiOrchestrator.RPQueryTabIndex:
 				// Check if any query param is in edit mode
 				queryInEditMode := false

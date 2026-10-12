@@ -959,32 +959,6 @@ func switchToBodyTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 	return event
 }
 
-func switchToAuthTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
-	if ui.CurrentFocus == ui.PanelIndices.Request {
-		currentFocusedElement := ui.App.GetFocus()
-		isOnInputField := false
-
-		if currentFocusedElement == ui.MethodDropdown || currentFocusedElement == ui.URLInput || currentFocusedElement == ui.BodyEditPanel {
-			isOnInputField = true
-		}
-		for _, row := range currentHeaderRows {
-			if row.KeyInput == currentFocusedElement || row.ValueInput.HasFocus() {
-				isOnInputField = true
-				break
-			}
-		}
-
-		if !isOnInputField {
-			ui.TabPages.SwitchToPage("auth")
-			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 1, ui.Colors)
-			ui.CurrentTabIndex = 1
-			ui.UpdateFooter()
-			return nil
-		}
-	}
-	return event
-}
-
 func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	if ui.CurrentFocus == ui.PanelIndices.Request {
 		currentFocusedElement := ui.App.GetFocus()
@@ -1008,8 +982,8 @@ func switchToQueryTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("query")
-			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 2, ui.Colors)
-			ui.CurrentTabIndex = 2
+			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 1, ui.Colors)
+			ui.CurrentTabIndex = 1
 			ui.UpdateFooter()
 			return nil
 		}
@@ -1040,8 +1014,8 @@ func switchToHeadersTab(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 
 		if !isOnInputField {
 			ui.TabPages.SwitchToPage("headers")
-			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 3, ui.Colors)
-			ui.CurrentTabIndex = 3
+			updateTabHeader(RequestTabDisplayNames, ui.TabHeader, 2, ui.Colors)
+			ui.CurrentTabIndex = 2
 			ui.UpdateFooter()
 			return nil
 		}
@@ -1078,13 +1052,13 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 			} else {
 				ui.App.SetFocus(ui.BodyViewPanel)
 			}
-		case 3: // Headers tab
+		case 2: // Headers tab
 			if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
 				ui.App.SetFocus(currentHeaderRows[0].KeyInput)
 			} else {
 				ui.App.SetFocus(ui.RequestDataTabs)
 			}
-		case 4: // Cookies tab
+		case 3: // Cookies tab
 			if len(currentCookieRows) > 0 && currentCookieRows[0].DomainInput != nil {
 				ui.App.SetFocus(currentCookieRows[0].DomainInput)
 			} else {
@@ -1119,13 +1093,13 @@ func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 			} else {
 				ui.App.SetFocus(ui.BodyViewPanel)
 			}
-		case 3: // Headers tab
+		case 2: // Headers tab
 			if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
 				ui.App.SetFocus(currentHeaderRows[0].KeyInput)
 			} else {
 				ui.App.SetFocus(ui.RequestDataTabs)
 			}
-		case 4: // Cookies tab
+		case 3: // Cookies tab
 			if len(currentCookieRows) > 0 && currentCookieRows[0].DomainInput != nil {
 				ui.App.SetFocus(currentCookieRows[0].DomainInput)
 			} else {

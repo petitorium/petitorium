@@ -20,9 +20,9 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
-var RequestTabDisplayNames = []string{"Body", "Auth", "Query", "Headers", "Cookies"}
+var RequestTabDisplayNames = []string{"Body" /*"Auth",*/, "Query", "Headers", "Cookies"}
 
-var RequestTabInternalNames = []string{"body", "auth", "query", "headers", "cookies"}
+var RequestTabInternalNames = []string{"body" /*"auth",*/, "query", "headers", "cookies"}
 
 var responseTabDisplayNames = []string{"Preview", "Headers", "Cookies", "Timeline"}
 
@@ -2783,10 +2783,10 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	cookiesTab := createCookiesTabWithData(colors, initialCookies, saveCallback, focusSetter, app, pages, footerUpdater, cookieJar)
 
 	tabPages.AddPage(RequestTabInternalNames[0], bodyContainer, true, true)
-	tabPages.AddPage(RequestTabInternalNames[1], authTab, true, false)
-	tabPages.AddPage(RequestTabInternalNames[2], queryTab, true, false)
-	tabPages.AddPage(RequestTabInternalNames[3], headersTab, true, false)
-	tabPages.AddPage(RequestTabInternalNames[4], cookiesTab, true, false)
+	// tabPages.AddPage(RequestTabInternalNames[1], authTab, true, false)
+	tabPages.AddPage(RequestTabInternalNames[1], queryTab, true, false)
+	tabPages.AddPage(RequestTabInternalNames[2], headersTab, true, false)
+	tabPages.AddPage(RequestTabInternalNames[3], cookiesTab, true, false)
 
 	callback := func(index int) {
 		if tabIndexSetter != nil {

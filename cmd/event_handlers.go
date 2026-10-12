@@ -226,13 +226,13 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 				} else {
 					ui.App.SetFocus(ui.BodyViewPanel)
 				}
-			case 2: // Query tab
+			case 1: // Query tab
 				if len(currentQueryRows) > 0 && currentQueryRows[0].KeyInput != nil {
 					ui.App.SetFocus(currentQueryRows[0].KeyInput)
 				} else {
 					ui.App.SetFocus(ui.RequestDataTabs)
 				}
-			case 3: // Headers tab
+			case 2: // Headers tab
 				if len(headerRows) > 0 && headerRows[0].KeyInput != nil {
 					ui.App.SetFocus(headerRows[0].KeyInput)
 				} else {
@@ -2112,7 +2112,7 @@ func getMaxChildForContainer(container int) int {
 	case 3: // URLBar
 		return 3 // MethodDropdown (0), URLInput (1), SendButton (2), CurlButton (3)
 	case 4: // Request
-		return 4 // BodyTab (0), AuthTab (1), QueryTab (2), HeadersTab (3), CookiesTab (4)
+		return 3 // BodyTab (0), QueryTab (1), HeadersTab (2), CookiesTab (3)
 	case 5: // Response
 		return 3 // PreviewTab (0), HeadersTab (1), CookiesTab (2), TimelineTab (3)
 	default:
@@ -2171,13 +2171,13 @@ func getMaxSubchildForChild(container, child int, ui *UIOrchestrator) int {
 				}
 			}
 			return 3 // Default to all subchildren if no current request
-		case 3: // Headers Tab
+		case 2: // Headers Tab
 			// Headers Tab uses complex internal navigation, but we define 0 as the entry point
 			return 0
-		case 2: // Query Tab
+		case 1: // Query Tab
 			// Query Tab uses complex internal navigation like Headers
 			return 0
-		default: // Auth (1), Query (2)
+		default: // Cookies (3) and others
 			// Assuming single content area for now
 			return 0
 		}
@@ -2566,12 +2566,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 					ui.App.SetFocus(ui.BodyContainer)
 				}
 
-			case 1: // AuthTab
-				// Focus auth tab content (implementation depends on auth UI)
-				// For now, focus the request data tabs container
-				ui.App.SetFocus(ui.RequestDataTabs)
-
-			case 2: // QueryTab
+			case 1: // QueryTab
 				// Focus query tab content
 				// Use NavCurrentQueryParamRowElement to determine which element to focus on:
 				// 0: Add Param button
@@ -2679,7 +2674,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 					ui.App.SetFocus(ui.RequestDataTabs)
 				}
 
-			case 3: // HeadersTab
+			case 2: // HeadersTab
 				// Focus headers tab content
 				// Use NavCurrentHeaderRowElement to determine which element to focus on:
 				// 0: Add Header button
@@ -2806,7 +2801,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 					// Fallback to focusing on the tab container
 					ui.App.SetFocus(ui.RequestDataTabs)
 				}
-			case 4: // CookiesTab
+			case 3: // CookiesTab
 				// Focus cookies tab content
 				// Use NavCurrentCookieRowElement to determine which element to focus on:
 				// 0: Add Cookie button
@@ -3111,7 +3106,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					}
 				}
 
-			case 3: // Headers Tab
+			case 2: // Headers Tab
 				// ... Headers internal navigation ...
 				// 0: Add, 1: Delete All, 2+: Rows
 				// Check if we're in a header row
@@ -3164,7 +3159,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					}
 				}
 
-			case 2: // Query Tab
+			case 1: // Query Tab
 				// Query params internal navigation ...
 				// 0: Add, 1: Delete All, 2+: Rows
 				// Check if we're in a query param row
@@ -3217,7 +3212,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					}
 				}
 
-			case 4: // Cookies Tab
+			case 3: // Cookies Tab
 				// Cookies internal navigation
 				// 0: Add, 1: Delete All, 2+: Rows
 				if ui.NavCurrentCookieRowElement >= 2 {
@@ -3269,7 +3264,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					}
 				}
 
-			default: // Auth (1) or others
+			default: // Others
 				// Simple navigation: if in content, Tab goes to Response Panel
 				ui.NavCurrentContainer = 5
 				ui.NavResponseInTabHeaders = false
@@ -3454,7 +3449,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// At start of content -> Go to Tab Headers
 					ui.NavRequestInTabHeaders = true
 				}
-			case 2: // Query
+			case 1: // Query
 				// Query params back navigation
 				if ui.NavCurrentQueryParamRowElement > 0 {
 					if ui.NavCurrentQueryParamRowElement >= 2 {
@@ -3482,7 +3477,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// At start of Query -> Go to Tab Headers
 					ui.NavRequestInTabHeaders = true
 				}
-			case 3: // Headers
+			case 2: // Headers
 				// ... Headers back navigation ...
 				if ui.NavCurrentHeaderRowElement > 0 {
 					if ui.NavCurrentHeaderRowElement >= 2 {
@@ -3510,7 +3505,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// At start of Headers -> Go to Tab Headers
 					ui.NavRequestInTabHeaders = true
 				}
-			case 4: // Cookies
+			case 3: // Cookies
 				// Cookies back navigation
 				if ui.NavCurrentCookieRowElement > 0 {
 					if ui.NavCurrentCookieRowElement >= 2 {
@@ -3538,7 +3533,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// At start of Cookies -> Go to Tab Headers
 					ui.NavRequestInTabHeaders = true
 				}
-			default: // Auth/Query
+			default: // Others
 				// Go to Tab Headers
 				ui.NavRequestInTabHeaders = true
 			}
@@ -3582,7 +3577,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					ui.NavCurrentFieldRowElement = 0
 				}
 			}
-		case 2: // Query
+		case 1: // Query
 			// Set to last element
 			maxQueryParamRowElement := 2
 			if currentQueryRows != nil {
@@ -3602,7 +3597,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			} else {
 				ui.NavCurrentQueryParamElement = 0
 			}
-		case 3: // Headers
+		case 2: // Headers
 			// Set to last element
 			maxHeaderRowElement := 2
 			if currentHeaderRows != nil {
@@ -3622,7 +3617,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			} else {
 				ui.NavCurrentHeaderElement = 0
 			}
-		case 4: // Cookies
+		case 3: // Cookies
 			// Set to last element
 			maxCookieRowElement := 2
 			if currentCookieRows != nil {
