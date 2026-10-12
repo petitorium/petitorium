@@ -82,8 +82,8 @@ func recolorUI(ui *UIOrchestrator) {
 	// Buttons.
 	recolorPrimitive(ui.SendButton, c)
 	recolorPrimitive(ui.CurlButton, c)
-	recolorPrimitive(ui.EnvConfigButton, c)
-	recolorPrimitive(ui.WorkspaceConfigButton, c)
+	recolorIconButton(ui.EnvConfigButton, c)
+	recolorIconButton(ui.WorkspaceConfigButton, c)
 	recolorPrimitive(ui.MultipartAddButton, c)
 	recolorPrimitive(ui.MultipartDeleteAllButton, c)
 	recolorPrimitive(ui.AddHeaderButton, c)
@@ -198,6 +198,17 @@ func recolorCustomButton(cb *CustomButton, c *ColorManager) {
 	cb.SetDisabledBackgroundColor(c.Selection)
 	cb.SetLabelColor(c.Foreground)
 	cb.SetLabelColorActivated(c.Background)
+	cb.SetSendingLabelColor(c.BorderFocus)
+}
+
+// recolorIconButton applies the icon-only palette to a config button so only
+// its icon is visible against the panel background while keeping its handlers.
+func recolorIconButton(cb *CustomButton, c *ColorManager) {
+	cb.SetBackgroundColor(c.Background)
+	cb.SetBackgroundColorActivated(c.Background)
+	cb.SetDisabledBackgroundColor(c.Background)
+	cb.SetLabelColor(c.Foreground)
+	cb.SetLabelColorActivated(c.BorderFocus)
 	cb.SetSendingLabelColor(c.BorderFocus)
 }
 

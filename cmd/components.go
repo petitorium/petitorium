@@ -94,8 +94,12 @@ func createEnvironmentPanel(
 		// For now, let's leave it and see
 	})
 
-	// Create config button with themed background color
+	// Create config button with a background matching the panel so only the
+	// icon is visible.
 	var configButton *CustomButton = createThemedButton(config.C.UI.ConfigButtonIcon, colors)
+	configButton.SetBackgroundColor(colors.Background)
+	configButton.SetBackgroundColorActivated(colors.Background)
+	configButton.SetLabelColorActivated(colors.BorderFocus)
 
 	separator := tview.NewBox().
 		SetBackgroundColor(colors.Background)
@@ -155,8 +159,12 @@ func createWorkspacePanel(
 	}
 	workspaceDropdown.SetCurrentOption(currentIndex)
 
-	// Create config button with themed background color
+	// Create config button with a background matching the panel so only the
+	// icon is visible.
 	configButton := createThemedButton(config.C.UI.ConfigButtonIcon, colors)
+	configButton.SetBackgroundColor(colors.Background)
+	configButton.SetBackgroundColorActivated(colors.Background)
+	configButton.SetLabelColorActivated(colors.BorderFocus)
 
 	separator := tview.NewBox().
 		SetBackgroundColor(colors.Background)
