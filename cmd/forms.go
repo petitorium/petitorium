@@ -542,7 +542,7 @@ func createRenameEnvironmentForm(
 	form.SetButtonBackgroundColor(colors.Background)
 	form.SetButtonTextColor(colors.Foreground)
 
-	form.AddInputField("Name", selectedEnvironment.Name, 15, nil, nil)
+	form.AddInputField("Name: ", selectedEnvironment.Name, 39, nil, nil)
 	form.AddButton("Save", func() {
 		newName := form.GetFormItem(0).(*tview.InputField).GetText()
 		if strings.TrimSpace(newName) == "" {
