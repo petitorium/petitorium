@@ -667,6 +667,77 @@ func createCloneEnvironmentForm(
 	return form
 }
 
+// createNewEnvironmentForm builds a form that prompts for the name of a new
+// environment before creating it. After a successful creation the callback
+// onCreated is invoked with the new environment's name.
+func createNewEnvironmentForm(
+	app *tview.Application,
+	pages *tview.Pages,
+	environmentsData *[]workspace.Environment,
+	workspaceData *workspace.Workspace,
+	envDropdown *tview.DropDown,
+	colors *ColorManager,
+	currentFocus tview.Primitive,
+	onCreated func(name string),
+) *tview.Form {
+	form := tview.NewForm()
+	form.SetBackgroundColor(colors.Background)
+	form.SetBorderColor(colors.BorderFocus)
+	form.SetTitleColor(colors.Title)
+	form.SetFieldBackgroundColor(colors.Background)
+	form.SetFieldTextColor(colors.Foreground)
+	form.SetLabelColor(colors.Foreground)
+	form.SetButtonBackgroundColor(colors.Background)
+	form.SetButtonTextColor(colors.Foreground)
+
+	form.AddInputField("Name: ", "", 39, nil, nil)
+	form.AddButton("Create", func() {
+		newName := strings.TrimSpace(form.GetFormItem(0).(*tview.InputField).GetText())
+		if newName == "" {
+			return
+		}
+
+		// Check if name already exists
+		for _, env := range *environmentsData {
+			if env.Name == newName {
+				return // Name already exists
+			}
+		}
+
+		// Create the new environment
+		newEnv := workspace.Environment{
+			Name:      newName,
+			Base:      "Base",
+			Variables: make(map[string]string),
+		}
+
+		// Add to environments
+		*environmentsData = append(*environmentsData, newEnv)
+
+		// Update dropdown
+		updateEnvironmentDropdown(envDropdown, *environmentsData)
+
+		// Save workspace data (which includes environments)
+		workspaceData.Environments = *environmentsData
+		if err := workspace.SaveWorkspace(workspaceData); err != nil {
+			// Handle error
+		}
+
+		pages.RemovePage("createEnvironment")
+
+		if onCreated != nil {
+			onCreated(newName)
+		}
+	})
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("createEnvironment")
+		app.SetFocus(currentFocus)
+	})
+
+	form.SetBorder(true).SetTitle(" Create New Environment ")
+	return form
+}
+
 func createDeleteCollectionConfirm(app *tview.Application, pages *tview.Pages, selectedCollection *workspace.Collection, workspaceData *workspace.Workspace, rootNode *tview.TreeNode, collectionsTreeView *tview.TreeView, node *tview.TreeNode, colors *ColorManager, dataManager *DataManager) *tview.Form {
 	form := tview.NewForm()
 	form.SetBackgroundColor(colors.Background)

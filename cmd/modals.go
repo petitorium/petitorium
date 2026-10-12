@@ -474,34 +474,29 @@ func showEnvironmentModal(
 	}
 
 	onCreateNew = func() {
-		// Handle create new environment - directly create "New Environment"
-		newEnv := workspace.Environment{
-			Name:      "New Environment",
-			Base:      "Base",
-			Variables: make(map[string]string),
-		}
-
-		// Add to environments
-		*ui.EnvironmentsData = append(*ui.EnvironmentsData, newEnv)
-
-		// Save workspace data (which includes environments)
-		ui.WorkspaceData.Environments = *ui.EnvironmentsData
-		if err := workspace.SaveWorkspace(ui.WorkspaceData); err != nil {
-			return
-		}
-
-		// Refresh the environment dropdown
-		updateEnvironmentDropdown(ui.EnvDropdown, *ui.EnvironmentsData)
-
-		// Refresh the environment table in place and select the new environment.
-		filterEnvironments(searchField.GetText())
-		for i, e := range filtered {
-			if e.Name == "New Environment" {
-				table.Select(i+1, 0)
-				break
+		currentFocus := ui.App.GetFocus()
+		form := createNewEnvironmentForm(ui.App, ui.Pages, ui.EnvironmentsData, ui.WorkspaceData, ui.EnvDropdown, ui.Colors, currentFocus, func(name string) {
+			// Refresh the environment table in place and select the new environment.
+			filterEnvironments(searchField.GetText())
+			for i, e := range filtered {
+				if e.Name == name {
+					table.Select(i+1, 0)
+					break
+				}
 			}
-		}
-		ui.App.SetFocus(table)
+			ui.App.SetFocus(table)
+		})
+		form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				ui.Pages.RemovePage("createEnvironment")
+				ui.App.SetFocus(currentFocus)
+				return nil
+			}
+			return event
+		})
+		modal := createSizedModal(form, modalSizeForm, ui.Colors.Background)
+		ui.Pages.AddPage("createEnvironment", modal, true, true)
+		ui.App.SetFocus(form)
 	}
 
 	table.SetSelectionChangedFunc(func(row, column int) {

@@ -723,6 +723,7 @@ func isInFormPopup(ui *UIOrchestrator) bool {
 		"deleteAllHeaders",
 		"duplicateRequest",
 		"cloneEnvironment",
+		"createEnvironment",
 		"createWorkspace",
 		"deleteEnvironment",
 		"deleteWorkspace",
