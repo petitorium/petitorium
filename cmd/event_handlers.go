@@ -1822,6 +1822,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			"renameWorkspace",
 			"workspaceModal",
 			"workspaceSearch",
+			"themePicker",
 			"commandPalette",
 		}
 

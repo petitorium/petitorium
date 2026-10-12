@@ -238,7 +238,7 @@ func showCommandRunnerModal(ui *UIOrchestrator) {
 	} else {
 		typeDropdown.SetCurrentOption(0)
 	}
-	form.AddFormItem(typeDropdown)
+	form.AddFormItem(newFormDropDown(typeDropdown, colors))
 
 	// JSONPath input (disabled initially unless editing a json tag)
 	jsonPathInput := tview.NewInputField().

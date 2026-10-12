@@ -203,16 +203,9 @@ func createDropDownWithOpenOnFocus(title string,
 	dropdown.SetBorderColor(colors.Border)
 	dropdown.SetTitleColor(colors.Title)
 	dropdown.SetFieldTextColor(colors.ActiveTab)
-	dropdown.SetFieldBackgroundColor(colors.Background)
 	dropdown.SetBorderPadding(0, 0, 0, 0)
 	dropdown.SetOptions(options, nil)
-	dropdown.SetFocusedStyle(tcell.StyleDefault.Background(colors.DropdownFocus).Foreground(colors.ActiveTab))
-
-	// Set the dropdown list styles to match the theme
-	unselectedStyle := tcell.StyleDefault.Background(colors.ButtonBackground).Foreground(colors.SelectedForeground)
-	selectedStyle := tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.SelectedForeground)
-
-	dropdown.SetListStyles(unselectedStyle, selectedStyle)
+	styleDropDown(dropdown, colors)
 
 	// Use reflection to set openOnFocus
 	if !openOnFocus {
@@ -224,6 +217,51 @@ func createDropDownWithOpenOnFocus(title string,
 	}
 
 	return dropdown
+}
+
+// styleDropDown applies the unified dropdown palette: the resting field uses the
+// app background (only the focused/highlighted state is drawn with the dropdown
+// focus color) and the open list uses the theme's selection colors.
+func styleDropDown(dropdown *tview.DropDown, colors *ColorManager) {
+	dropdown.SetFieldBackgroundColor(colors.Background)
+	dropdown.SetFocusedStyle(tcell.StyleDefault.Background(colors.DropdownFocus).Foreground(colors.ActiveTab))
+	dropdown.SetListStyles(
+		tcell.StyleDefault.Background(colors.ButtonBackground).Foreground(colors.SelectedForeground),
+		tcell.StyleDefault.Background(colors.SelectedBackground).Foreground(colors.SelectedForeground),
+	)
+}
+
+// formDropDown adapts a dropdown for use as a tview.Form item while preserving
+// the unified dropdown field style. A form re-applies its own field style to
+// every item on each draw, which would otherwise paint the dropdown field with
+// the form's field background (often a lighter input shade, or tview's default
+// blue) instead of the app background.
+type formDropDown struct {
+	*tview.DropDown
+	fieldBg   tcell.Color
+	fieldText tcell.Color
+}
+
+// newFormDropDown wraps a dropdown so the hosting form cannot override its
+// themed field background. Use it instead of Form.AddDropDown / AddFormItem for
+// dropdowns that live inside a form.
+func newFormDropDown(dropdown *tview.DropDown, colors *ColorManager) *formDropDown {
+	styleDropDown(dropdown, colors)
+	return &formDropDown{
+		DropDown:  dropdown,
+		fieldBg:   colors.Background,
+		fieldText: colors.ActiveTab,
+	}
+}
+
+// SetFormAttributes adopts the form's label width, label color, and background
+// color, then restores the dropdown's own field style that the form just
+// overwrote.
+func (d *formDropDown) SetFormAttributes(labelWidth int, labelColor, bgColor, fieldTextColor, fieldBgColor tcell.Color) tview.FormItem {
+	d.DropDown.SetFormAttributes(labelWidth, labelColor, bgColor, fieldTextColor, fieldBgColor)
+	d.DropDown.SetFieldBackgroundColor(d.fieldBg)
+	d.DropDown.SetFieldTextColor(d.fieldText)
+	return d
 }
 
 func isDropdownOpen(dropdown *tview.DropDown) bool {

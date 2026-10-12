@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/styles"
@@ -194,7 +193,7 @@ func (tm *ThemeManager) paletteFromStyle(style *chroma.Style) ThemePalette {
 		SyntaxTheme: style.Name,
 		Background:  background,
 		Foreground:  foreground,
-		SecondaryBg: tm.adjustBrightness(background, 1.2),
+		SecondaryBg: secondarySurface(background),
 		Black:       commentColor,
 		Red:         errorColor,
 		Orange:      coalesce(classColor, numberColor),
@@ -272,53 +271,15 @@ func (tm *ThemeManager) createDefaultTheme(themeName, background string) *Unifie
 	}
 }
 
-// colorToHex converts a chroma color to hex string
+// colorToHex converts a chroma color to hex string. Chroma stores colours with
+// an offset of +1 (see chroma.Colour.String), so the raw value must be
+// decremented or the result is off by one and, for white (#ffffff), overflows
+// to a 7-digit value that downstream parsers mask back to black.
 func (tm *ThemeManager) colorToHex(color chroma.Colour) string {
 	if color == 0 {
 		return ""
 	}
-	return fmt.Sprintf("#%06x", int(color))
-}
-
-// adjustBrightness adjusts the brightness of a hex color
-func (tm *ThemeManager) adjustBrightness(hexColor string, factor float64) string {
-	if hexColor == "" {
-		return ""
-	}
-
-	// Remove # if present
-	hexColor = strings.TrimPrefix(hexColor, "#")
-
-	// Parse hex color
-	var r, g, b int
-	fmt.Sscanf(hexColor, "%02x%02x%02x", &r, &g, &b)
-
-	// Adjust brightness
-	r = int(float64(r) * factor)
-	g = int(float64(g) * factor)
-	b = int(float64(b) * factor)
-
-	// Clamp values
-	if r > 255 {
-		r = 255
-	}
-	if g > 255 {
-		g = 255
-	}
-	if b > 255 {
-		b = 255
-	}
-	if r < 0 {
-		r = 0
-	}
-	if g < 0 {
-		g = 0
-	}
-	if b < 0 {
-		b = 0
-	}
-
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
+	return fmt.Sprintf("#%06x", int(color-1))
 }
 
 // getSelectedRequestIconColor returns the appropriate color for the selected request icon based on theme

@@ -46,7 +46,7 @@ func addWorkspaceToTree(data *workspace.Workspace, root *tview.TreeNode) {
 
 		collectionNode := tview.NewTreeNode(nodeText).
 			SetSelectable(true).
-			SetTextStyle(tcell.StyleDefault.Background(backgroundColor)).
+			SetTextStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor)).
 			SetSelectedTextStyle(tcell.StyleDefault.Background(selectionBackgroundColor).Foreground(foregroundColor)).
 			SetReference(NodeRef{Kind: KindCollection, ID: collection.ID, Name: collection.Name})
 
@@ -81,7 +81,7 @@ func addChildrenToCollectionNode(node *tview.TreeNode, collection workspace.Coll
 		reqNodeText := fmt.Sprintf("%s%s%s", spacePadding, coloredMethod, paddedName)
 		requestNode := tview.NewTreeNode(reqNodeText).
 			SetSelectable(true).
-			SetTextStyle(tcell.StyleDefault.Background(backgroundColor)).
+			SetTextStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor)).
 			SetSelectedTextStyle(tcell.StyleDefault.Background(selectionBackgroundColor).Foreground(foregroundColor)).
 			SetReference(NodeRef{Kind: KindRequest, ID: req.ID, Name: req.Name})
 		node.AddChild(requestNode)
@@ -116,7 +116,7 @@ func addChildrenToCollectionNode(node *tview.TreeNode, collection workspace.Coll
 
 		subCollectionNode := tview.NewTreeNode(nodeText).
 			SetSelectable(true).
-			SetTextStyle(tcell.StyleDefault.Background(backgroundColor)).
+			SetTextStyle(tcell.StyleDefault.Background(backgroundColor).Foreground(foregroundColor)).
 			SetSelectedTextStyle(tcell.StyleDefault.Background(selectionBackgroundColor).Foreground(foregroundColor)).
 			SetReference(NodeRef{Kind: KindCollection, ID: subCol.ID, Name: subCol.Name})
 
