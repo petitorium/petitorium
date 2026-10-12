@@ -100,16 +100,13 @@ func createEnvironmentPanel(
 	separator := tview.NewBox().
 		SetBackgroundColor(colors.Background)
 
-	indicator := createCustomButton(config.C.UI.DropdownIndicator, colors.Background, colors.Background, colors.BorderFocus, colors.BorderFocus)
-
 	// Create container
 	container := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
 		AddItem(tview.NewFlex().
 			SetDirection(tview.FlexColumn).
 			AddItem(separator, 1, 0, false).
-			AddItem(envDropdown, 14, 0, false).
-			AddItem(indicator, 2, 0, true), 17, 0, false).
+			AddItem(envDropdown, 14, 0, false), 15, 0, false).
 		AddItem(separator, 0, 1, false).
 		AddItem(configButton, 3, 0, true)
 
