@@ -117,9 +117,119 @@ func showCookiesModal(ui *UIOrchestrator) {
 		}
 	}
 
+	// focusCookieElement moves focus to the cookie element described by the
+	// current navigation state (NavCurrentCookieRowElement / NavCurrentCookieElement).
+	focusCookieElement := func() {
+		switch {
+		case ui.NavCurrentCookieRowElement == 0:
+			ui.App.SetFocus(addButton)
+		case ui.NavCurrentCookieRowElement == 1:
+			ui.App.SetFocus(clearAllButton)
+		case ui.NavCurrentCookieRowElement >= 2 && ui.NavCurrentCookieRowElement-2 < len(currentCookieRows):
+			row := currentCookieRows[ui.NavCurrentCookieRowElement-2]
+			switch ui.NavCurrentCookieElement {
+			case 0:
+				ui.App.SetFocus(row.DomainInput)
+			case 1:
+				ui.App.SetFocus(row.NameInput)
+			case 2:
+				ui.App.SetFocus(row.ValueInput)
+			case 3:
+				ui.App.SetFocus(row.PathInput)
+			case 4:
+				ui.App.SetFocus(row.SecureInput)
+			case 5:
+				ui.App.SetFocus(row.HttpOnlyInput)
+			case 6:
+				ui.App.SetFocus(row.Checkbox)
+			case 7:
+				ui.App.SetFocus(row.DeleteButton)
+			}
+		default:
+			ui.App.SetFocus(addButton)
+		}
+	}
+
+	// moveCookieFocus advances (delta=+1) or rewinds (delta=-1) the cookie nav
+	// state and focuses the resulting element, wrapping within the modal. The
+	// Add Cookie and Delete All buttons each count as a single stop; each cookie
+	// row counts as eight stops (Domain, Name, Value, Path, Secure, HttpOnly,
+	// Checkbox, Delete).
+	moveCookieFocus := func(delta int) {
+		row := ui.NavCurrentCookieRowElement
+		element := ui.NavCurrentCookieElement
+
+		if row == 0 || row == 1 {
+			// On a button, move to the next/prev row (buttons are single stops).
+			row += delta
+			element = 0
+		} else {
+			// Within a cookie row, move to the next/prev element.
+			element += delta
+			if element < 0 || element > 7 {
+				row += delta
+				if delta > 0 {
+					element = 0
+				} else {
+					element = 7
+				}
+			}
+		}
+
+		// Wrap the row index around: 2 buttons + one row per cookie.
+		rowCount := 2 + len(currentCookieRows)
+		if rowCount == 0 {
+			rowCount = 1
+		}
+		row = ((row % rowCount) + rowCount) % rowCount
+
+		// Clamp the element index for the resulting row.
+		if row == 0 || row == 1 {
+			element = 0
+		} else if element < 0 {
+			element = 0
+		} else if element > 7 {
+			element = 7
+		}
+
+		ui.NavCurrentCookieRowElement = row
+		ui.NavCurrentCookieElement = element
+		focusCookieElement()
+		ui.UpdateFooter()
+	}
+
+	// isEditingCookieField reports whether the currently focused primitive is a
+	// cookie field in edit mode (where typing 'q', 'i' or Esc should reach the
+	// field rather than navigate/close the modal).
+	isEditingCookieField := func() bool {
+		for _, row := range currentCookieRows {
+			for _, in := range []interface{ IsEditMode() bool }{
+				row.DomainInput, row.NameInput, row.ValueInput, row.PathInput,
+				row.SecureInput, row.HttpOnlyInput,
+			} {
+				if in.IsEditMode() {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
 	cookiesContainer.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEsc {
+		if isEditingCookieField() {
+			// Let the editing field handle Esc (exit edit mode) and typed text.
+			return event
+		}
+		if event.Key() == tcell.KeyEsc || event.Rune() == 'q' {
 			closeCookiesModal()
+			return nil
+		}
+		if event.Key() == tcell.KeyTab {
+			moveCookieFocus(1)
+			return nil
+		}
+		if event.Key() == tcell.KeyBacktab {
+			moveCookieFocus(-1)
 			return nil
 		}
 		return event
@@ -128,10 +238,13 @@ func showCookiesModal(ui *UIOrchestrator) {
 	modal := createSizedModal(cookiesContainer, modalSizeFullscreen, colors.Background)
 	ui.Pages.AddPage("cookies", modal, true, true)
 
-	// Focus the first cookie input if present, otherwise the add button.
+	// Reset and initialize the navigation state, then focus the first element
+	// (a cookie row's domain field when present, otherwise the add button).
+	ui.NavCurrentCookieRowElement = 0
+	ui.NavCurrentCookieElement = 0
 	if len(currentCookieRows) > 0 && currentCookieRows[0].DomainInput != nil {
-		ui.App.SetFocus(currentCookieRows[0].DomainInput)
-	} else {
-		ui.App.SetFocus(addButton)
+		ui.NavCurrentCookieRowElement = 2
 	}
+	focusCookieElement()
+	ui.UpdateFooter()
 }

@@ -951,6 +951,17 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			return
 		}
 
+		if currentPage == "cookies" {
+			uiOrchestrator.FooterLeft.SetText(formatFooterHints(colors, []footerHint{
+				{"Tab", "Next Field"},
+				{"Shift+Tab", "Prev Field"},
+				{"i", "Edit"},
+				{"Enter", "Add Cookie"},
+				{"Esc/q", "Close"},
+			}))
+			return
+		}
+
 		// Check if experimental navigation is enabled
 		var expPrefix string = ""
 
