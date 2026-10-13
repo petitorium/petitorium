@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -104,6 +105,7 @@ type UIOrchestrator struct {
 	HeadersTab                 *tview.Flex
 	CookiesPanel               *tview.Flex
 	CookiesConfigButton        *CustomButton
+	CookiesSummary             *tview.TextView
 	MultipartFieldsTab         *tview.Flex
 	MultipartAddButton         *CustomButton
 	MultipartDeleteAllButton   *CustomButton
@@ -208,6 +210,7 @@ type UIOrchestrator struct {
 	SwitchWorkspace              func(string)
 	RefreshMultipartFieldsUI     func()
 	UpdateFooter                 func()
+	RefreshCookiesSummary        func()
 	CopyResponse                 func()
 	SaveResponse                 func()
 	Suspend                      func(func()) bool
@@ -568,7 +571,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	pages := tview.NewPages()
 
 	// Create the standalone cookies panel between environment and collections.
-	cookiesPanel, cookiesConfigButton := createCookiesPanel(colors)
+	cookiesPanel, cookiesConfigButton, cookiesSummary := createCookiesPanel(colors)
 
 	// Create left side layout
 	leftSide := tview.NewFlex().SetDirection(tview.FlexRow)
@@ -723,6 +726,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		HeadersTab:                     headersTab,
 		CookiesPanel:                   cookiesPanel,
 		CookiesConfigButton:            cookiesConfigButton,
+		CookiesSummary:                 cookiesSummary,
 		MultipartFieldsTab:             multipartFieldsTab,
 		Response:                       responsePanel,
 		Footer:                         footer,
@@ -1266,8 +1270,40 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	uiOrchestrator.UpdateFooter = updateFooterFunc
 
+	// RefreshCookiesSummary recomputes the cookies panel summary from the
+	// current URL and the cookie jar: it shows the total cookie count and how
+	// many would be attached to the active request (matched by domain/path).
+	uiOrchestrator.RefreshCookiesSummary = func() {
+		jar := &uiOrchestrator.WorkspaceData.CookieJar
+		total := len(jar.Cookies)
+
+		if cookiesSummary == nil {
+			return
+		}
+
+		if total == 0 {
+			cookiesSummary.SetText("No cookies yet")
+			return
+		}
+
+		matching := 0
+		if raw := strings.TrimSpace(urlInput.GetText()); raw != "" {
+			if u, err := url.Parse(raw); err == nil && u.Host != "" {
+				matching = len(jar.GetCookies(u))
+			}
+		}
+
+		// Base text inherits the summary's ActiveTab color (matching the
+		// workspace/environment dropdowns); the per-host count is muted so the
+		// "N cookies" total remains the primary figure.
+		mutedHex := colorToHex(colors.Border)
+		cookiesSummary.SetText(fmt.Sprintf("%d cookies · [%s]%d for this host[-]", total, mutedHex, matching))
+	}
+
 	// Set onModeChange for URLInput to update footer when switching between view/edit modes
 	uiOrchestrator.URLInput.onModeChange = uiOrchestrator.UpdateFooter
+
+	uiOrchestrator.RefreshCookiesSummary()
 
 	// Set initial footer content
 	uiOrchestrator.UpdateFooter()

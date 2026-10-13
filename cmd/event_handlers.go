@@ -601,6 +601,9 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.ProgrammaticallyUpdatingURL = true
 		ui.URLInput.SetText("")
 		ui.ProgrammaticallyUpdatingURL = false
+		if ui.RefreshCookiesSummary != nil {
+			ui.RefreshCookiesSummary()
+		}
 
 		ui.SyncBodyContent("")
 		setHeadersInUI(ui.Colors, nil, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
@@ -782,6 +785,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			return
 		}
 
+		if ui.RefreshCookiesSummary != nil {
+			ui.RefreshCookiesSummary()
+		}
+
 		if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 			ui.CurrentRequest.URL = text
 
@@ -841,6 +848,9 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.ProgrammaticallyUpdatingURL = true
 			ui.URLInput.SetText(req.URL)
 			ui.ProgrammaticallyUpdatingURL = false
+			if ui.RefreshCookiesSummary != nil {
+				ui.RefreshCookiesSummary()
+			}
 
 			ui.SyncBodyContent(req.Body)
 			// Initialize saved body content based on content type
@@ -1569,6 +1579,9 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 				ui.LastResponse = resp
 				updateResponseTabs(resp, &now, ui.Response, ui.ResponseTabHeader, &ui.ResponseInfoBar, &ui.ResponseTimeText, &ui.LastResponseTime, ui.ResponsePreviewPanel, ui.ResponseHeadersPanel, ui.ResponseCookiesPanel, ui.ResponseTimelinePanel, ui.Colors, ui.CopyResponse, ui.SaveResponse)
 				RefreshCookiesTab(ui.WorkspaceData.CookieJar.Cookies, ui.Colors, ui.App, ui.Pages)
+				if ui.RefreshCookiesSummary != nil {
+					ui.RefreshCookiesSummary()
+				}
 			})
 		}()
 	})

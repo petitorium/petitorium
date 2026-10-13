@@ -107,6 +107,9 @@ func showCookiesModal(ui *UIOrchestrator) {
 		saveCallback()
 		ui.Pages.RemovePage("cookies")
 		ui.Pages.SwitchToPage("main")
+		if ui.RefreshCookiesSummary != nil {
+			ui.RefreshCookiesSummary()
+		}
 		if ui.ExitModal != nil {
 			ui.ExitModal()
 		}

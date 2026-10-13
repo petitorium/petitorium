@@ -293,6 +293,9 @@ func refreshThemeSensitiveUI(ui *UIOrchestrator) {
 	}
 
 	RefreshCookiesTab(ui.WorkspaceData.CookieJar.Cookies, ui.Colors, ui.App, ui.Pages)
+	if ui.RefreshCookiesSummary != nil {
+		ui.RefreshCookiesSummary()
+	}
 
 	if ui.LastResponse != nil {
 		updateResponseTabs(
