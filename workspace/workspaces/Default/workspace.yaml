@@ -1,0 +1,23 @@
+name: Default
+description: Default workspace created automatically
+collections:
+    - id: a5706334-4cda-431c-a0df-a5e3585ebcd4
+      name: Example Requests
+      requests:
+        - id: 151989c2-fa15-4a4e-8834-aea410977ee1
+          name: Health Check
+          method: GET
+          url: https://httpbin.org/status/200
+          content_type: JSON
+        - id: ff774def-a71a-4b39-965c-09bad4cbec74
+          name: Echo
+          method: POST
+          url: https://httpbin.org/post
+          content_type: JSON
+          body: '{"message": "Hello World"}'
+environments:
+    - name: Base
+      variables:
+        base_url: https://api.example.com
+created_at: 2026-10-12T23:00:51.970837786-03:00
+updated_at: 2026-10-12T23:00:51.987753977-03:00

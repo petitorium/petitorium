@@ -1059,12 +1059,6 @@ func navigateTabLeft(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey 
 			} else {
 				ui.App.SetFocus(ui.RequestDataTabs)
 			}
-		case 3: // Cookies tab
-			if len(currentCookieRows) > 0 && currentCookieRows[0].DomainInput != nil {
-				ui.App.SetFocus(currentCookieRows[0].DomainInput)
-			} else {
-				ui.App.SetFocus(ui.RequestDataTabs)
-			}
 		default:
 			ui.App.SetFocus(ui.RequestDataTabs)
 		}
@@ -1097,12 +1091,6 @@ func navigateTabRight(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey
 		case 2: // Headers tab
 			if len(currentHeaderRows) > 0 && currentHeaderRows[0].KeyInput != nil {
 				ui.App.SetFocus(currentHeaderRows[0].KeyInput)
-			} else {
-				ui.App.SetFocus(ui.RequestDataTabs)
-			}
-		case 3: // Cookies tab
-			if len(currentCookieRows) > 0 && currentCookieRows[0].DomainInput != nil {
-				ui.App.SetFocus(currentCookieRows[0].DomainInput)
 			} else {
 				ui.App.SetFocus(ui.RequestDataTabs)
 			}

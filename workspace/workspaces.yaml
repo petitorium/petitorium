@@ -1,0 +1,6 @@
+current_workspace: Default
+workspaces:
+    - name: Default
+      description: Default workspace created automatically
+      created_at: 2026-10-12T23:00:51.970837786-03:00
+      updated_at: 2026-10-12T23:00:51.970837786-03:00

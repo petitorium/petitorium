@@ -40,6 +40,7 @@ func recolorUI(ui *UIOrchestrator) {
 
 	recolorPrimitive(ui.WorkspacePanel, c)
 	recolorPrimitive(ui.EnvironmentPanel, c)
+	recolorPrimitive(ui.CookiesPanel, c)
 	recolorPrimitive(ui.CollectionsTreeView, c)
 	recolorPrimitive(ui.MethodURLBar, c)
 	recolorPrimitive(ui.RequestDataTabs, c)
@@ -57,7 +58,6 @@ func recolorUI(ui *UIOrchestrator) {
 		ui.AuthTab,
 		ui.QueryTab,
 		ui.HeadersTab,
-		ui.CookiesTab,
 		ui.MultipartFieldsTab,
 		ui.ResponseTabHeader,
 		ui.ResponseInfoBar,
@@ -84,14 +84,13 @@ func recolorUI(ui *UIOrchestrator) {
 	recolorPrimitive(ui.CurlButton, c)
 	recolorIconButton(ui.EnvConfigButton, c)
 	recolorIconButton(ui.WorkspaceConfigButton, c)
+	recolorIconButton(ui.CookiesConfigButton, c)
 	recolorPrimitive(ui.MultipartAddButton, c)
 	recolorPrimitive(ui.MultipartDeleteAllButton, c)
 	recolorPrimitive(ui.AddHeaderButton, c)
 	recolorPrimitive(ui.DeleteAllHeadersButton, c)
 	recolorPrimitive(ui.AddQueryParamButton, c)
 	recolorPrimitive(ui.DeleteAllQueryParamsButton, c)
-	recolorPrimitive(ui.AddCookieButton, c)
-	recolorPrimitive(ui.DeleteAllCookiesButton, c)
 
 	// Hidden-border containers originally use the background as their border
 	// color. After the background changes, update them so their borders don't
@@ -102,7 +101,6 @@ func recolorUI(ui *UIOrchestrator) {
 	setBorderColor(ui.MultipartFieldsTab, c.Background)
 	setBorderColor(ui.QueryTab, c.Background)
 	setBorderColor(ui.HeadersTab, c.Background)
-	setBorderColor(ui.CookiesTab, c.Background)
 	for _, table := range []*tview.Table{ui.ResponseCookiesPanel, ui.ResponseTimelinePanel} {
 		setBorderColor(table, c.Background)
 	}
@@ -111,6 +109,7 @@ func recolorUI(ui *UIOrchestrator) {
 	for _, p := range []tview.Primitive{
 		ui.WorkspacePanel,
 		ui.EnvironmentPanel,
+		ui.CookiesPanel,
 		ui.CollectionsTreeView,
 		ui.MethodURLBar,
 		ui.RequestDataTabs,

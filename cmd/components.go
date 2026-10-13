@@ -188,6 +188,34 @@ func createWorkspacePanel(
 	return container, workspaceDropdown, nil, configButton // configButton is *CustomButton, nil is for unused *tview.Button
 }
 
+// createCookiesPanel creates the standalone cookies panel, matching the look
+// and feel of the workspace/environment panels. It shows a config button that
+// opens the cookie jar editor in a fullscreen modal.
+func createCookiesPanel(colors *ColorManager) (*tview.Flex, *CustomButton) {
+	// Create config button with a background matching the panel so only the
+	// icon is visible.
+	configButton := createThemedButton(config.C.UI.ConfigButtonIcon, colors)
+	configButton.SetBackgroundColor(colors.Background)
+	configButton.SetBackgroundColorActivated(colors.Background)
+	configButton.SetLabelColorActivated(colors.BorderFocus)
+
+	separator := tview.NewBox().
+		SetBackgroundColor(colors.Background)
+
+	container := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(separator, 0, 1, false).
+		AddItem(configButton, 3, 0, true)
+
+	container.SetBorder(true)
+	container.SetTitle(" Cookies ")
+	container.SetBackgroundColor(colors.Background)
+	container.SetBorderColor(colors.Border)
+	container.SetTitleColor(colors.Title)
+
+	return container, configButton
+}
+
 // syncBodyContent syncs body content between view and edit panels
 func syncBodyContent(content string, bodyEditMode bool, bodyEditPanel *tview.TextArea, bodyViewPanel *tview.TextView) {
 	if bodyEditMode {

@@ -195,7 +195,7 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 		ui.CurrentTabIndex = targetTabIndex
 
 		// Update navigation state
-		if ui.NavCurrentContainer == 4 && ui.NavRequestInTabHeaders {
+		if ui.NavCurrentContainer == 5 && ui.NavRequestInTabHeaders {
 			ui.NavCurrentChild = targetTabIndex
 			// Update focus and footer for navigation
 			setFocusForCoordinates(ui)
@@ -218,7 +218,7 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 
 		// Focus the appropriate tab content
 		// But not if we're in tab headers mode
-		if !(ui.NavCurrentContainer == 4 && ui.NavRequestInTabHeaders) {
+		if !(ui.NavCurrentContainer == 5 && ui.NavRequestInTabHeaders) {
 			switch targetTabIndex {
 			case 0: // Body tab
 				if ui.BodyEditMode {
@@ -249,7 +249,7 @@ func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*He
 		ui.CurrentResponseTabIndex = targetTabIndex
 
 		// Update navigation state
-		if ui.NavCurrentContainer == 5 && ui.NavResponseInTabHeaders {
+		if ui.NavCurrentContainer == 6 && ui.NavResponseInTabHeaders {
 			ui.NavCurrentChild = targetTabIndex
 			// Update focus and footer for navigation
 			setFocusForCoordinates(ui)
@@ -965,39 +965,39 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.EnvConfigButton.Flash()
 	})
 	ui.CollectionsTreeView.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 2
+		ui.NavCurrentContainer = 3
 		ui.NavCurrentChild = 0
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 	})
 	ui.MethodDropdown.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 3
+		ui.NavCurrentContainer = 4
 		ui.NavCurrentChild = 0
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 	})
 	ui.URLInput.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 3
+		ui.NavCurrentContainer = 4
 		ui.NavCurrentChild = 1
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 	})
 	ui.SendButton.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 3
+		ui.NavCurrentContainer = 4
 		ui.NavCurrentChild = 2
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 		ui.SendButton.Flash()
 	})
 	ui.CurlButton.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 3
+		ui.NavCurrentContainer = 4
 		ui.NavCurrentChild = 3
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 		ui.CurlButton.Flash()
 	})
 	ui.ContentTypeDropdown.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 4
+		ui.NavCurrentContainer = 5
 		ui.NavRequestInTabHeaders = false
 		ui.NavCurrentChild = 0
 		ui.NavCurrentSubchild = 0
@@ -1005,13 +1005,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.UpdateFooter()
 	})
 	ui.TabHeader.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 4
+		ui.NavCurrentContainer = 5
 		ui.NavRequestInTabHeaders = true
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 	})
 	ui.BodyViewPanel.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 4
+		ui.NavCurrentContainer = 5
 		ui.NavRequestInTabHeaders = false
 		ui.NavCurrentChild = 0 // Body tab
 		// Use appropriate subchild index based on content type
@@ -1024,7 +1024,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.UpdateFooter()
 	})
 	ui.BodyEditPanel.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 4
+		ui.NavCurrentContainer = 5
 		ui.NavRequestInTabHeaders = false
 		ui.NavCurrentChild = 0    // Body tab
 		ui.NavCurrentSubchild = 1 // Edit panel
@@ -1032,13 +1032,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		ui.UpdateFooter()
 	})
 	ui.ResponseTabHeader.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 5
+		ui.NavCurrentContainer = 6
 		ui.NavResponseInTabHeaders = true
 		syncMainCycleWithExperimental(ui)
 		ui.UpdateFooter()
 	})
 	ui.ResponsePreviewPanel.SetFocusFunc(func() {
-		ui.NavCurrentContainer = 5
+		ui.NavCurrentContainer = 6
 		ui.NavResponseInTabHeaders = false
 		ui.NavCurrentChild = 0
 		syncMainCycleWithExperimental(ui)
@@ -1046,7 +1046,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	})
 	if ui.MultipartAddButton != nil {
 		ui.MultipartAddButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
+			ui.NavCurrentContainer = 5
 			ui.NavRequestInTabHeaders = false
 			ui.NavCurrentChild = 0
 			ui.NavCurrentSubchild = 2
@@ -1058,7 +1058,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	if ui.MultipartDeleteAllButton != nil {
 		ui.MultipartDeleteAllButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
+			ui.NavCurrentContainer = 5
 			ui.NavRequestInTabHeaders = false
 			ui.NavCurrentChild = 0
 			ui.NavCurrentSubchild = 2
@@ -1070,7 +1070,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	if ui.AddHeaderButton != nil {
 		ui.AddHeaderButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
+			ui.NavCurrentContainer = 5
 			ui.NavRequestInTabHeaders = false
 			ui.NavCurrentChild = 3
 			ui.NavCurrentHeaderRowElement = 0
@@ -1081,7 +1081,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	if ui.DeleteAllHeadersButton != nil {
 		ui.DeleteAllHeadersButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
+			ui.NavCurrentContainer = 5
 			ui.NavRequestInTabHeaders = false
 			ui.NavCurrentChild = 3
 			ui.NavCurrentHeaderRowElement = 1
@@ -1092,7 +1092,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	if ui.AddQueryParamButton != nil {
 		ui.AddQueryParamButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
+			ui.NavCurrentContainer = 5
 			ui.NavRequestInTabHeaders = false
 			ui.NavCurrentChild = 2
 			ui.NavCurrentQueryParamRowElement = 0
@@ -1103,7 +1103,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	if ui.DeleteAllQueryParamsButton != nil {
 		ui.DeleteAllQueryParamsButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
+			ui.NavCurrentContainer = 5
 			ui.NavRequestInTabHeaders = false
 			ui.NavCurrentChild = 2
 			ui.NavCurrentQueryParamRowElement = 1
@@ -1112,26 +1112,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.DeleteAllQueryParamsButton.Flash()
 		})
 	}
-	if ui.AddCookieButton != nil {
-		ui.AddCookieButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
-			ui.NavRequestInTabHeaders = false
-			ui.NavCurrentChild = 4
-			ui.NavCurrentCookieRowElement = 0
+	if ui.CookiesConfigButton != nil {
+		ui.CookiesConfigButton.SetFocusFunc(func() {
+			ui.NavCurrentContainer = 2
+			ui.NavCurrentChild = 0
 			syncMainCycleWithExperimental(ui)
 			ui.UpdateFooter()
-			ui.AddCookieButton.Flash()
-		})
-	}
-	if ui.DeleteAllCookiesButton != nil {
-		ui.DeleteAllCookiesButton.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 4
-			ui.NavRequestInTabHeaders = false
-			ui.NavCurrentChild = 4
-			ui.NavCurrentCookieRowElement = 1
-			syncMainCycleWithExperimental(ui)
-			ui.UpdateFooter()
-			ui.DeleteAllCookiesButton.Flash()
+			ui.CookiesConfigButton.Flash()
 		})
 	}
 	if ui.ResponseHeadersPanel != nil {
@@ -1141,7 +1128,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Most tview components have it.
 		if component, ok := ui.ResponseHeadersPanel.(interface{ SetFocusFunc(func()) *tview.Box }); ok {
 			component.SetFocusFunc(func() {
-				ui.NavCurrentContainer = 5
+				ui.NavCurrentContainer = 6
 				ui.NavResponseInTabHeaders = false
 				ui.NavCurrentChild = 1
 				syncMainCycleWithExperimental(ui)
@@ -1151,7 +1138,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	if ui.ResponseCookiesPanel != nil {
 		ui.ResponseCookiesPanel.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 5
+			ui.NavCurrentContainer = 6
 			ui.NavResponseInTabHeaders = false
 			ui.NavCurrentChild = 2
 			syncMainCycleWithExperimental(ui)
@@ -1160,7 +1147,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 	}
 	if ui.ResponseTimelinePanel != nil {
 		ui.ResponseTimelinePanel.SetFocusFunc(func() {
-			ui.NavCurrentContainer = 5
+			ui.NavCurrentContainer = 6
 			ui.NavResponseInTabHeaders = false
 			ui.NavCurrentChild = 3
 			syncMainCycleWithExperimental(ui)
@@ -1195,6 +1182,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		// Show workspace configuration modal
 		showWorkspaceModal(ui)
 	})
+
+	// Set up cookies config button click handler
+	if ui.CookiesConfigButton != nil {
+		ui.CookiesConfigButton.SetSelectedFunc(func() {
+			showCookiesModal(ui)
+		})
+	}
 
 	// Save environment selection function
 	saveEnvironmentSelection := func(index int) {
@@ -2107,13 +2101,15 @@ func getMaxChildForContainer(container int) int {
 		return 1 // WorkspaceSelector (0), WorkspaceMenu (1)
 	case 1: // Environment
 		return 1 // EnvironmentSelector (0), EnvironmentMenu (1)
-	case 2: // Collections
+	case 2: // Cookies
+		return 0 // Single content area (cookies list)
+	case 3: // Collections
 		return 0 // Only TreeView (0)
-	case 3: // URLBar
+	case 4: // URLBar
 		return 3 // MethodDropdown (0), URLInput (1), SendButton (2), CurlButton (3)
-	case 4: // Request
-		return 3 // BodyTab (0), QueryTab (1), HeadersTab (2), CookiesTab (3)
-	case 5: // Response
+	case 5: // Request
+		return 2 // BodyTab (0), QueryTab (1), HeadersTab (2)
+	case 6: // Response
 		return 3 // PreviewTab (0), HeadersTab (1), CookiesTab (2), TimelineTab (3)
 	default:
 		return 0
@@ -2128,12 +2124,14 @@ func getContainerName(container int) string {
 	case 1:
 		return "Environment"
 	case 2:
-		return "Collections"
+		return "Cookies"
 	case 3:
-		return "URLBar"
+		return "Collections"
 	case 4:
-		return "Request"
+		return "URLBar"
 	case 5:
+		return "Request"
+	case 6:
 		return "Response"
 	default:
 		return "Unknown"
@@ -2142,8 +2140,8 @@ func getContainerName(container int) string {
 
 // hasSubchildren returns true if a container/child combination has subchildren
 func hasSubchildren(container, child int, ui *UIOrchestrator) bool {
-	// Request BodyTab (container 4, child 0) has subchildren when not in tab headers mode
-	if container == 4 {
+	// Request BodyTab (container 5, child 0) has subchildren when not in tab headers mode
+	if container == 5 {
 		// All request tabs can be considered to have subchildren in the new navigation model
 		// because we want to enter them (except maybe empty ones, but for now allow entry)
 		return !ui.NavRequestInTabHeaders
@@ -2153,7 +2151,7 @@ func hasSubchildren(container, child int, ui *UIOrchestrator) bool {
 
 // getMaxSubchildForChild returns the maximum subchild index for a given container/child
 func getMaxSubchildForChild(container, child int, ui *UIOrchestrator) int {
-	if container == 4 { // Request Panel
+	if container == 5 { // Request Panel
 		switch child {
 		case 0: // Body Tab
 			// Check current content type to determine which subchildren are relevant
@@ -2318,10 +2316,10 @@ func getPrevValidSubchild(currentSubchild int, ui *UIOrchestrator) int {
 
 // syncExperimentalChildWithCurrentTab syncs experimental child with current tab index when in tab headers mode
 func syncExperimentalChildWithCurrentTab(ui *UIOrchestrator) {
-	if ui.NavCurrentContainer == 4 && ui.NavRequestInTabHeaders {
+	if ui.NavCurrentContainer == 5 && ui.NavRequestInTabHeaders {
 		// Request panel tab headers mode
 		ui.NavCurrentChild = ui.CurrentTabIndex
-	} else if ui.NavCurrentContainer == 5 && ui.NavResponseInTabHeaders {
+	} else if ui.NavCurrentContainer == 6 && ui.NavResponseInTabHeaders {
 		// Response panel tab headers mode
 		ui.NavCurrentChild = ui.CurrentResponseTabIndex
 	}
@@ -2338,12 +2336,14 @@ func syncMainCycleWithExperimental(ui *UIOrchestrator) {
 	case 1:
 		ui.MainCycle.current = ui.PanelIndices.Environment
 	case 2:
-		ui.MainCycle.current = ui.PanelIndices.Collections
+		ui.MainCycle.current = ui.PanelIndices.Cookies
 	case 3:
-		ui.MainCycle.current = ui.PanelIndices.URLBar
+		ui.MainCycle.current = ui.PanelIndices.Collections
 	case 4:
-		ui.MainCycle.current = ui.PanelIndices.Request
+		ui.MainCycle.current = ui.PanelIndices.URLBar
 	case 5:
+		ui.MainCycle.current = ui.PanelIndices.Request
+	case 6:
 		ui.MainCycle.current = ui.PanelIndices.Response
 	}
 
@@ -2360,7 +2360,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 	syncExperimentalChildWithCurrentTab(ui)
 
 	// Bounds checking
-	if ui.NavCurrentContainer < 0 || ui.NavCurrentContainer > 5 {
+	if ui.NavCurrentContainer < 0 || ui.NavCurrentContainer > 6 {
 		ui.NavCurrentContainer = 0
 	}
 	maxChild := getMaxChildForContainer(ui.NavCurrentContainer)
@@ -2393,11 +2393,16 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 			ui.App.SetFocus(ui.EnvDropdown)
 		}
 
-	case 2: // Collections panel
+	case 2: // Cookies panel
+		// Only the config button is focusable in the main UI; the cookie jar
+		// editor opens in a fullscreen modal via the config button.
+		ui.App.SetFocus(ui.CookiesConfigButton)
+
+	case 3: // Collections panel
 		// Only child 0: CollectionsTreeView
 		ui.App.SetFocus(ui.CollectionsTreeView)
 
-	case 3: // URLBar panel
+	case 4: // URLBar panel
 		switch ui.NavCurrentChild {
 		case 0: // MethodDropdown
 			ui.App.SetFocus(ui.MethodDropdown)
@@ -2413,7 +2418,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 			ui.App.SetFocus(ui.MethodDropdown)
 		}
 
-	case 4: // Request panel
+	case 5: // Request panel
 		if ui.NavRequestInTabHeaders {
 			// Sync experimental child with current tab index
 			ui.NavCurrentChild = ui.CurrentTabIndex
@@ -2424,7 +2429,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 			switch ui.NavCurrentChild {
 			case 0: // BodyTab (has subchildren)
 				// Handle BodyTab subchildren with bounds checking
-				maxSubchild := getMaxSubchildForChild(4, 0, ui)
+				maxSubchild := getMaxSubchildForChild(5, 0, ui)
 				if ui.NavCurrentSubchild < 0 || ui.NavCurrentSubchild > maxSubchild {
 					ui.NavCurrentSubchild = 0
 				}
@@ -2801,142 +2806,6 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 					// Fallback to focusing on the tab container
 					ui.App.SetFocus(ui.RequestDataTabs)
 				}
-			case 3: // CookiesTab
-				// Focus cookies tab content
-				// Use NavCurrentCookieRowElement to determine which element to focus on:
-				// 0: Add Cookie button
-				// 1: Delete All button
-				// 2+: Cookie rows
-				// Note: Cookies button row layout is [addButton, nil-spacer, clearAllButton, nil-spacer]
-				//       so Delete All is at index 2, not 1 like Headers/Query.
-				if currentCookiesTab != nil {
-					// Get the button row (first child of cookies container)
-					buttonRow := currentCookiesTab.GetItem(0)
-					if buttonRow != nil {
-						buttonRowFlex, ok := buttonRow.(*tview.Flex)
-						if ok && buttonRowFlex != nil && buttonRowFlex.GetItemCount() > 2 {
-							// Determine which element to focus based on NavCurrentCookieRowElement
-							if ui.NavCurrentCookieRowElement < 2 {
-								// We're on a button (Add Cookie or Delete All)
-								switch ui.NavCurrentCookieRowElement {
-								case 0: // Add Cookie button
-									addButton := buttonRowFlex.GetItem(0)
-									if addButton != nil {
-										ui.App.SetFocus(addButton)
-									} else {
-										ui.App.SetFocus(currentCookiesTab)
-									}
-								case 1: // Delete All button
-									deleteAllButton := buttonRowFlex.GetItem(2)
-									if deleteAllButton != nil {
-										ui.App.SetFocus(deleteAllButton)
-									} else {
-										// Fallback to Add Cookie button
-										addButton := buttonRowFlex.GetItem(0)
-										if addButton != nil {
-											ui.App.SetFocus(addButton)
-										} else {
-											ui.App.SetFocus(currentCookiesTab)
-										}
-									}
-								}
-							} else {
-								// We're on a cookie row (NavCurrentCookieRowElement >= 2)
-								cookieRowIndex := ui.NavCurrentCookieRowElement - 2
-								if cookieRowIndex >= 0 && cookieRowIndex < len(currentCookieRows) {
-									cookieRow := currentCookieRows[cookieRowIndex]
-									if cookieRow != nil {
-										// Determine which element within the cookie row to focus
-										switch ui.NavCurrentCookieElement {
-										case 0: // Domain input
-											if cookieRow.DomainInput != nil {
-												ui.App.SetFocus(cookieRow.DomainInput)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										case 1: // Name input
-											if cookieRow.NameInput != nil {
-												ui.App.SetFocus(cookieRow.NameInput)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										case 2: // Value input
-											if cookieRow.ValueInput != nil {
-												ui.App.SetFocus(cookieRow.ValueInput)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										case 3: // Path input
-											if cookieRow.PathInput != nil {
-												ui.App.SetFocus(cookieRow.PathInput)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										case 4: // Secure input
-											if cookieRow.SecureInput != nil {
-												ui.App.SetFocus(cookieRow.SecureInput)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										case 5: // HttpOnly input
-											if cookieRow.HttpOnlyInput != nil {
-												ui.App.SetFocus(cookieRow.HttpOnlyInput)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										case 6: // Checkbox
-											if cookieRow.Checkbox != nil {
-												ui.App.SetFocus(cookieRow.Checkbox)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										case 7: // Delete button
-											if cookieRow.DeleteButton != nil {
-												ui.App.SetFocus(cookieRow.DeleteButton)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										default:
-											ui.NavCurrentCookieElement = 0
-											if cookieRow.DomainInput != nil {
-												ui.App.SetFocus(cookieRow.DomainInput)
-											} else {
-												ui.App.SetFocus(currentCookiesTab)
-											}
-										}
-									} else {
-										// Cookie row is nil, focus on Add Cookie button
-										ui.NavCurrentCookieRowElement = 0
-										ui.NavCurrentCookieElement = 0
-										addButton := buttonRowFlex.GetItem(0)
-										if addButton != nil {
-											ui.App.SetFocus(addButton)
-										} else {
-											ui.App.SetFocus(currentCookiesTab)
-										}
-									}
-								} else {
-									// Invalid cookie row index, focus on Add Cookie button
-									ui.NavCurrentCookieRowElement = 0
-									ui.NavCurrentCookieElement = 0
-									addButton := buttonRowFlex.GetItem(0)
-									if addButton != nil {
-										ui.App.SetFocus(addButton)
-									} else {
-										ui.App.SetFocus(currentCookiesTab)
-									}
-								}
-							}
-						} else {
-							ui.App.SetFocus(currentCookiesTab)
-						}
-					} else {
-						ui.App.SetFocus(currentCookiesTab)
-					}
-				} else {
-					// Fallback to focusing on the tab container
-					ui.App.SetFocus(ui.RequestDataTabs)
-				}
 			default:
 				// Fallback to first child
 				ui.NavCurrentChild = 0
@@ -2945,7 +2814,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 			}
 		}
 
-	case 5: // Response panel
+	case 6: // Response panel
 		if ui.NavResponseInTabHeaders {
 			// Sync experimental child with current response tab index
 			ui.NavCurrentChild = ui.CurrentResponseTabIndex
@@ -2988,15 +2857,15 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 	}
 
 	// Ensure Request panel starts at tab headers when entered from elsewhere
-	if ui.NavCurrentContainer != 4 {
+	if ui.NavCurrentContainer != 5 {
 		ui.NavRequestInTabHeaders = true
 	}
 
 	// Store previous container before updating
 	previousContainer := ui.NavCurrentContainer
 
-	// Special handling for Request panel (container 4)
-	if ui.NavCurrentContainer == 4 {
+	// Special handling for Request panel (container 5)
+	if ui.NavCurrentContainer == 5 {
 		// Request panel navigation logic (New Active Tab Logic)
 
 		// 1. Sync NavCurrentChild with the actual active tab
@@ -3066,7 +2935,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 							if ui.NavCurrentMultipartElement >= maxMultipartElement {
 								// Exit to Response Panel
-								ui.NavCurrentContainer = 5
+								ui.NavCurrentContainer = 6
 								ui.NavResponseInTabHeaders = false
 								ui.NavRequestInTabHeaders = true // Reset for next entry
 							}
@@ -3084,14 +2953,14 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						}
 						if ui.NavCurrentMultipartElement >= maxMultipartElement {
 							// Exit to Response Panel
-							ui.NavCurrentContainer = 5
+							ui.NavCurrentContainer = 6
 							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
 					}
 				} else {
 					// Standard Body Tab Navigation
-					maxSubchild := getMaxSubchildForChild(4, 0, ui)
+					maxSubchild := getMaxSubchildForChild(5, 0, ui)
 
 					if ui.NavCurrentSubchild < maxSubchild {
 						ui.NavCurrentSubchild = getNextValidSubchild(ui.NavCurrentSubchild, ui)
@@ -3100,7 +2969,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						ui.NavCurrentFieldRowElement = 0
 					} else {
 						// End of Tab -> Go to Response Panel
-						ui.NavCurrentContainer = 5
+						ui.NavCurrentContainer = 6
 						ui.NavResponseInTabHeaders = false
 						ui.NavRequestInTabHeaders = true // Reset for next entry
 					}
@@ -3138,7 +3007,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						}
 						if ui.NavCurrentHeaderRowElement >= maxHeaderRowElement {
 							// Exit to Response Panel
-							ui.NavCurrentContainer = 5
+							ui.NavCurrentContainer = 6
 							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
@@ -3152,7 +3021,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					if ui.NavCurrentHeaderRowElement == 2 {
 						if currentHeaderRows == nil || len(currentHeaderRows) == 0 {
 							// Exit to Response Panel
-							ui.NavCurrentContainer = 5
+							ui.NavCurrentContainer = 6
 							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
@@ -3191,7 +3060,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 						}
 						if ui.NavCurrentQueryParamRowElement >= maxQueryParamRowElement {
 							// Exit to Response Panel
-							ui.NavCurrentContainer = 5
+							ui.NavCurrentContainer = 6
 							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
@@ -3205,59 +3074,7 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 					if ui.NavCurrentQueryParamRowElement == 2 {
 						if currentQueryRows == nil || len(currentQueryRows) == 0 {
 							// Exit to Response Panel
-							ui.NavCurrentContainer = 5
-							ui.NavResponseInTabHeaders = false
-							ui.NavRequestInTabHeaders = true // Reset for next entry
-						}
-					}
-				}
-
-			case 3: // Cookies Tab
-				// Cookies internal navigation
-				// 0: Add, 1: Delete All, 2+: Rows
-				if ui.NavCurrentCookieRowElement >= 2 {
-					cookieRowIndex := ui.NavCurrentCookieRowElement - 2
-					cookieRowValid := false
-					if cookieRowIndex >= 0 && cookieRowIndex < len(currentCookieRows) {
-						if currentCookieRows[cookieRowIndex] != nil {
-							cookieRowValid = true
-						}
-					}
-
-					maxCookieElement := 0
-					if cookieRowValid {
-						maxCookieElement = getMaxCookieRowElement(currentCookieRows[cookieRowIndex])
-					}
-
-					if cookieRowValid && ui.NavCurrentCookieElement < maxCookieElement {
-						ui.NavCurrentCookieElement++
-					} else {
-						// Next row
-						ui.NavCurrentCookieElement = 0
-						ui.NavCurrentCookieRowElement++
-
-						// Check exit
-						maxCookieRowElement := 2
-						if currentCookieRows != nil {
-							maxCookieRowElement = 2 + len(currentCookieRows)
-						}
-						if ui.NavCurrentCookieRowElement >= maxCookieRowElement {
-							// Exit to Response Panel
-							ui.NavCurrentContainer = 5
-							ui.NavResponseInTabHeaders = false
-							ui.NavRequestInTabHeaders = true // Reset for next entry
-						}
-					}
-				} else {
-					// Buttons
-					ui.NavCurrentCookieRowElement++ // 0 -> 1 or 1 -> 2
-					ui.NavCurrentCookieElement = 0
-
-					// Check exit (if no cookies)
-					if ui.NavCurrentCookieRowElement == 2 {
-						if currentCookieRows == nil || len(currentCookieRows) == 0 {
-							// Exit to Response Panel
-							ui.NavCurrentContainer = 5
+							ui.NavCurrentContainer = 6
 							ui.NavResponseInTabHeaders = false
 							ui.NavRequestInTabHeaders = true // Reset for next entry
 						}
@@ -3266,13 +3083,13 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 
 			default: // Others
 				// Simple navigation: if in content, Tab goes to Response Panel
-				ui.NavCurrentContainer = 5
+				ui.NavCurrentContainer = 6
 				ui.NavResponseInTabHeaders = false
 				ui.NavRequestInTabHeaders = true // Reset for next entry
 			}
 		}
 
-	} else if ui.NavCurrentContainer == 5 {
+	} else if ui.NavCurrentContainer == 6 {
 		// Response panel navigation logic
 		if ui.NavResponseInTabHeaders {
 			// If we somehow got into tab headers (e.g. via mouse), Tab enters content
@@ -3302,16 +3119,16 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 			} else {
 				// At last child, move to next container and reset child
 				ui.NavCurrentChild = 0
-				ui.NavCurrentContainer = (ui.NavCurrentContainer + 1) % 6 // 6 containers total
-				// If moving to container 5, ensure we skip headers
-				if ui.NavCurrentContainer == 5 {
+				ui.NavCurrentContainer = (ui.NavCurrentContainer + 1) % 7 // 7 containers total
+				// If moving to container 6, ensure we skip headers
+				if ui.NavCurrentContainer == 6 {
 					ui.NavResponseInTabHeaders = false
 				}
 			}
 			// Reset subchild
 			ui.NavCurrentSubchild = 0
 		} else {
-			// No subchildren at current position (Containers 0, 1, 2, 3)
+			// No subchildren at current position
 			maxChild := getMaxChildForContainer(ui.NavCurrentContainer)
 
 			if ui.NavCurrentChild < maxChild {
@@ -3320,9 +3137,9 @@ func handleTabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.Event
 			} else {
 				// At last child, move to next container and reset child
 				ui.NavCurrentChild = 0
-				ui.NavCurrentContainer = (ui.NavCurrentContainer + 1) % 6 // 6 containers total
-				// If moving to container 5, ensure we skip headers
-				if ui.NavCurrentContainer == 5 {
+				ui.NavCurrentContainer = (ui.NavCurrentContainer + 1) % 7 // 7 containers total
+				// If moving to container 6, ensure we skip headers
+				if ui.NavCurrentContainer == 6 {
 					ui.NavResponseInTabHeaders = false
 				}
 			}
@@ -3366,15 +3183,15 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 	}
 
 	// Ensure Request panel starts at tab headers when entered from elsewhere
-	if ui.NavCurrentContainer != 4 {
+	if ui.NavCurrentContainer != 5 {
 		ui.NavRequestInTabHeaders = true
 	}
 
 	// Store previous container before updating
 	previousContainer := ui.NavCurrentContainer
 
-	// Special handling for Request panel (container 4)
-	if ui.NavCurrentContainer == 4 {
+	// Special handling for Request panel (container 5)
+	if ui.NavCurrentContainer == 5 {
 		// Request panel backtab navigation logic
 		// Sync with current tab
 		ui.NavCurrentChild = ui.CurrentTabIndex
@@ -3382,8 +3199,8 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		if ui.NavRequestInTabHeaders {
 			// We're in tab headers mode
 			// Backtab should move to previous container (URLBar)
-			ui.NavCurrentContainer = 3                      // URLBar panel
-			ui.NavCurrentChild = getMaxChildForContainer(3) // Last child of URLBar
+			ui.NavCurrentContainer = 4                      // URLBar panel
+			ui.NavCurrentChild = getMaxChildForContainer(4) // Last child of URLBar
 			ui.NavRequestInTabHeaders = true                // Reset for Request panel
 			ui.NavCurrentSubchild = 0
 		} else {
@@ -3505,45 +3322,17 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 					// At start of Headers -> Go to Tab Headers
 					ui.NavRequestInTabHeaders = true
 				}
-			case 3: // Cookies
-				// Cookies back navigation
-				if ui.NavCurrentCookieRowElement > 0 {
-					if ui.NavCurrentCookieRowElement >= 2 {
-						// In row
-						if ui.NavCurrentCookieElement > 0 {
-							ui.NavCurrentCookieElement--
-						} else {
-							ui.NavCurrentCookieRowElement--
-							// Check if prev is row
-							if ui.NavCurrentCookieRowElement >= 2 {
-								idx := ui.NavCurrentCookieRowElement - 2
-								if idx >= 0 && idx < len(currentCookieRows) {
-									ui.NavCurrentCookieElement = getMaxCookieRowElement(currentCookieRows[idx])
-								}
-							} else {
-								ui.NavCurrentCookieElement = 0
-							}
-						}
-					} else {
-						// Buttons
-						ui.NavCurrentCookieRowElement--
-						ui.NavCurrentCookieElement = 0
-					}
-				} else {
-					// At start of Cookies -> Go to Tab Headers
-					ui.NavRequestInTabHeaders = true
-				}
 			default: // Others
 				// Go to Tab Headers
 				ui.NavRequestInTabHeaders = true
 			}
 		}
-	} else if ui.NavCurrentContainer == 5 {
+	} else if ui.NavCurrentContainer == 6 {
 		// Response panel backtab navigation logic
 		// Skip tab headers and go directly to previous container (Request panel)
 		// AND TARGET THE ACTIVE TAB's LAST ELEMENT
 
-		ui.NavCurrentContainer = 4              // Request panel
+		ui.NavCurrentContainer = 5              // Request panel
 		ui.NavCurrentChild = ui.CurrentTabIndex // Active Tab
 
 		// We want to enter content mode, at the end
@@ -3553,7 +3342,7 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 		switch ui.NavCurrentChild {
 		case 0: // Body
 			// Set to last subchild
-			ui.NavCurrentSubchild = getMaxSubchildForChild(4, 0, ui) // e.g. 3 (NoBody) or 2 (Multipart)
+			ui.NavCurrentSubchild = getMaxSubchildForChild(5, 0, ui) // e.g. 3 (NoBody) or 2 (Multipart)
 
 			// If multipart, set to last element
 			if ui.NavCurrentSubchild == 2 && getCurrentContentType(ui) == "Multipart" {
@@ -3617,26 +3406,6 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			} else {
 				ui.NavCurrentHeaderElement = 0
 			}
-		case 3: // Cookies
-			// Set to last element
-			maxCookieRowElement := 2
-			if currentCookieRows != nil {
-				maxCookieRowElement = 2 + len(currentCookieRows)
-			}
-			if maxCookieRowElement > 0 {
-				ui.NavCurrentCookieRowElement = maxCookieRowElement - 1
-			} else {
-				ui.NavCurrentCookieRowElement = 0
-			}
-
-			if ui.NavCurrentCookieRowElement >= 2 {
-				idx := ui.NavCurrentCookieRowElement - 2
-				if idx >= 0 && idx < len(currentCookieRows) {
-					ui.NavCurrentCookieElement = getMaxCookieRowElement(currentCookieRows[idx])
-				}
-			} else {
-				ui.NavCurrentCookieElement = 0
-			}
 		default:
 			// Simple tabs, just enter content
 			ui.NavCurrentSubchild = 0
@@ -3653,10 +3422,10 @@ func handleBacktabNavigation(ui *UIOrchestrator, event *tcell.EventKey) *tcell.E
 			ui.NavCurrentSubchild = 0
 		} else {
 			// At first child, move to previous container
-			prevContainer := (ui.NavCurrentContainer - 1 + 6) % 6
+			prevContainer := (ui.NavCurrentContainer - 1 + 7) % 7
 			ui.NavCurrentContainer = prevContainer
 
-			if ui.NavCurrentContainer == 5 {
+			if ui.NavCurrentContainer == 6 {
 				// Entering Response from Workspace
 				ui.NavCurrentChild = ui.CurrentResponseTabIndex
 				ui.NavResponseInTabHeaders = false // Enter content

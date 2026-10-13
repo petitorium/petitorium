@@ -42,6 +42,7 @@ func getCommands() []Command {
 		// View
 		{ID: "view.jumpToWorkspace", Label: "Jump to Workspace", Category: "View", Description: "Focus the workspace panel", Handler: jumpToWorkspaceCommand},
 		{ID: "view.jumpToEnvironment", Label: "Jump to Environment", Category: "View", Description: "Focus the environment panel", Handler: jumpToEnvironmentCommand},
+		{ID: "view.jumpToCookies", Label: "Jump to Cookies", Category: "View", Description: "Focus the cookies panel", Handler: jumpToCookiesCommand},
 		{ID: "view.jumpToCollections", Label: "Jump to Collections", Category: "View", Description: "Focus the collections tree", Handler: jumpToCollectionsCommand},
 		{ID: "view.jumpToURLBar", Label: "Jump to URL Bar", Category: "View", Description: "Focus the URL bar", Handler: jumpToURLBarCommand},
 		{ID: "view.jumpToRequest", Label: "Jump to Request", Category: "View", Description: "Focus the request panel", Handler: jumpToRequestCommand},
@@ -276,28 +277,34 @@ func jumpToEnvironmentCommand(ui *UIOrchestrator) {
 	jumpToContainer(ui, 1)
 }
 
+// jumpToCookiesCommand is the command palette handler for "Jump to Cookies".
+// It focuses the cookies panel.
+func jumpToCookiesCommand(ui *UIOrchestrator) {
+	jumpToContainer(ui, 2)
+}
+
 // jumpToCollectionsCommand is the command palette handler for "Jump to
 // Collections". It focuses the collections tree.
 func jumpToCollectionsCommand(ui *UIOrchestrator) {
-	jumpToContainer(ui, 2)
+	jumpToContainer(ui, 3)
 }
 
 // jumpToURLBarCommand is the command palette handler for "Jump to URL Bar".
 // It focuses the URL bar.
 func jumpToURLBarCommand(ui *UIOrchestrator) {
-	jumpToContainer(ui, 3)
+	jumpToContainer(ui, 4)
 }
 
 // jumpToRequestCommand is the command palette handler for "Jump to Request".
 // It focuses the request panel.
 func jumpToRequestCommand(ui *UIOrchestrator) {
-	jumpToContainer(ui, 4)
+	jumpToContainer(ui, 5)
 }
 
 // jumpToResponseCommand is the command palette handler for "Jump to Response".
 // It focuses the response panel.
 func jumpToResponseCommand(ui *UIOrchestrator) {
-	jumpToContainer(ui, 5)
+	jumpToContainer(ui, 6)
 }
 
 // showCollectionSearchModal opens the collection/request quick-search modal,

@@ -20,9 +20,9 @@ import (
 	"github.com/petitorium/petitorium/workspace"
 )
 
-var RequestTabDisplayNames = []string{"Body" /*"Auth",*/, "Query", "Headers", "Cookies"}
+var RequestTabDisplayNames = []string{"Body" /*"Auth",*/, "Query", "Headers"}
 
-var RequestTabInternalNames = []string{"body" /*"auth",*/, "query", "headers", "cookies"}
+var RequestTabInternalNames = []string{"body" /*"auth",*/, "query", "headers"}
 
 var responseTabDisplayNames = []string{"Preview", "Headers", "Cookies", "Timeline"}
 
@@ -1440,101 +1440,6 @@ func createCookiesTableHeader(colors *ColorManager) *tview.Flex {
 	return headerRow
 }
 
-func createCookiesTabWithData(colors *ColorManager,
-	initialCookies []workspace.Cookie,
-	saveCallback func(),
-	focusSetter func(tview.Primitive),
-	app *tview.Application,
-	pages *tview.Pages,
-	footerUpdater func(),
-	cookieJar *workspace.CookieJar,
-) *tview.Flex {
-	cookiesContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	cookiesContainer.SetBackgroundColor(colors.Background)
-	cookiesContainer.SetBorder(true)
-	cookiesContainer.SetBorderColor(colors.Background)
-	cookiesContainer.SetTitleColor(colors.Title)
-	cookiesContainer.SetBackgroundColor(colors.Background)
-
-	cookiesList := tview.NewFlex().SetDirection(tview.FlexRow)
-	cookiesList.SetBackgroundColor(colors.Background)
-
-	currentCookieRows = nil
-	currentCookiesList = cookiesList
-	currentCookiesTab = cookiesContainer
-
-	var refreshCookiesUI func()
-	refreshCookiesUI = func() {
-		cookiesList.Clear()
-		for _, cookieRow := range currentCookieRows {
-			cookiesList.AddItem(cookieRow.Row, rowHeight, 0, false)
-			separator := tview.NewBox().SetBackgroundColor(colors.Background)
-			separator.SetBorder(false)
-			cookiesList.AddItem(separator, 1, 0, false)
-		}
-		if len(currentCookieRows) == 0 {
-			emptyLabel := tview.NewTextView()
-			emptyLabel.SetText("No cookies in jar")
-			emptyLabel.SetTextColor(colors.Foreground)
-			emptyLabel.SetBackgroundColor(colors.Background)
-			emptyLabel.SetTextAlign(tview.AlignCenter)
-			cookiesList.AddItem(emptyLabel, 1, 0, false)
-		}
-	}
-	refreshCookiesTab = refreshCookiesUI
-
-	buttonRow := tview.NewFlex().SetDirection(tview.FlexColumn)
-	buttonRow.SetBackgroundColor(colors.Background)
-
-	addButton := createThemedButton(" Add Cookie ", colors)
-	currentAddCookieButton = addButton
-	addButton.SetSelectedFunc(func() {
-		addCookieRow(cookiesList, colors, refreshCookiesUI, saveCallback, focusSetter, footerUpdater, app, pages)
-		if footerUpdater != nil {
-			footerUpdater()
-		}
-	})
-
-	clearAllButton := createThemedButton(" Delete All ", colors)
-	currentDeleteAllCookiesButton = clearAllButton
-	clearAllButton.SetSelectedFunc(func() {
-		clearCallback := func() {
-			currentCookieRows = nil
-			cookieJar.ClearAll()
-			refreshCookiesUI()
-			if saveCallback != nil {
-				saveCallback()
-			}
-		}
-		form := createDeleteAllCookiesConfirm(app, pages, colors, clearCallback)
-		modal := createSizedModal(form, modalSizeForm, tcell.ColorDefault)
-		pages.AddPage("clearAllCookies", modal, true, true)
-		app.SetFocus(form)
-	})
-
-	buttonRow.AddItem(addButton, 15, 0, false)
-	buttonRow.AddItem(nil, 1, 0, false)
-	buttonRow.AddItem(clearAllButton, 15, 0, false)
-	buttonRow.AddItem(nil, 0, 1, false)
-
-	cookiesContainer.AddItem(buttonRow, 1, 0, false)
-
-	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
-	cookiesContainer.AddItem(spacer, 1, 0, false)
-
-	headerRow := createCookiesTableHeader(colors)
-	cookiesContainer.AddItem(headerRow, 1, 0, false)
-	cookiesContainer.AddItem(cookiesList, 0, 1, false)
-
-	for _, cookie := range initialCookies {
-		addCookieRowWithData(cookiesList, colors, cookie.Domain, cookie.Name, cookie.Value, cookie.Path, cookie.Secure, cookie.HttpOnly, cookie.Enabled, refreshCookiesUI, saveCallback, focusSetter, footerUpdater, app, pages)
-	}
-
-	refreshCookiesUI()
-
-	return cookiesContainer
-}
-
 func RefreshCookiesTab(cookies []workspace.Cookie, colors *ColorManager, app *tview.Application, pages *tview.Pages) {
 	if currentCookiesList == nil {
 		return
@@ -2729,7 +2634,7 @@ func createResponseInfoBar(colors *ColorManager, resp *HTTPResponse, lastTime *t
 }
 
 // createRequestDataTabs creates the request data tabs interface
-func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request, cookieJar *workspace.CookieJar) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.Flex, *tview.Flex, *tview.Flex, *tview.DropDown, *tview.Flex, func()) {
+func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.TextArea, colors *ColorManager, saveCallback func(), focusSetter func(tview.Primitive), tabIndexSetter func(int), panelFocusSetter func(tview.Primitive), footerUpdater func(), app *tview.Application, pages *tview.Pages, currentRequest *workspace.Request) (*tview.Flex, *tview.Pages, *tview.Flex, *tview.Flex, *tview.TextView, *tview.TextView, *tview.Flex, *tview.Flex, *tview.DropDown, *tview.Flex, func()) {
 	// Create main request data container
 	requestDataTabs := tview.NewFlex().SetDirection(tview.FlexRow)
 	requestDataTabs.SetBackgroundColor(colors.Background)
@@ -2775,18 +2680,10 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	// Create headers tab
 	headersTab := createHeadersTabWithData(colors, nil, saveCallback, focusSetter, app, pages, footerUpdater)
 
-	// Create cookies tab
-	var initialCookies []workspace.Cookie
-	if cookieJar != nil {
-		initialCookies = cookieJar.Cookies
-	}
-	cookiesTab := createCookiesTabWithData(colors, initialCookies, saveCallback, focusSetter, app, pages, footerUpdater, cookieJar)
-
 	tabPages.AddPage(RequestTabInternalNames[0], bodyContainer, true, true)
 	// tabPages.AddPage(RequestTabInternalNames[1], authTab, true, false)
 	tabPages.AddPage(RequestTabInternalNames[1], queryTab, true, false)
 	tabPages.AddPage(RequestTabInternalNames[2], headersTab, true, false)
-	tabPages.AddPage(RequestTabInternalNames[3], cookiesTab, true, false)
 
 	callback := func(index int) {
 		if tabIndexSetter != nil {
@@ -2808,7 +2705,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	requestDataTabs.AddItem(topRow, 1, 0, false)
 	requestDataTabs.AddItem(tabPages, 0, 1, true)
 
-	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, cookiesTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI
+	return requestDataTabs, tabPages, bodyContainer, tabHeader, bodyViewPanel, authTab, queryTab, headersTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI
 }
 
 // createResponseTabs creates the response tabs interface
