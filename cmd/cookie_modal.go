@@ -54,6 +54,7 @@ func showCookiesModal(ui *UIOrchestrator) {
 			emptyLabel.SetTextAlign(tview.AlignCenter)
 			cookiesList.AddItem(emptyLabel, 1, 0, false)
 		}
+		cookiesList.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 	}
 	refreshCookiesTab = refreshCookiesUI
 
@@ -83,9 +84,9 @@ func showCookiesModal(ui *UIOrchestrator) {
 	})
 
 	buttonRow.AddItem(addButton, 15, 0, false)
-	buttonRow.AddItem(nil, 1, 0, false)
+	buttonRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 	buttonRow.AddItem(clearAllButton, 15, 0, false)
-	buttonRow.AddItem(nil, 0, 1, false)
+	buttonRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	cookiesContainer.AddItem(buttonRow, 1, 0, false)
 

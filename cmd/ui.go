@@ -1433,9 +1433,10 @@ func createCookiesTableHeader(colors *ColorManager) *tview.Flex {
 	headerRow.AddItem(spacer, 1, 0, false)
 	headerRow.AddItem(httpOnlyLabel, 9, 0, false)
 	headerRow.AddItem(spacer, 1, 0, false)
-	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(spacer, 3, 0, false)
 	headerRow.AddItem(spacer, 1, 0, false)
-	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(spacer, 3, 0, false)
+	headerRow.AddItem(spacer, 0, 1, false)
 
 	return headerRow
 }
@@ -1636,6 +1637,7 @@ func addCookieRow(cookiesList *tview.Flex,
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(removeButton, 3, 0, false)
+	row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	currentCookieRows = append(currentCookieRows, cookieRow)
 	cookiesList.AddItem(row, rowHeight, 0, false)
@@ -1811,6 +1813,7 @@ func addCookieRowWithData(cookiesList *tview.Flex,
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(removeButton, 3, 0, false)
+	row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	currentCookieRows = append(currentCookieRows, cookieRow)
 	cookiesList.AddItem(row, rowHeight, 0, false)
