@@ -469,6 +469,18 @@ func NewKeyBindingManager() *KeyBindingManager {
 		})
 	}
 
+	if config.C.Shortcuts.JumpToCookies != "" {
+		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToCookies)
+		manager.globalBindings = append(manager.globalBindings, KeyBinding{
+			Key:         key,
+			Rune:        keyRune,
+			Modifiers:   modifiers,
+			Action:      jumpToCookiesPanelAction,
+			Description: "Jump to cookies panel",
+			Context:     "global",
+		})
+	}
+
 	if config.C.Shortcuts.JumpToCollections != "" {
 		key, keyRune, modifiers := parseShortcut(config.C.Shortcuts.JumpToCollections)
 		manager.globalBindings = append(manager.globalBindings, KeyBinding{
@@ -1748,6 +1760,11 @@ func jumpToWorkspacePanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcel
 
 func jumpToEnvironmentPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
 	jumpToEnvironmentCommand(ui)
+	return nil
+}
+
+func jumpToCookiesPanelAction(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	jumpToCookiesCommand(ui)
 	return nil
 }
 
