@@ -1297,7 +1297,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		// workspace/environment dropdowns); the per-host count is muted so the
 		// "N cookies" total remains the primary figure.
 		mutedHex := colorToHex(colors.Border)
-		cookiesSummary.SetText(fmt.Sprintf("%d cookies · [%s]%d for this host[-]", total, mutedHex, matching))
+		cookiesSummary.SetText(fmt.Sprintf("%d cookies · [%s]%d here[-]", total, mutedHex, matching))
 	}
 
 	// Set onModeChange for URLInput to update footer when switching between view/edit modes
