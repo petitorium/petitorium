@@ -111,6 +111,7 @@ type StatusColorsConfig struct {
 type ShortcutsConfig struct {
 	JumpToWorkspace   string `mapstructure:"jumpToWorkspace"`
 	JumpToEnvironment string `mapstructure:"jumpToEnvironment"`
+	JumpToCookies     string `mapstructure:"jumpToCookies"`
 	JumpToCollections string `mapstructure:"jumpToCollections"`
 	JumpToURLBar      string `mapstructure:"jumpToURLBar"`
 	JumpToRequest     string `mapstructure:"jumpToRequest"`
@@ -292,6 +293,9 @@ func LoadConfig() error {
 	}
 	if C.Shortcuts.JumpToEnvironment == "" {
 		C.Shortcuts.JumpToEnvironment = "ctrl+e"
+	}
+	if C.Shortcuts.JumpToCookies == "" {
+		C.Shortcuts.JumpToCookies = "ctrl+k"
 	}
 	if C.Shortcuts.JumpToCollections == "" {
 		C.Shortcuts.JumpToCollections = "ctrl+r"

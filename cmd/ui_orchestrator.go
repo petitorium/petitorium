@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ import (
 type PanelIndices struct {
 	Workspace   int
 	Environment int
+	Cookies     int
 	Collections int
 	URLBar      int
 	Request     int
@@ -36,6 +38,10 @@ type Environment struct {
 
 type Collections struct {
 	TreeView int
+}
+
+type Cookies struct {
+	ConfigButton int
 }
 
 type URLBar struct {
@@ -69,6 +75,7 @@ type Response struct {
 type NavIndices struct {
 	Workspace   Workspace
 	Environment Environment
+	Cookies     Cookies
 	Collections Collections
 	URLBar      URLBar
 	Request     Request
@@ -96,7 +103,9 @@ type UIOrchestrator struct {
 	AuthTab                    *tview.TextView
 	QueryTab                   *tview.Flex
 	HeadersTab                 *tview.Flex
-	CookiesTab                 *tview.Flex
+	CookiesPanel               *tview.Flex
+	CookiesConfigButton        *CustomButton
+	CookiesSummary             *tview.TextView
 	MultipartFieldsTab         *tview.Flex
 	MultipartAddButton         *CustomButton
 	MultipartDeleteAllButton   *CustomButton
@@ -104,8 +113,6 @@ type UIOrchestrator struct {
 	DeleteAllHeadersButton     *CustomButton
 	AddQueryParamButton        *CustomButton
 	DeleteAllQueryParamsButton *CustomButton
-	AddCookieButton            *CustomButton
-	DeleteAllCookiesButton     *CustomButton
 	Response                   *tview.Flex
 	Footer                     *tview.Flex
 	FooterLeft                 *tview.TextView
@@ -203,6 +210,7 @@ type UIOrchestrator struct {
 	SwitchWorkspace              func(string)
 	RefreshMultipartFieldsUI     func()
 	UpdateFooter                 func()
+	RefreshCookiesSummary        func()
 	CopyResponse                 func()
 	SaveResponse                 func()
 	Suspend                      func(func()) bool
@@ -470,10 +478,11 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	panelIndices := PanelIndices{
 		Workspace:   0,
 		Environment: 1,
-		Collections: 2,
-		URLBar:      3,
-		Request:     4,
-		Response:    5,
+		Cookies:     2,
+		Collections: 3,
+		URLBar:      4,
+		Request:     5,
+		Response:    6,
 	}
 
 	workspace := Workspace{
@@ -488,6 +497,10 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	collections := Collections{
 		TreeView: 0,
+	}
+
+	cookies := Cookies{
+		ConfigButton: 0,
 	}
 
 	urlBar := URLBar{
@@ -521,6 +534,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	experimental := NavIndices{
 		Workspace:   workspace,
 		Environment: environment,
+		Cookies:     cookies,
 		Collections: collections,
 		URLBar:      urlBar,
 		Request:     request,
@@ -552,10 +566,18 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		parent:   nil, // Will be set later
 	}
 
+	// Create pages for modals (created before the left sidebar so the cookies
+	// panel can attach delete-confirmation modals to it).
+	pages := tview.NewPages()
+
+	// Create the standalone cookies panel between environment and collections.
+	cookiesPanel, cookiesConfigButton, cookiesSummary := createCookiesPanel(colors)
+
 	// Create left side layout
 	leftSide := tview.NewFlex().SetDirection(tview.FlexRow)
 	leftSide.AddItem(workspacePanel, 3, 1, false)
 	leftSide.AddItem(environmentPanel, 3, 1, false)
+	leftSide.AddItem(cookiesPanel, 3, 1, false)
 	leftSide.AddItem(collectionsTreeView, 0, 1, false)
 
 	headersCycle = &HeadersCycle{
@@ -623,16 +645,15 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		// This will be implemented in event handlers
 	}
 
-	// Create pages for modals
-	pages := tview.NewPages()
+	// Add the main page now that the grid is fully built.
 	pages.AddPage("main", grid, true, true)
 
 	// Create the tabbed interface for request data (Body, Auth, Query, Headers)
-	// We'll define tabIndexSetter and saveCallbackProxy after uiOrchestrator is created
+	// We'll define tabIndexSetter and saveCallbackProxy after uiOrchestrator is created.
 	var tabIndexSetter func(int)
 	var saveCallbackProxy func()
 
-	requestDataTabs, tabPages, bodyContainer, tabHeader, _, authTab, queryTab, headersTab, cookiesTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI :=
+	requestDataTabs, tabPages, bodyContainer, tabHeader, _, authTab, queryTab, headersTab, contentTypeDropdown, multipartFieldsTab, refreshMultipartFieldsUI :=
 		createRequestDataTabs(bodyViewPanel,
 			bodyEditPanel,
 			colors,
@@ -653,17 +674,16 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			app,
 			pages,
 			currentRequest,
-			&workspaceData.CookieJar,
 		)
 
 	// Track if content type dropdown is added (now in uiOrchestrator.dropdownAdded)
 
 	// Create main panels
-	mainPanels := []tview.Primitive{workspacePanel, environmentPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
+	mainPanels := []tview.Primitive{workspacePanel, environmentPanel, cookiesPanel, collectionsTreeView, methodURLBar, requestDataTabs, responsePanel}
 
 	mainCycle = &MainCycle{
 		panels:  mainPanels,
-		current: 2,
+		current: 3,
 	}
 
 	// Custom focus handler that knows about special containers
@@ -704,7 +724,9 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		AuthTab:                        authTab,
 		QueryTab:                       queryTab,
 		HeadersTab:                     headersTab,
-		CookiesTab:                     cookiesTab,
+		CookiesPanel:                   cookiesPanel,
+		CookiesConfigButton:            cookiesConfigButton,
+		CookiesSummary:                 cookiesSummary,
 		MultipartFieldsTab:             multipartFieldsTab,
 		Response:                       responsePanel,
 		Footer:                         footer,
@@ -738,14 +760,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		CurrentResponseTabIndex:        0, // Start with preview tab
 		PanelIndices:                   panelIndices,
 		NavIndices:                     experimental,
-		NavCurrentContainer:            2,
+		NavCurrentContainer:            3,
 		NavCurrentChild:                0,
 		NavCurrentSubchild:             0,
 		NavCurrentMultipartElement:     0,
 		NavCurrentFieldRowElement:      0,
 		NavCurrentHeaderRowElement:     0,
 		NavCurrentHeaderElement:        0,
-		NavPreviousContainer:           2,
+		NavPreviousContainer:           3,
 		NavRequestInTabHeaders:         true,  // Start in tab headers when in Request panel
 		NavResponseInTabHeaders:        false, // Start in tab content when in Response panel
 		RequestDataTabs:                requestDataTabs,
@@ -793,8 +815,6 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		DeleteAllHeadersButton:       currentDeleteAllHeadersButton,
 		AddQueryParamButton:          currentAddQueryParamButton,
 		DeleteAllQueryParamsButton:   currentDeleteAllQueryParamsButton,
-		AddCookieButton:              currentAddCookieButton,
-		DeleteAllCookiesButton:       currentDeleteAllCookiesButton,
 		MultipartAddButton:           currentMultipartAddButton,
 		MultipartDeleteAllButton:     currentMultipartDeleteAllButton,
 		Suspend:                      app.Suspend,
@@ -852,24 +872,26 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 	if uiOrchestrator.NavCurrentContainer < len(mainPanels) {
 		uiOrchestrator.SetActiveBorder(mainPanels[uiOrchestrator.NavCurrentContainer])
 		// Sync MainCycle.current with experimental container
-		// Map experimental container (0-5) to MainCycle panel indices
+		// Map experimental container (0-6) to MainCycle panel indices
 		switch uiOrchestrator.NavCurrentContainer {
 		case 0:
 			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Workspace
 		case 1:
 			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Environment
 		case 2:
-			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Collections
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Cookies
 		case 3:
-			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.URLBar
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Collections
 		case 4:
-			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Request
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.URLBar
 		case 5:
+			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Request
+		case 6:
 			uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Response
 		}
 		// Also update CurrentFocus for compatibility with old code
 		uiOrchestrator.CurrentFocus = uiOrchestrator.MainCycle.current
-		// Initial position is [2,0,0] - Collections panel, CollectionsTreeView
+		// Initial position is [3,0,0] - Collections panel, CollectionsTreeView
 		uiOrchestrator.App.SetFocus(uiOrchestrator.CollectionsTreeView)
 	}
 
@@ -933,6 +955,17 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			return
 		}
 
+		if currentPage == "cookies" {
+			uiOrchestrator.FooterLeft.SetText(formatFooterHints(colors, []footerHint{
+				{"Tab", "Next Field"},
+				{"Shift+Tab", "Prev Field"},
+				{"i", "Edit"},
+				{"Enter", "Add Cookie"},
+				{"Esc/q", "Close"},
+			}))
+			return
+		}
+
 		// Check if experimental navigation is enabled
 		var expPrefix string = ""
 
@@ -959,6 +992,12 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				{"Tab", "Next Panel"},
 				{"q", "Quit"},
 			})) // Environment
+		case uiOrchestrator.PanelIndices.Cookies:
+			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
+				{"Enter", "Manage Cookies"},
+				{"Tab", "Next Panel"},
+				{"q", "Quit"},
+			})) // Cookies
 		case uiOrchestrator.PanelIndices.Collections:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
 				{"Enter", "Select Request"},
@@ -1039,7 +1078,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 							{"d", "Delete Field"},
 							{"D", "Delete All"},
 							{"b", "Browse File"},
-							{"1-4/←/→", "Switch Tabs"},
+							{"1-3/←/→", "Switch Tabs"},
 							{"Tab", "Next Panel"},
 							{"q", "Quit"},
 						})) // Request Multipart
@@ -1055,7 +1094,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 					uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
 						{"i", "Edit"},
 						{"F4", "External Editor"},
-						{"1-4/←/→", "Switch Tabs"},
+						{"1-3/←/→", "Switch Tabs"},
 						{"Tab", "Next Panel"},
 						{"q", "Quit"},
 					})) // Request Body
@@ -1084,7 +1123,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 						{"d", "Delete Param"},
 						{"D", "Delete All"},
 						{"F4", "Bulk Edit"},
-						{"1-4/←/→", "Switch Tabs"},
+						{"1-3/←/→", "Switch Tabs"},
 						{"Tab", "Next Panel"},
 						{"q", "Quit"},
 					})) // Request Query
@@ -1113,21 +1152,21 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 						{"d", "Delete Header"},
 						{"D", "Delete All"},
 						{"F4", "Bulk Edit"},
-						{"1-4/←/→", "Switch Tabs"},
+						{"1-3/←/→", "Switch Tabs"},
 						{"Tab", "Next Panel"},
 						{"q", "Quit"},
 					})) // Request Headers
 				}
 			default:
 				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
-					{"1-4/←/→", "Switch Tabs"},
+					{"1-3/←/→", "Switch Tabs"},
 					{"Tab", "Next Panel"},
 					{"q", "Quit"},
 				})) // Request
 			}
 		case uiOrchestrator.PanelIndices.Response:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
-				{"1-4/←/→", "Switch tabs"},
+				{"1-3/←/→", "Switch tabs"},
 				{"j/k", "Scroll up/down"},
 				{"d/u", "Half page scroll"},
 				{"g/G", "Scroll to top/bottom"},
@@ -1231,8 +1270,40 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	uiOrchestrator.UpdateFooter = updateFooterFunc
 
+	// RefreshCookiesSummary recomputes the cookies panel summary from the
+	// current URL and the cookie jar: it shows the total cookie count and how
+	// many would be attached to the active request (matched by domain/path).
+	uiOrchestrator.RefreshCookiesSummary = func() {
+		jar := &uiOrchestrator.WorkspaceData.CookieJar
+		total := len(jar.Cookies)
+
+		if cookiesSummary == nil {
+			return
+		}
+
+		if total == 0 {
+			cookiesSummary.SetText("No cookies yet")
+			return
+		}
+
+		matching := 0
+		if raw := strings.TrimSpace(urlInput.GetText()); raw != "" {
+			if u, err := url.Parse(raw); err == nil && u.Host != "" {
+				matching = len(jar.GetCookies(u))
+			}
+		}
+
+		// Base text inherits the summary's ActiveTab color (matching the
+		// workspace/environment dropdowns); the per-host count is muted so the
+		// "N cookies" total remains the primary figure.
+		mutedHex := colorToHex(colors.Border)
+		cookiesSummary.SetText(fmt.Sprintf("%d cookies · [%s]%d here[-]", total, mutedHex, matching))
+	}
+
 	// Set onModeChange for URLInput to update footer when switching between view/edit modes
 	uiOrchestrator.URLInput.onModeChange = uiOrchestrator.UpdateFooter
+
+	uiOrchestrator.RefreshCookiesSummary()
 
 	// Set initial footer content
 	uiOrchestrator.UpdateFooter()
@@ -1275,12 +1346,14 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 							case 1:
 								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Environment
 							case 2:
-								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Collections
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Cookies
 							case 3:
-								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.URLBar
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Collections
 							case 4:
-								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Request
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.URLBar
 							case 5:
+								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Request
+							case 6:
 								uiOrchestrator.MainCycle.current = uiOrchestrator.PanelIndices.Response
 							}
 							uiOrchestrator.CurrentFocus = uiOrchestrator.MainCycle.current

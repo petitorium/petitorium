@@ -188,6 +188,43 @@ func createWorkspacePanel(
 	return container, workspaceDropdown, nil, configButton // configButton is *CustomButton, nil is for unused *tview.Button
 }
 
+// createCookiesPanel creates the standalone cookies panel.
+func createCookiesPanel(colors *ColorManager) (*tview.Flex, *CustomButton, *tview.TextView) {
+	// Create config button with a background matching the panel so only the
+	// icon is visible.
+	configButton := createThemedButton(config.C.UI.ConfigButtonIcon, colors)
+	configButton.SetBackgroundColor(colors.Background)
+	configButton.SetBackgroundColorActivated(colors.Background)
+	configButton.SetLabelColorActivated(colors.BorderFocus)
+
+	// Summary text that replaces the dropdown the other panels use. It reports
+	// how many cookies exist and how many would be attached to the current URL.
+	summary := tview.NewTextView()
+	summary.SetDynamicColors(true)
+	summary.SetTextColor(colors.ActiveTab)
+	summary.SetBackgroundColor(colors.Background)
+	summary.SetTextAlign(tview.AlignLeft)
+	summary.SetBorder(false)
+	summary.SetBorderPadding(0, 0, 1, 1)
+
+	separator := tview.NewBox().
+		SetBackgroundColor(colors.Background)
+
+	container := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(summary, 0, 1, false).
+		AddItem(separator, 1, 0, false).
+		AddItem(configButton, 3, 0, true)
+
+	container.SetBorder(true)
+	container.SetTitle(" Cookies ")
+	container.SetBackgroundColor(colors.Background)
+	container.SetBorderColor(colors.Border)
+	container.SetTitleColor(colors.Title)
+
+	return container, configButton, summary
+}
+
 // syncBodyContent syncs body content between view and edit panels
 func syncBodyContent(content string, bodyEditMode bool, bodyEditPanel *tview.TextArea, bodyViewPanel *tview.TextView) {
 	if bodyEditMode {
