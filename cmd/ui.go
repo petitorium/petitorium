@@ -1640,11 +1640,9 @@ func addCookieRow(cookiesList *tview.Flex,
 	row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	currentCookieRows = append(currentCookieRows, cookieRow)
-	cookiesList.AddItem(row, rowHeight, 0, false)
-
-	separator := tview.NewBox().SetBackgroundColor(colors.Background)
-	separator.SetBorder(false)
-	cookiesList.AddItem(separator, 1, 0, false)
+	if refreshUI != nil {
+		refreshUI()
+	}
 }
 
 // addCookieRowWithData adds a cookie row with pre-filled data
