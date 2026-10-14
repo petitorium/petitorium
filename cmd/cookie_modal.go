@@ -29,6 +29,7 @@ func showCookiesModal(ui *UIOrchestrator) {
 	cookiesList.SetBackgroundColor(colors.Background)
 
 	currentCookieRows = nil
+	cookieScrollOffset = 0
 	currentCookiesList = cookiesList
 	currentCookiesTab = cookiesContainer
 
@@ -40,13 +41,43 @@ func showCookiesModal(ui *UIOrchestrator) {
 	var refreshCookiesUI func()
 	refreshCookiesUI = func() {
 		cookiesList.Clear()
-		for _, cookieRow := range currentCookieRows {
+
+		// Each cookie row is followed by a 1-row separator, so a row occupies
+		// two rows in the list. Determine how many rows fit in the visible area
+		// so the list scrolls instead of overflowing the bottom of the modal.
+		_, _, _, listHeight := cookiesList.GetRect()
+		if listHeight <= 0 {
+			// The list has not been laid out yet (e.g. during initial build).
+			// The fullscreen modal is 40 rows tall; after the border, buttons,
+			// spacer and header, roughly 33 rows remain for the cookie list.
+			listHeight = 33
+		}
+		visibleRows := listHeight / 2
+		if visibleRows < 1 {
+			visibleRows = 1
+		}
+
+		total := len(currentCookieRows)
+		if cookieScrollOffset > total-visibleRows {
+			cookieScrollOffset = total - visibleRows
+		}
+		if cookieScrollOffset < 0 {
+			cookieScrollOffset = 0
+		}
+
+		start := cookieScrollOffset
+		end := start + visibleRows
+		if end > total {
+			end = total
+		}
+
+		for _, cookieRow := range currentCookieRows[start:end] {
 			cookiesList.AddItem(cookieRow.Row, rowHeight, 0, false)
 			separator := tview.NewBox().SetBackgroundColor(colors.Background)
 			separator.SetBorder(false)
 			cookiesList.AddItem(separator, 1, 0, false)
 		}
-		if len(currentCookieRows) == 0 {
+		if total == 0 {
 			emptyLabel := tview.NewTextView()
 			emptyLabel.SetText("No cookies in jar")
 			emptyLabel.SetTextColor(colors.Foreground)
@@ -65,6 +96,9 @@ func showCookiesModal(ui *UIOrchestrator) {
 	currentAddCookieButton = addButton
 	addButton.SetSelectedFunc(func() {
 		addCookieRow(cookiesList, colors, refreshCookiesUI, saveCallback, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter, ui.App, ui.Pages)
+		// Scroll to the bottom so the newly added row is visible.
+		cookieScrollOffset = len(currentCookieRows)
+		refreshCookiesUI()
 		ui.UpdateFooter()
 	})
 
@@ -233,6 +267,18 @@ func showCookiesModal(ui *UIOrchestrator) {
 		}
 		if event.Key() == tcell.KeyBacktab {
 			moveCookieFocus(-1)
+			return nil
+		}
+		if event.Rune() == 'j' {
+			cookieScrollOffset++
+			refreshCookiesUI()
+			return nil
+		}
+		if event.Rune() == 'k' {
+			if cookieScrollOffset > 0 {
+				cookieScrollOffset--
+			}
+			refreshCookiesUI()
 			return nil
 		}
 		return event

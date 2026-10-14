@@ -1221,6 +1221,11 @@ type CookieRow struct {
 
 var currentCookieRows []*CookieRow
 
+// cookieScrollOffset is the number of cookie rows scrolled off the top of the
+// cookies modal list. It is used to render only the visible rows so the list
+// scrolls instead of overflowing the modal's bottom.
+var cookieScrollOffset int
+
 var currentAddCookieButton *CustomButton
 
 var currentDeleteAllCookiesButton *CustomButton
