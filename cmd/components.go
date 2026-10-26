@@ -115,7 +115,7 @@ func createEnvironmentPanel(
 		AddItem(configButton, 3, 0, true)
 
 	container.SetBorder(true)
-	container.SetTitle(" Environment ")
+	container.SetTitle(" Environments ")
 	container.SetBackgroundColor(colors.Background)
 	container.SetBorderColor(colors.Border)
 	container.SetTitleColor(colors.Title)
@@ -180,7 +180,7 @@ func createWorkspacePanel(
 		AddItem(configButton, 3, 0, true)
 
 	container.SetBorder(true)
-	container.SetTitle(" Workspace ")
+	container.SetTitle(" Workspaces ")
 	container.SetBackgroundColor(colors.Background)
 	container.SetBorderColor(colors.Border)
 	container.SetTitleColor(colors.Title)
