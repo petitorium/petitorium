@@ -1366,6 +1366,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
+		// Strip JSONC comments from JSON bodies so they are never transmitted
+		// or resolved as environment/command-runner tags.
+		body = sanitizeRequestBodyForSend(body, contentType)
+
 		// Determine collection and request name
 		collection := ""
 		requestName := ""
@@ -1701,6 +1705,10 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 		headers := getHeadersFromUI()
 		queryParams := getQueryParamsFromUI()
+
+		// Strip JSONC comments from JSON bodies before generating the cURL
+		// command so comments are not included in the exported request.
+		body = sanitizeRequestBodyForSend(body, contentType)
 
 		workspaceName := "Default"
 		if ui.WorkspaceData != nil {
@@ -2156,7 +2164,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.MainCycle.current == ui.PanelIndices.Request && event.Key() == tcell.KeyF4 {
 			if ui.CurrentRequest != nil {
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "json")
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "jsonc")
 					if err != nil {
 						fmt.Printf("Error opening external editor: %v\n", err)
 						fmt.Println("Press Enter to continue...")
@@ -2190,7 +2198,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 			if ui.CurrentRequest != nil {
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "json")
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "jsonc")
 					if err != nil {
 						return
 					}

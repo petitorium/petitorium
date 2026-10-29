@@ -790,7 +790,7 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 			if ui.CurrentRequest != nil {
 				// Suspend TUI to open external editor
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "json")
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "jsonc")
 					if err != nil {
 						return
 					}
