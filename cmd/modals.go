@@ -69,14 +69,18 @@ func showEnvironmentModal(
 		currentEnvName = env.Name
 	}
 
-	// Determine initial JSON content (own variables, not effective/merged)
-	var jsonBytes []byte
-	if env != nil {
-		jsonBytes, _ = json.MarshalIndent(env.Variables, "", "  ")
+	// Determine initial JSON content (own variables, not effective/merged).
+	// Prefer the persisted raw JSONC text so comments are preserved; fall back
+	// to the parsed variables for legacy environments without raw text.
+	initialContent := ""
+	if env != nil && env.RawJSON != "" {
+		initialContent = env.RawJSON
+	} else if env != nil {
+		jsonBytes, _ := json.MarshalIndent(env.Variables, "", "  ")
+		initialContent = string(jsonBytes)
 	} else {
-		jsonBytes = []byte("{}")
+		initialContent = "{}"
 	}
-	initialContent := string(jsonBytes)
 
 	// Create the view panel (highlighted, read-only) and the edit panel (raw).
 	envViewPanel := createPanel(" Environment Variables (VIEW) ", ui.Colors, &PanelOptions{HasBorder: &[]bool{true}[0]})
@@ -161,7 +165,9 @@ func showEnvironmentModal(
 	onEnvironmentSelected := func(env *workspace.Environment) {
 		selectedEnvironment = env
 		var content string
-		if env != nil {
+		if env != nil && env.RawJSON != "" {
+			content = env.RawJSON
+		} else if env != nil {
 			b, _ := json.MarshalIndent(env.Variables, "", "  ")
 			content = string(b)
 		} else {
@@ -251,7 +257,10 @@ func showEnvironmentModal(
 			return fmt.Errorf("no environment selected to save")
 		}
 
-		jsonText := sanitizeCommandRunnerTagsInJSON(envEditPanel.GetText())
+		// Persist the raw editor text (including comments) and parse a
+		// comment-stripped copy for runtime resolution.
+		rawText := envEditPanel.GetText()
+		jsonText := sanitizeCommandRunnerTagsInJSON(stripJSONComments(rawText))
 		var newVars map[string]string
 		if err := json.Unmarshal([]byte(jsonText), &newVars); err != nil {
 			return fmt.Errorf("invalid JSON: %v", err)
@@ -260,6 +269,7 @@ func showEnvironmentModal(
 		// Keep the selected reference in sync so any follow-up action (e.g.
 		// clone) reads the latest values.
 		envToSave.Variables = newVars
+		envToSave.RawJSON = rawText
 
 		// Update the actual environment in EnvironmentsData. envToSave may
 		// point to a copy held in the filtered table list, so write back by
@@ -269,6 +279,7 @@ func showEnvironmentModal(
 		for i := range *ui.EnvironmentsData {
 			if (*ui.EnvironmentsData)[i].Name == envName {
 				(*ui.EnvironmentsData)[i].Variables = newVars
+				(*ui.EnvironmentsData)[i].RawJSON = rawText
 				updated = true
 				break
 			}
@@ -302,7 +313,7 @@ func showEnvironmentModal(
 	openExternalEnvEditor := func() {
 		currentContent := envEditPanel.GetText()
 		ui.App.Suspend(func() {
-			modifiedContent, err := openInExternalEditor(currentContent, "json")
+			modifiedContent, err := openInExternalEditor(currentContent, "jsonc")
 			if err != nil {
 				errorText.SetText(fmt.Sprintf("Error opening external editor: %v", err))
 				return

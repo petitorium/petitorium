@@ -400,12 +400,20 @@ func savePluginEnvironmentChanges(pluginEnv map[string]string, currentEnvIndex i
 	// Only persist keys that were genuinely modified by plugins.
 	// If the original value contained a {{...}} tag and the resolved value
 	// does not, we assume it was mechanically resolved and skip it.
+	changed := false
 	for key, resolvedValue := range pluginEnv {
 		originalValue, exists := currentEnv.Variables[key]
 		if exists && strings.Contains(originalValue, "{{") && !strings.Contains(resolvedValue, "{{") {
 			continue
 		}
 		currentEnv.Variables[key] = resolvedValue
+		changed = true
+	}
+	if changed {
+		// The parsed variables changed outside the env editor, so the persisted
+		// raw JSONC text (which may contain comments) is now stale. Clear it so
+		// the editor regenerates from the updated variables on next open.
+		currentEnv.RawJSON = ""
 	}
 }
 

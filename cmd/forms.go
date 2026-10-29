@@ -633,6 +633,7 @@ func createCloneEnvironmentForm(
 			Name:      newName,
 			Base:      selectedEnvironment.Base,
 			Variables: make(map[string]string),
+			RawJSON:   selectedEnvironment.RawJSON,
 		}
 		// Copy variables
 		for k, v := range selectedEnvironment.Variables {
