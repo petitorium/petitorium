@@ -663,16 +663,39 @@ func generateCurlCommand(method, urlStr string, headers map[string]string, body,
 	}
 
 	// Add headers
+	hasContentType := false
 	for key, value := range headers {
 		// Skip Content-Type for multipart requests as -F sets it automatically
 		if contentType == "Multipart" && (key == "Content-Type" || key == "content-type") {
 			continue
+		}
+		if key == "Content-Type" || key == "content-type" {
+			hasContentType = true
 		}
 		cmd.WriteString(" -H '")
 		cmd.WriteString(key)
 		cmd.WriteString(": ")
 		cmd.WriteString(value)
 		cmd.WriteString("'")
+	}
+
+	// Match SendRequest's Content-Type inference for JSON bodies so the
+	// exported curl behaves like the in-app request. Without this, a JSON
+	// request without an explicit Content-Type header exports as a
+	// form-urlencoded body and fails against services that require
+	// application/json.
+	if body != "" && !hasContentType && contentType != "Multipart" {
+		if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch {
+			switch contentType {
+			case "JSON":
+				cmd.WriteString(" -H 'Content-Type: application/json'")
+			case "":
+				trimmed := strings.TrimSpace(body)
+				if trimmed != "" && strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
+					cmd.WriteString(" -H 'Content-Type: application/json'")
+				}
+			}
+		}
 	}
 
 	// Add body if present

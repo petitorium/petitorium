@@ -1001,6 +1001,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		case uiOrchestrator.PanelIndices.Collections:
 			uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
 				{"Enter", "Select Request"},
+				{"/", "Search Requests"},
 				{"N", "New Collection"},
 				{"n", "New Request"},
 				{"r", "Rename"},
