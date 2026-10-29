@@ -117,6 +117,108 @@ func isFocusOnQueryParamInputField(currentFocusedElement tview.Primitive, queryP
 	return false
 }
 
+// scrollHeaderRowIntoView ensures the given header row is visible.
+func scrollHeaderRowIntoView(index int) {
+	if currentHeadersListWrapper != nil {
+		currentHeadersListWrapper.scrollDataRowIntoView(index)
+	}
+}
+
+// scrollQueryParamRowIntoView ensures the given query param row is visible.
+func scrollQueryParamRowIntoView(index int) {
+	if currentQueryParamsListWrapper != nil {
+		currentQueryParamsListWrapper.scrollDataRowIntoView(index)
+	}
+}
+
+// scrollMultipartRowIntoView ensures the given multipart field row is visible.
+func scrollMultipartRowIntoView(index int) {
+	if currentMultipartFieldsListWrapper != nil {
+		currentMultipartFieldsListWrapper.scrollDataRowIntoView(index)
+	}
+}
+
+// scrollRequestListBy scrolls the active request-panel list (Headers, Query
+// Params or Multipart fields) by delta data rows.
+func scrollRequestListBy(ui *UIOrchestrator, delta int) bool {
+	switch ui.CurrentTabIndex {
+	case ui.RPHeadersTabIndex:
+		if currentHeadersListWrapper != nil {
+			currentHeadersListWrapper.ScrollDataRowsBy(delta)
+			currentHeadersListWrapper.ClampScroll(len(currentHeaderRows))
+			return true
+		}
+	case ui.RPQueryTabIndex:
+		if currentQueryParamsListWrapper != nil {
+			currentQueryParamsListWrapper.ScrollDataRowsBy(delta)
+			currentQueryParamsListWrapper.ClampScroll(len(currentQueryRows))
+			return true
+		}
+	case ui.RPBodyTabIndex:
+		if getCurrentContentType(ui) == "Multipart" && currentMultipartFieldsListWrapper != nil {
+			currentMultipartFieldsListWrapper.ScrollDataRowsBy(delta)
+			currentMultipartFieldsListWrapper.ClampScroll(len(currentMultipartFieldRows))
+			return true
+		}
+	}
+	return false
+}
+
+// isRequestListInEditMode reports whether any input row in the active
+// request-panel list is currently being edited (so j/k should be typed rather
+// than scrolling).
+func isRequestListInEditMode(ui *UIOrchestrator) bool {
+	switch ui.CurrentTabIndex {
+	case ui.RPHeadersTabIndex:
+		for _, row := range currentHeaderRows {
+			if (row.KeyInput != nil && row.KeyInput.IsEditMode()) ||
+				(row.ValueInput != nil && row.ValueInput.IsEditMode()) {
+				return true
+			}
+		}
+	case ui.RPQueryTabIndex:
+		for _, row := range currentQueryRows {
+			if (row.KeyInput != nil && row.KeyInput.IsEditMode()) ||
+				(row.ValueInput != nil && row.ValueInput.IsEditMode()) {
+				return true
+			}
+		}
+	case ui.RPBodyTabIndex:
+		if getCurrentContentType(ui) == "Multipart" {
+			for _, row := range currentMultipartFieldRows {
+				if (row.NameInput != nil && row.NameInput.IsEditMode()) ||
+					(row.ValueInput != nil && row.ValueInput.IsEditMode()) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// handleRequestListScroll handles j/k scrolling for the request panel's list
+// tabs (Headers, Query Params, Multipart fields).
+func handleRequestListScroll(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventKey {
+	if ui.MainCycle.current != ui.PanelIndices.Request {
+		return event
+	}
+	if event.Rune() != 'j' && event.Rune() != 'k' {
+		return event
+	}
+	if isRequestListInEditMode(ui) {
+		return event
+	}
+
+	delta := 1
+	if event.Rune() == 'k' {
+		delta = -1
+	}
+	if scrollRequestListBy(ui, delta) {
+		return nil
+	}
+	return event
+}
+
 // handleTabSwitch handles tab switching for both number keys (1-4) and arrow keys
 // Returns true if the event was handled (tab was switched), false otherwise
 func handleTabSwitch(ui *UIOrchestrator, event *tcell.EventKey, headerRows []*HeaderRow) bool {
@@ -1804,6 +1906,13 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 		}
 
+		// j/k scroll the request panel's list tabs (Headers, Query, Multipart).
+		if page, _ := ui.Pages.GetFrontPage(); page == "main" {
+			if result := handleRequestListScroll(ui, event); result != event {
+				return result
+			}
+		}
+
 		// Check if we're in a form popup - do this BEFORE checking global keybindings
 		currentPage, _ := ui.Pages.GetFrontPage()
 		formPopups := []string{
@@ -2504,6 +2613,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 								default: // Field rows (starting from index 2)
 									fieldRowIndex := ui.NavCurrentMultipartElement - 2
 									if fieldRowIndex >= 0 && fieldRowIndex < len(currentMultipartFieldRows) {
+										scrollMultipartRowIntoView(fieldRowIndex)
 										fieldRow := currentMultipartFieldRows[fieldRowIndex]
 										if fieldRow != nil {
 											// Get max field row element for this row
@@ -2624,6 +2734,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 								// We're on a query param row (NavCurrentQueryParamRowElement >= 2)
 								queryParamRowIndex := ui.NavCurrentQueryParamRowElement - 2
 								if queryParamRowIndex >= 0 && queryParamRowIndex < len(currentQueryRows) {
+									scrollQueryParamRowIntoView(queryParamRowIndex)
 									queryParamRow := currentQueryRows[queryParamRowIndex]
 									if queryParamRow != nil {
 										switch ui.NavCurrentQueryParamElement {
@@ -2734,6 +2845,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 								// We're on a header row (NavCurrentHeaderRowElement >= 2)
 								headerRowIndex := ui.NavCurrentHeaderRowElement - 2
 								if headerRowIndex >= 0 && headerRowIndex < len(currentHeaderRows) {
+									scrollHeaderRowIntoView(headerRowIndex)
 									headerRow := currentHeaderRows[headerRowIndex]
 									if headerRow != nil {
 										// Determine which element within the header row to focus

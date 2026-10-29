@@ -854,10 +854,13 @@ func createQueryParamsTabWithData(colors *ColorManager,
 	// Scrollable area for query param entries
 	queryList := tview.NewFlex().SetDirection(tview.FlexRow)
 	queryList.SetBackgroundColor(colors.Background)
+	queryListWrapper := newClipBox(queryList, colors.Background)
+	queryListWrapper.SetRowStride(2)
 
 	// Store references for global access
 	currentQueryParamsTab = queryContainer
 	currentQueryParamsList = queryList
+	currentQueryParamsListWrapper = queryListWrapper
 
 	// Initialize global query param rows
 	currentQueryRows = []*QueryParamRow{}
@@ -917,7 +920,7 @@ func createQueryParamsTabWithData(colors *ColorManager,
 
 	headerRow := createQueryParamsTableHeader(colors)
 	queryContainer.AddItem(headerRow, 1, 0, false)
-	queryContainer.AddItem(queryList, 0, 1, false)
+	queryContainer.AddItem(queryListWrapper, 0, 1, false)
 
 	return queryContainer
 }
@@ -1157,6 +1160,8 @@ var currentHeaderRows []*HeaderRow
 
 var currentHeadersList *tview.Flex
 
+var currentHeadersListWrapper *clipBox
+
 var currentAddHeaderButton *CustomButton
 
 var currentDeleteAllHeadersButton *CustomButton
@@ -1165,6 +1170,8 @@ var currentDeleteAllHeadersButton *CustomButton
 var currentQueryRows []*QueryParamRow
 
 var currentQueryParamsList *tview.Flex
+
+var currentQueryParamsListWrapper *clipBox
 
 var currentQueryParamsTab *tview.Flex
 
@@ -1256,10 +1263,13 @@ func createHeadersTabWithData(colors *ColorManager,
 	// Scrollable area for header entries
 	headersList := tview.NewFlex().SetDirection(tview.FlexRow)
 	headersList.SetBackgroundColor(colors.Background)
+	headersListWrapper := newClipBox(headersList, colors.Background)
+	headersListWrapper.SetRowStride(2)
 
 	// Store references for global access
 	currentHeadersTab = headersContainer
 	currentHeadersList = headersList
+	currentHeadersListWrapper = headersListWrapper
 
 	// Initialize global header rows
 	currentHeaderRows = []*HeaderRow{}
@@ -1321,7 +1331,7 @@ func createHeadersTabWithData(colors *ColorManager,
 
 	headerRow := createHeadersTableHeader(colors)
 	headersContainer.AddItem(headerRow, 1, 0, false)
-	headersContainer.AddItem(headersList, 0, 1, false)
+	headersContainer.AddItem(headersListWrapper, 0, 1, false)
 
 	return headersContainer
 }
@@ -2349,6 +2359,9 @@ func addEnvVarRow(variablesList *tview.Flex,
 
 func setHeadersInUI(colors *ColorManager, headers map[string]workspace.Entry, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
 	currentHeaderRows = []*HeaderRow{}
+	if currentHeadersListWrapper != nil {
+		currentHeadersListWrapper.SetScrollRow(0)
+	}
 
 	if currentHeadersList != nil {
 		currentHeadersList.Clear()
@@ -2440,6 +2453,9 @@ func getQueryParamsFromUI() map[string]workspace.Entry {
 
 func setQueryParamsInUI(colors *ColorManager, params map[string]workspace.Entry, saveCallback func(), focusSetter func(tview.Primitive), footerUpdater func()) {
 	currentQueryRows = []*QueryParamRow{}
+	if currentQueryParamsListWrapper != nil {
+		currentQueryParamsListWrapper.SetScrollRow(0)
+	}
 
 	if currentQueryParamsList != nil {
 		currentQueryParamsList.Clear()
@@ -3375,6 +3391,8 @@ var currentMultipartFieldsTab *tview.Flex
 
 var currentMultipartFieldsList *tview.Flex
 
+var currentMultipartFieldsListWrapper *clipBox
+
 var currentMultipartFieldRows []*MultipartFieldRow
 
 // Multipart field configuration
@@ -3398,10 +3416,13 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 	// Scrollable area for multipart field entries
 	fieldsList := tview.NewFlex().SetDirection(tview.FlexRow)
 	fieldsList.SetBackgroundColor(colors.Background)
+	fieldsListWrapper := newClipBox(fieldsList, colors.Background)
+	fieldsListWrapper.SetRowStride(1)
 
 	// Store references for global access
 	currentMultipartFieldsTab = multipartContainer
 	currentMultipartFieldsList = fieldsList
+	currentMultipartFieldsListWrapper = fieldsListWrapper
 
 	// Initialize global multipart field rows
 	currentMultipartFieldRows = []*MultipartFieldRow{}
@@ -3470,7 +3491,7 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 	spacer := tview.NewBox().SetBackgroundColor(colors.Background)
 	multipartContainer.AddItem(spacer, 1, 0, false)
 
-	multipartContainer.AddItem(fieldsList, 0, 1, false)
+	multipartContainer.AddItem(fieldsListWrapper, 0, 1, false)
 
 	return multipartContainer, refreshMultipartFieldsUI
 }
@@ -3777,6 +3798,9 @@ func updateMultipartFieldsFromBody(body string, ui *UIOrchestrator) {
 	if len(parsedFields) > 0 {
 		// Body contains multipart data, clear and rebuild
 		currentMultipartFieldRows = []*MultipartFieldRow{}
+		if currentMultipartFieldsListWrapper != nil {
+			currentMultipartFieldsListWrapper.SetScrollRow(0)
+		}
 		if currentMultipartFieldsList != nil {
 			// Use the real refresh function from UI orchestrator
 			refreshFunc := ui.RefreshMultipartFieldsUI
