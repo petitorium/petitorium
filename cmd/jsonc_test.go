@@ -70,4 +70,10 @@ func TestSanitizeRequestBodyForSend(t *testing.T) {
 	if got := sanitizeRequestBodyForSend("// not json", ""); got != "// not json" {
 		t.Errorf("empty content type must be unchanged, got %q", got)
 	}
+	if got := sanitizeRequestBodyForSend("<a><!-- c --></a>", "XML"); got != "<a><!-- c --></a>" {
+		t.Errorf("XML body must be unchanged, got %q", got)
+	}
+	if got := sanitizeRequestBodyForSend("// not json", "Raw"); got != "// not json" {
+		t.Errorf("raw body must be unchanged, got %q", got)
+	}
 }

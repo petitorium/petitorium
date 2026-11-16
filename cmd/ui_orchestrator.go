@@ -53,7 +53,7 @@ type URLBar struct {
 
 type BodyTab struct {
 	ContentTypeSelector int
-	JSONEditor          int
+	BodyEditor          int
 	MultipartFields     int
 	NoBody              int
 }
@@ -197,6 +197,10 @@ type UIOrchestrator struct {
 	CurrentBodyContent           string
 	LastJSONBodyContent          string // Store last JSON body when switching to No Body
 	JSONBodyContent              string // Store JSON body when switching away from JSON
+	LastXMLBodyContent           string // Store last XML body when switching to No Body
+	XMLBodyContent               string // Store XML body when switching away from XML
+	LastRawBodyContent           string // Store last raw body when switching to No Body
+	RawBodyContent               string // Store raw body when switching away from Raw
 	MultipartBodyContent         string // Store multipart fields when switching away from Multipart
 	RequestPanel                 *tview.Flex
 	RightSide                    *tview.Flex
@@ -260,92 +264,155 @@ func (ui *UIOrchestrator) refreshCurrentRequest() {
 	ui.CurrentRequest = ui.DataManager.GetRequestByID(ui.CurrentRequestID)
 }
 
+// syncCurrentBodyFromUI copies the body currently shown in the editor (edit
+// mode) or the cached view content (view mode) into CurrentRequest.Body and
+// CurrentBodyContent.
+func (ui *UIOrchestrator) syncCurrentBodyFromUI() {
+	if ui.CurrentRequest == nil {
+		return
+	}
+	if ui.BodyEditMode {
+		ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
+	} else {
+		ui.CurrentRequest.Body = ui.CurrentBodyContent
+	}
+	ui.CurrentBodyContent = ui.CurrentRequest.Body
+}
+
+// savedTextBody returns the cached body for a free-form content type.
+func (ui *UIOrchestrator) savedTextBody(ct string) string {
+	switch ct {
+	case ContentTypeJSON:
+		return ui.JSONBodyContent
+	case ContentTypeXML:
+		return ui.XMLBodyContent
+	case ContentTypeRaw:
+		return ui.RawBodyContent
+	default:
+		return ""
+	}
+}
+
+// setSavedTextBody stores the cached body for a free-form content type.
+func (ui *UIOrchestrator) setSavedTextBody(ct, value string) {
+	switch ct {
+	case ContentTypeJSON:
+		ui.JSONBodyContent = value
+	case ContentTypeXML:
+		ui.XMLBodyContent = value
+	case ContentTypeRaw:
+		ui.RawBodyContent = value
+	}
+}
+
+// lastTextBody returns the last body shown before switching to No Body.
+func (ui *UIOrchestrator) lastTextBody(ct string) string {
+	switch ct {
+	case ContentTypeJSON:
+		return ui.LastJSONBodyContent
+	case ContentTypeXML:
+		return ui.LastXMLBodyContent
+	case ContentTypeRaw:
+		return ui.LastRawBodyContent
+	default:
+		return ""
+	}
+}
+
+// setLastTextBody stores the last body shown before switching to No Body.
+func (ui *UIOrchestrator) setLastTextBody(ct, value string) {
+	switch ct {
+	case ContentTypeJSON:
+		ui.LastJSONBodyContent = value
+	case ContentTypeXML:
+		ui.LastXMLBodyContent = value
+	case ContentTypeRaw:
+		ui.LastRawBodyContent = value
+	}
+}
+
+// cacheTextBodyForRequest caches the given body for a free-form content type
+// in both the "saved" and "last" slots when a request is loaded.
+func (ui *UIOrchestrator) cacheTextBodyForRequest(ct, body string) {
+	if !isTextBodyContentType(ct) {
+		return
+	}
+	ui.setSavedTextBody(ct, body)
+	ui.setLastTextBody(ct, body)
+}
+
 // switchBodyContent switches the body container content based on content type
 func (ui *UIOrchestrator) switchBodyContent(newContentType, oldContentType string) {
-	// Save current body content before switching
 	if ui.CurrentRequest != nil {
-		if oldContentType == newContentType {
-			// Initial load or no change - initialize saved content
+		switch {
+		case oldContentType == newContentType:
+			// Initial load or no change - initialize saved content.
 			ui.CurrentBodyContent = ui.CurrentRequest.Body
-			if newContentType == "JSON" {
-				ui.JSONBodyContent = ui.CurrentBodyContent
-			} else if newContentType == "Multipart" {
+			if isTextBodyContentType(newContentType) {
+				ui.setSavedTextBody(newContentType, ui.CurrentBodyContent)
+			} else if newContentType == ContentTypeMultipart {
 				ui.MultipartBodyContent = ui.CurrentBodyContent
 			}
-		} else if oldContentType == "Multipart" && newContentType == "JSON" {
-			// Switching FROM Multipart TO JSON - save current multipart and restore saved JSON body
-			// First save current multipart fields
-			multipartBody := collectMultipartFieldsFromUI()
-			ui.CurrentRequest.Body = multipartBody
-			ui.CurrentBodyContent = ui.CurrentRequest.Body
-			ui.MultipartBodyContent = ui.CurrentBodyContent
 
-			// Now restore saved JSON body only if we have some
-			// Otherwise keep the current multipart body (might be empty)
-			if ui.JSONBodyContent != "" {
-				ui.CurrentBodyContent = ui.JSONBodyContent
-				ui.CurrentRequest.Body = ui.JSONBodyContent
-			}
-		} else if oldContentType == "JSON" && newContentType == "Multipart" {
-			// Switching FROM JSON TO Multipart - save current JSON and restore saved multipart fields
-			// First save current JSON body content
-			if ui.BodyEditMode {
-				// In edit mode, get from edit panel
-				ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
-			} else {
-				// In view mode, CurrentBodyContent should have the current JSON
-				ui.CurrentRequest.Body = ui.CurrentBodyContent
-			}
-			ui.CurrentBodyContent = ui.CurrentRequest.Body
-			ui.JSONBodyContent = ui.CurrentBodyContent
-
-			// Now restore saved multipart fields only if we have some
-			// Otherwise keep the current JSON body
+		case isTextBodyContentType(oldContentType) && newContentType == ContentTypeMultipart:
+			// Text (JSON/XML/Raw) -> Multipart: save the text body, restore multipart fields.
+			ui.syncCurrentBodyFromUI()
+			ui.setSavedTextBody(oldContentType, ui.CurrentBodyContent)
 			if ui.MultipartBodyContent != "" {
 				ui.CurrentBodyContent = ui.MultipartBodyContent
 				ui.CurrentRequest.Body = ui.MultipartBodyContent
 			}
-		} else if oldContentType == "No Body" && newContentType == "JSON" {
-			// Switching FROM No Body TO JSON - restore last JSON body content
-			ui.CurrentBodyContent = ui.LastJSONBodyContent
-			ui.CurrentRequest.Body = ui.LastJSONBodyContent
-		} else if oldContentType == "Multipart" && newContentType != "Multipart" {
-			// Switching FROM multipart - collect fields into body text
+
+		case oldContentType == ContentTypeMultipart && isTextBodyContentType(newContentType):
+			// Multipart -> Text: save multipart fields, restore saved text body.
 			multipartBody := collectMultipartFieldsFromUI()
 			ui.CurrentRequest.Body = multipartBody
-			ui.CurrentBodyContent = ui.CurrentRequest.Body
-			// Save multipart fields for later restoration
-			ui.MultipartBodyContent = ui.CurrentBodyContent
-		} else if oldContentType == "JSON" && newContentType != "JSON" {
-			// Switching FROM JSON - save current body content
-			// Get the latest body content from the appropriate source
-			if ui.BodyEditMode {
-				// In edit mode, get from edit panel
-				ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
-			} else {
-				// In view mode, CurrentBodyContent should have the current JSON
-				// But to be safe, we'll use CurrentBodyContent which should be synced
-				ui.CurrentRequest.Body = ui.CurrentBodyContent
+			ui.CurrentBodyContent = multipartBody
+			ui.MultipartBodyContent = multipartBody
+			if saved := ui.savedTextBody(newContentType); saved != "" {
+				ui.CurrentBodyContent = saved
+				ui.CurrentRequest.Body = saved
 			}
-			// CurrentBodyContent should match CurrentRequest.Body
-			ui.CurrentBodyContent = ui.CurrentRequest.Body
-			// Save JSON body content when switching away from JSON
-			ui.JSONBodyContent = ui.CurrentBodyContent
-			if newContentType == "No Body" {
-				ui.LastJSONBodyContent = ui.CurrentBodyContent
+
+		case isTextBodyContentType(oldContentType) && isTextBodyContentType(newContentType):
+			// Text -> Text (e.g. JSON -> XML): save the current body and
+			// restore the target content type's cached body if available.
+			ui.syncCurrentBodyFromUI()
+			ui.setSavedTextBody(oldContentType, ui.CurrentBodyContent)
+			if saved := ui.savedTextBody(newContentType); saved != "" {
+				ui.CurrentBodyContent = saved
+				ui.CurrentRequest.Body = saved
 			}
+
+		case oldContentType == ContentTypeNoBody && isTextBodyContentType(newContentType):
+			// No Body -> Text: restore the last body shown for that content type.
+			ui.CurrentBodyContent = ui.lastTextBody(newContentType)
+			ui.CurrentRequest.Body = ui.CurrentBodyContent
+
+		case isTextBodyContentType(oldContentType) && newContentType == ContentTypeNoBody:
+			// Text -> No Body: save the current body and remember it for restore.
+			ui.syncCurrentBodyFromUI()
+			ui.setSavedTextBody(oldContentType, ui.CurrentBodyContent)
+			ui.setLastTextBody(oldContentType, ui.CurrentBodyContent)
+
+		case oldContentType == ContentTypeMultipart && newContentType != ContentTypeMultipart:
+			// Multipart -> other: collect fields into body text.
+			multipartBody := collectMultipartFieldsFromUI()
+			ui.CurrentRequest.Body = multipartBody
+			ui.CurrentBodyContent = multipartBody
+			ui.MultipartBodyContent = multipartBody
 		}
 	}
 
 	// Exit edit mode if switching to No Body or Multipart
-	if newContentType == "No Body" || newContentType == "Multipart" {
+	if newContentType == ContentTypeNoBody || newContentType == ContentTypeMultipart {
 		ui.BodyEditMode = false
 	}
 
 	ui.BodyContainer.Clear()
 
-	switch newContentType {
-	case "JSON":
+	switch {
+	case isTextBodyContentType(newContentType):
 		// Use the standard body view/edit panels
 		ui.BodyContainer.SetTitle("")
 		if ui.BodyEditMode {
@@ -355,13 +422,13 @@ func (ui *UIOrchestrator) switchBodyContent(newContentType, oldContentType strin
 			ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
 			ui.SyncBodyContent(ui.CurrentBodyContent)
 		}
-	case "No Body":
+	case newContentType == ContentTypeNoBody:
 		// Show empty state for no body
 		ui.BodyContainer.SetTitle("")
 		ui.BodyContainer.AddItem(ui.BodyViewPanel, 0, 1, false)
 		ui.BodyViewPanel.SetText("(No body for this request)")
 		ui.BodyViewPanel.SetTextAlign(tview.AlignCenter)
-	case "Multipart":
+	case newContentType == ContentTypeMultipart:
 		// Use the multipart fields UI
 		ui.BodyContainer.SetTitle(" Multipart Fields ")
 		ui.BodyContainer.AddItem(ui.MultipartFieldsTab, 0, 1, false)
@@ -512,7 +579,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	bodyTab := BodyTab{
 		ContentTypeSelector: 0,
-		JSONEditor:          1,
+		BodyEditor:          1,
 		MultipartFields:     2,
 		NoBody:              3,
 	}
@@ -782,6 +849,10 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 		CurrentBodyContent:             "",
 		LastJSONBodyContent:            "",
 		JSONBodyContent:                "",
+		LastXMLBodyContent:             "",
+		XMLBodyContent:                 "",
+		LastRawBodyContent:             "",
+		RawBodyContent:                 "",
 		MultipartBodyContent:           "",
 		RequestPanel:                   requestPanel,
 		RightSide:                      rightSide,

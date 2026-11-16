@@ -666,7 +666,7 @@ func generateCurlCommand(method, urlStr string, headers map[string]string, body,
 	hasContentType := false
 	for key, value := range headers {
 		// Skip Content-Type for multipart requests as -F sets it automatically
-		if contentType == "Multipart" && (key == "Content-Type" || key == "content-type") {
+		if contentType == ContentTypeMultipart && (key == "Content-Type" || key == "content-type") {
 			continue
 		}
 		if key == "Content-Type" || key == "content-type" {
@@ -679,16 +679,18 @@ func generateCurlCommand(method, urlStr string, headers map[string]string, body,
 		cmd.WriteString("'")
 	}
 
-	// Match SendRequest's Content-Type inference for JSON bodies so the
+	// Match SendRequest's Content-Type inference for JSON and XML bodies so the
 	// exported curl behaves like the in-app request. Without this, a JSON
 	// request without an explicit Content-Type header exports as a
 	// form-urlencoded body and fails against services that require
 	// application/json.
-	if body != "" && !hasContentType && contentType != "Multipart" {
+	if body != "" && !hasContentType && contentType != ContentTypeMultipart {
 		if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch {
 			switch contentType {
-			case "JSON":
+			case ContentTypeJSON:
 				cmd.WriteString(" -H 'Content-Type: application/json'")
+			case ContentTypeXML:
+				cmd.WriteString(" -H 'Content-Type: text/xml; charset=utf-8'")
 			case "":
 				trimmed := strings.TrimSpace(body)
 				if trimmed != "" && strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
@@ -700,7 +702,7 @@ func generateCurlCommand(method, urlStr string, headers map[string]string, body,
 
 	// Add body if present
 	if body != "" {
-		if contentType == "Multipart" {
+		if contentType == ContentTypeMultipart {
 			// Parse multipart fields and add as -F options.
 			// Fields prefixed with '!' are disabled and must not be sent.
 			fields := strings.Split(body, "&")
@@ -734,9 +736,11 @@ func generateCurlCommand(method, urlStr string, headers map[string]string, body,
 				}
 			}
 		} else {
-			// Escape single quotes in body by replacing ' with '\''
+			// Use --data-binary so the exported curl sends the body byte-for-byte
+			// exactly as the in-app request does (newlines, indentation, and a
+			// leading '@' are all preserved).
 			escapedBody := strings.ReplaceAll(body, "'", "'\\''")
-			cmd.WriteString(" -d '")
+			cmd.WriteString(" --data-binary '")
 			cmd.WriteString(escapedBody)
 			cmd.WriteString("'")
 		}

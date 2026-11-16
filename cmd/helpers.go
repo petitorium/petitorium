@@ -113,8 +113,7 @@ func syncMethodDropdown(currentRequest *workspace.Request, methodDropdown *tview
 // syncContentTypeDropdown syncs the content type dropdown with the current request's content type
 func syncContentTypeDropdown(currentRequest *workspace.Request, contentTypeDropdown *tview.DropDown, programmaticallyUpdatingContentType *bool) {
 	if currentRequest != nil {
-		contentTypes := []string{"JSON", "Multipart", "No Body"}
-		for i, contentType := range contentTypes {
+		for i, contentType := range requestContentTypes {
 			if contentType == currentRequest.ContentType {
 				// Set flag to prevent the SetSelectedFunc from firing
 				*programmaticallyUpdatingContentType = true

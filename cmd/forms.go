@@ -193,17 +193,21 @@ func createRequestForm(app *tview.Application,
 
 	contentTypeDropdown := tview.NewDropDown().
 		SetLabel("Content Type: ").
-		SetOptions([]string{"JSON", "Multipart", "No Body"}, nil).
+		SetOptions(requestContentTypes, nil).
 		SetFieldBackgroundColor(colors.Background).
 		SetCurrentOption(0)
 	contentTypeDropdown.SetBackgroundColor(colors.Background)
 	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
 		switch text {
-		case "JSON":
+		case ContentTypeJSON:
 			bodyInput.SetPlaceholder("Enter JSON data or edit later.")
-		case "Multipart":
+		case ContentTypeXML:
+			bodyInput.SetPlaceholder("Enter XML data or edit later.")
+		case ContentTypeRaw:
+			bodyInput.SetPlaceholder("Enter raw request body...")
+		case ContentTypeMultipart:
 			bodyInput.SetPlaceholder("You can edit later.")
-		case "No Body":
+		case ContentTypeNoBody:
 			bodyInput.SetPlaceholder("(No body for this request)")
 		}
 	})
@@ -282,15 +286,17 @@ func createRequestForm(app *tview.Application,
 	// Add F4 support for external editor on Body field
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyF4 {
-			// Check if we're on the Body field (index 3)
+			// Check if we're on the Body field (index 4: Name, Method, URL,
+			// Content Type, Body).
 			formItemIndex, _ := form.GetFocusedItemIndex()
-			if formItemIndex == 3 { // Body field is at index 3
-				bodyField := form.GetFormItem(3).(*tview.InputField)
+			if formItemIndex == 4 {
+				bodyField := form.GetFormItem(4).(*tview.InputField)
 				currentBody := bodyField.GetText()
+				_, contentType := form.GetFormItem(3).(*formDropDown).GetCurrentOption()
 
 				// Suspend the app to open external editor
 				app.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(currentBody, "jsonc")
+					modifiedContent, err := openInExternalEditor(currentBody, bodyEditorExtension(contentType))
 					if err != nil {
 						// Could show error but for now just continue
 						return
@@ -1500,15 +1506,19 @@ func createDuplicateRequestForm(
 
 	contentTypeDropdown := tview.NewDropDown().
 		SetLabel("Content Type: ").
-		SetOptions([]string{"JSON", "Multipart", "No Body"}, nil).
+		SetOptions(requestContentTypes, nil).
 		SetCurrentOption(0)
 	contentTypeDropdown.SetSelectedFunc(func(text string, index int) {
 		switch text {
-		case "JSON":
+		case ContentTypeJSON:
 			bodyInput.SetPlaceholder("Enter JSON data...")
-		case "Multipart":
+		case ContentTypeXML:
+			bodyInput.SetPlaceholder("Enter XML data...")
+		case ContentTypeRaw:
+			bodyInput.SetPlaceholder("Enter raw request body...")
+		case ContentTypeMultipart:
 			bodyInput.SetPlaceholder("Multipart UI coming soon. For now: name1=value1&name2=file:/path/to/file")
-		case "No Body":
+		case ContentTypeNoBody:
 			bodyInput.SetPlaceholder("(No body for this request)")
 		}
 	})
@@ -1591,15 +1601,17 @@ func createDuplicateRequestForm(
 	// Add F4 support for external editor on Body field
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyF4 {
-			// Check if we're on the Body field (index 3)
+			// Check if we're on the Body field (index 4: Name, Method, URL,
+			// Content Type, Body).
 			formItemIndex, _ := form.GetFocusedItemIndex()
-			if formItemIndex == 3 { // Body field is at index 3
-				bodyField := form.GetFormItem(3).(*tview.InputField)
+			if formItemIndex == 4 {
+				bodyField := form.GetFormItem(4).(*tview.InputField)
 				currentBody := bodyField.GetText()
+				_, contentType := form.GetFormItem(3).(*formDropDown).GetCurrentOption()
 
 				// Suspend the app to open external editor
 				app.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(currentBody, "jsonc")
+					modifiedContent, err := openInExternalEditor(currentBody, bodyEditorExtension(contentType))
 					if err != nil {
 						// Could show error but for now just continue
 						return

@@ -820,10 +820,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			if ui.CurrentRequest != nil {
 				ui.CurrentBodyContent = ui.BodyEditPanel.GetText()
 				ui.CurrentRequest.Body = ui.CurrentBodyContent
-				// Also save to JSONBodyContent if we're in JSON mode
-				if ui.CurrentRequest.ContentType == "JSON" {
-					ui.JSONBodyContent = ui.CurrentBodyContent
-				}
+				// Cache the body so switching content types restores it later.
+				ui.cacheTextBodyForRequest(ui.CurrentRequest.ContentType, ui.CurrentBodyContent)
 				if ui.CurrentSelectedNode != nil {
 					saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 				}
@@ -867,9 +865,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		}
 
 		if ui.CurrentRequest != nil {
-			contentTypes := []string{"JSON", "Multipart", "No Body"}
-			if index >= 0 && index < len(contentTypes) {
-				newContentType := contentTypes[index]
+			if index >= 0 && index < len(requestContentTypes) {
+				newContentType := requestContentTypes[index]
 				if newContentType != ui.CurrentRequest.ContentType {
 					oldContentType := ui.CurrentRequest.ContentType
 					ui.CurrentRequest.ContentType = newContentType
@@ -912,10 +909,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			ui.CurrentRequest.Body = ui.BodyEditPanel.GetText()
 			ui.CurrentBodyContent = ui.CurrentRequest.Body
 
-			// Also save to JSONBodyContent if we're in JSON mode
-			if ui.CurrentRequest.ContentType == "JSON" {
-				ui.JSONBodyContent = ui.CurrentBodyContent
-			}
+			// Cache the body so switching content types restores it later.
+			ui.cacheTextBodyForRequest(ui.CurrentRequest.ContentType, ui.CurrentBodyContent)
 
 			saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 		}
@@ -964,10 +959,8 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 
 			ui.SyncBodyContent(req.Body)
 			// Initialize saved body content based on content type
-			if req.ContentType == "JSON" {
-				ui.JSONBodyContent = req.Body
-				ui.LastJSONBodyContent = req.Body
-			} else if req.ContentType == "Multipart" {
+			ui.cacheTextBodyForRequest(req.ContentType, req.Body)
+			if req.ContentType == ContentTypeMultipart {
 				ui.MultipartBodyContent = req.Body
 			}
 			setHeadersInUI(ui.Colors, req.Headers, func() { saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData) }, func(p tview.Primitive) { ui.App.SetFocus(p) }, ui.UpdateFooter)
@@ -2172,7 +2165,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 		if ui.MainCycle.current == ui.PanelIndices.Request && event.Key() == tcell.KeyF4 {
 			if ui.CurrentRequest != nil {
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "jsonc")
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, bodyEditorExtension(ui.CurrentRequest.ContentType))
 					if err != nil {
 						fmt.Printf("Error opening external editor: %v\n", err)
 						fmt.Println("Press Enter to continue...")
@@ -2206,7 +2199,7 @@ func SetupEventHandlers(ui *UIOrchestrator) {
 			}
 			if ui.CurrentRequest != nil {
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "jsonc")
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, bodyEditorExtension(ui.CurrentRequest.ContentType))
 					if err != nil {
 						return
 					}
@@ -2295,13 +2288,13 @@ func getMaxSubchildForChild(container, child int, ui *UIOrchestrator) int {
 			// Check current content type to determine which subchildren are relevant
 			contentType := getCurrentContentType(ui)
 			if contentType != "" {
-				switch contentType {
-				case "JSON":
-					return 1 // ContentTypeSelector (0), JSONEditor (1) - skip MultipartFields and NoBody
-				case "Multipart":
-					return 2 // ContentTypeSelector (0), MultipartFields (2) - skip JSONEditor and NoBody
-				case "No Body":
-					return 3 // ContentTypeSelector (0), NoBody (3) - skip JSONEditor and MultipartFields
+				switch {
+				case isTextBodyContentType(contentType):
+					return 1 // ContentTypeSelector (0), BodyEditor (1) - skip MultipartFields and NoBody
+				case contentType == ContentTypeMultipart:
+					return 2 // ContentTypeSelector (0), MultipartFields (2) - skip BodyEditor and NoBody
+				case contentType == ContentTypeNoBody:
+					return 3 // ContentTypeSelector (0), NoBody (3) - skip BodyEditor and MultipartFields
 				default:
 					return 3 // Default to all subchildren
 				}
@@ -2383,23 +2376,23 @@ func getNextValidSubchild(currentSubchild int, ui *UIOrchestrator) int {
 
 	// For BodyTab (container 4, child 0)
 	// Determine which subchildren are valid for current content type
-	switch contentType {
-	case "JSON":
-		// Valid subchildren: 0 (ContentTypeSelector), 1 (JSONEditor)
+	switch {
+	case isTextBodyContentType(contentType):
+		// Valid subchildren: 0 (ContentTypeSelector), 1 (BodyEditor)
 		if currentSubchild < 1 {
 			return currentSubchild + 1
 		}
 		return 1 // Already at max
-	case "Multipart":
+	case contentType == ContentTypeMultipart:
 		// Valid subchildren: 0 (ContentTypeSelector), 2 (MultipartFields)
 		if currentSubchild == 0 {
-			return 2 // Skip 1 (JSONEditor)
+			return 2 // Skip 1 (BodyEditor)
 		}
 		return 2 // Already at max
-	case "No Body":
+	case contentType == ContentTypeNoBody:
 		// Valid subchildren: 0 (ContentTypeSelector), 3 (NoBody)
 		if currentSubchild == 0 {
-			return 3 // Skip 1 (JSONEditor) and 2 (MultipartFields)
+			return 3 // Skip 1 (BodyEditor) and 2 (MultipartFields)
 		}
 		return 3 // Already at max
 	default:
@@ -2424,24 +2417,15 @@ func getPrevValidSubchild(currentSubchild int, ui *UIOrchestrator) int {
 
 	// For BodyTab (container 4, child 0)
 	// Determine which subchildren are valid for current content type
-	switch contentType {
-	case "JSON":
-		// Valid subchildren: 0 (ContentTypeSelector), 1 (JSONEditor)
-		if currentSubchild == 1 {
-			return 0
-		}
+	switch {
+	case isTextBodyContentType(contentType):
+		// Valid subchildren: 0 (ContentTypeSelector), 1 (BodyEditor)
 		return 0 // Already at min
-	case "Multipart":
+	case contentType == ContentTypeMultipart:
 		// Valid subchildren: 0 (ContentTypeSelector), 2 (MultipartFields)
-		if currentSubchild == 2 {
-			return 0
-		}
 		return 0 // Already at min
-	case "No Body":
+	case contentType == ContentTypeNoBody:
 		// Valid subchildren: 0 (ContentTypeSelector), 3 (NoBody)
-		if currentSubchild == 3 {
-			return 0
-		}
 		return 0 // Already at min
 	default:
 		// Default: all subchildren are valid
@@ -2575,7 +2559,7 @@ func setFocusForCoordinates(ui *UIOrchestrator) {
 				switch ui.NavCurrentSubchild {
 				case 0: // ContentTypeSelector
 					ui.App.SetFocus(ui.ContentTypeDropdown)
-				case 1: // JSONEditor
+				case 1: // BodyEditor (JSON/XML/Raw body view/edit)
 					if ui.BodyEditMode {
 						ui.App.SetFocus(ui.BodyEditPanel)
 					} else {

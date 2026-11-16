@@ -75,6 +75,10 @@ func httpCookieToWorkspaceCookie(cookies []*http.Cookie) []workspace.Cookie {
 
 // SendRequest sends an HTTP request with the given parameters
 func SendRequest(method, urlStr, body string, contentType string, headers map[string]string, queryParams map[string]string, jar *workspace.CookieJar) (*HTTPResponse, error) {
+	// Defensive: a trailing newline/space pasted into the URL field must not
+	// change the request path (and silently produce 404s).
+	urlStr = strings.TrimSpace(urlStr)
+
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse URL: %v", err)
@@ -108,7 +112,7 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 	var bodyReader io.Reader
 	var multipartWriter *multipart.Writer
 	if body != "" {
-		if contentType == "Multipart" {
+		if contentType == ContentTypeMultipart {
 			var b bytes.Buffer
 			multipartWriter = multipart.NewWriter(&b)
 			err := createMultipartBodyWithWriter(body, multipartWriter)
@@ -136,9 +140,13 @@ func SendRequest(method, urlStr, body string, contentType string, headers map[st
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
 			if contentType != "" {
 				switch contentType {
-				case "JSON":
+				case ContentTypeJSON:
 					req.Header.Set("Content-Type", "application/json")
-				case "Multipart":
+				case ContentTypeXML:
+					// SOAP 1.1 services (e.g. WCF .svc endpoints) reject
+					// application/xml and expect text/xml.
+					req.Header.Set("Content-Type", "text/xml; charset=utf-8")
+				case ContentTypeMultipart:
 					if multipartWriter != nil {
 						req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 					} else {

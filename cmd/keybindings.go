@@ -790,7 +790,7 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 			if ui.CurrentRequest != nil {
 				// Suspend TUI to open external editor
 				ui.App.Suspend(func() {
-					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, "jsonc")
+					modifiedContent, err := openInExternalEditor(ui.CurrentBodyContent, bodyEditorExtension(ui.CurrentRequest.ContentType))
 					if err != nil {
 						return
 					}
@@ -799,10 +799,8 @@ func openExternalEditor(ui *UIOrchestrator, event *tcell.EventKey) *tcell.EventK
 					ui.SyncBodyContent(modifiedContent)
 					if ui.CurrentRequest != nil && ui.CurrentSelectedNode != nil {
 						ui.CurrentRequest.Body = modifiedContent
-						// Also save to JSONBodyContent if we're in JSON mode
-						if ui.CurrentRequest.ContentType == "JSON" {
-							ui.JSONBodyContent = modifiedContent
-						}
+						// Cache the body so switching content types restores it later.
+						ui.cacheTextBodyForRequest(ui.CurrentRequest.ContentType, modifiedContent)
 						saveCurrentRequest(ui.CurrentRequest, ui.WorkspaceData)
 					}
 				})

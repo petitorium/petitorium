@@ -2668,7 +2668,7 @@ func createRequestDataTabs(bodyViewPanel *tview.TextView, bodyEditPanel *tview.T
 	// Create content type dropdown
 	contentTypeDropdown := createDropDown(
 		"Content Type:",
-		[]string{"JSON", "Multipart", "No Body"},
+		requestContentTypes,
 		colors,
 	)
 	contentTypeDropdown.SetBorder(false)
