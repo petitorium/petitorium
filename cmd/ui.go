@@ -2844,18 +2844,19 @@ func createModal(p tview.Primitive, width, height int, backgroundColor tcell.Col
 // URLVariableInput is a dual-mode input component for URLs with environment variables
 type URLVariableInput struct {
 	*tview.Pages
-	viewMode       *tview.TextView
-	editMode       *tview.InputField
-	currentMode    string // "view" or "edit"
-	rawText        string // The actual {{variable}} text
-	variables      map[string]string
-	onChanged      func(string)
-	onEnterPressed func()
-	onModeChange   func()
-	colors         *ColorManager
-	variableRegex  *regexp.Regexp
-	app            *tview.Application
-	lastWidth      int
+	viewMode         *tview.TextView
+	editMode         *tview.InputField
+	currentMode      string // "view" or "edit"
+	rawText          string // The actual {{variable}} text
+	variables        map[string]string
+	onChanged        func(string)
+	onEnterPressed   func()
+	onModeChange     func()
+	onExternalEditor func()
+	colors           *ColorManager
+	variableRegex    *regexp.Regexp
+	app              *tview.Application
+	lastWidth        int
 }
 
 // NewURLVariableInput creates a new dual-mode URL input component
@@ -2922,10 +2923,23 @@ func NewURLVariableInput(colors *ColorManager, app *tview.Application) *URLVaria
 		}
 	})
 
-	// Set up view mode 'i' key to enter edit mode (vim-style)
+	// Set up view mode 'i' key to enter edit mode (vim-style) and F4 for external editor
 	viewMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == 'i' {
 			input.switchToEditMode()
+			return nil
+		}
+		if event.Key() == tcell.KeyF4 && input.onExternalEditor != nil {
+			input.onExternalEditor()
+			return nil
+		}
+		return event
+	})
+
+	// Set up edit mode F4 key for external editor
+	editMode.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyF4 && input.onExternalEditor != nil {
+			input.onExternalEditor()
 			return nil
 		}
 		return event
@@ -3101,6 +3115,11 @@ func (u *URLVariableInput) SetChangedFunc(callback func(string)) {
 // SetDoneFunc sets the callback for when Enter is pressed
 func (u *URLVariableInput) SetDoneFunc(callback func()) {
 	u.onEnterPressed = callback
+}
+
+// SetExternalEditorFunc sets the callback for when F4 is pressed in either mode
+func (u *URLVariableInput) SetExternalEditorFunc(callback func()) {
+	u.onExternalEditor = callback
 }
 
 // HeaderValueInput is a dual-mode input component for header values with environment variables

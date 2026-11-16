@@ -149,7 +149,7 @@ func NewKeyBindingManager() *KeyBindingManager {
 		{
 			Key:         tcell.KeyF4,
 			Action:      openExternalEditor,
-			Description: "Open body in external editor",
+			Description: "Open body or URL in external editor",
 			Context:     "global",
 		},
 		{

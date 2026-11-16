@@ -1093,6 +1093,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 			} else if focused == uiOrchestrator.URLInput.viewMode {
 				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
 					{"i", "Edit URL"},
+					{"F4", "External Editor"},
 					{"Tab", "Next"},
 					{"q", "Quit"},
 				}))
@@ -1100,6 +1101,7 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
 					{"Enter", "Save"},
 					{"Esc", "Cancel"},
+					{"F4", "External Editor"},
 				}))
 			} else if focused == uiOrchestrator.SendButton {
 				uiOrchestrator.FooterLeft.SetText(expPrefix + formatFooterHints(colors, []footerHint{
@@ -1377,6 +1379,29 @@ func SetupUI(workspaceData *workspace.Workspace, dataManager *DataManager, envir
 
 	// Set onModeChange for URLInput to update footer when switching between view/edit modes
 	uiOrchestrator.URLInput.onModeChange = uiOrchestrator.UpdateFooter
+
+	// Set F4 external editor callback for the URL bar
+	uiOrchestrator.URLInput.SetExternalEditorFunc(func() {
+		curr := uiOrchestrator.CurrentRequest
+		if curr == nil {
+			return
+		}
+		app.Suspend(func() {
+			modifiedURL, err := openInExternalEditor(uiOrchestrator.URLInput.GetText(), "txt")
+			if err != nil {
+				fmt.Printf("Error opening external editor: %v\n", err)
+				fmt.Println("Press Enter to continue...")
+				var dummy string
+				fmt.Scanln(&dummy)
+				return
+			}
+			uiOrchestrator.URLInput.SetText(modifiedURL)
+			if uiOrchestrator.CurrentRequest != nil && uiOrchestrator.CurrentSelectedNode != nil {
+				uiOrchestrator.CurrentRequest.URL = modifiedURL
+				saveCurrentRequest(uiOrchestrator.CurrentRequest, uiOrchestrator.WorkspaceData)
+			}
+		})
+	})
 
 	uiOrchestrator.RefreshCookiesSummary()
 

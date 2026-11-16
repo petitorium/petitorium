@@ -47,7 +47,7 @@ A powerful Terminal API Testing Client
 - `Left` / `Right` Arrow - Previous / Next tab
 - `Tab` - Cycle through request elements (Method → URL → Send → Curl → Tab Headers → Tab Content)
 - `i` - Enter insert mode (edit body inline) or open external editor (context dependent)
-- `F4` - Open body in external editor (or bulk edit headers when in Headers tab)
+- `F4` - Open body or URL in external editor (or bulk edit headers when in Headers tab)
 - `Enter` (on Send button) - Send HTTP request
 
 ### Header Editing
