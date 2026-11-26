@@ -179,6 +179,9 @@ func recolorPrimitive(p tview.Primitive, c *ColorManager) {
 		recolorHeaderValueInput(v, c)
 	case *CheckboxPrimitive:
 		recolorCheckbox(v, c)
+	case *clipBox:
+		v.SetBackgroundColor(c.Background)
+		recolorPrimitive(v.child, c)
 	case *ColorButton:
 		v.SetBackgroundColor(c.ButtonBackground)
 		v.SetBackgroundColorActivated(c.ButtonSelect)

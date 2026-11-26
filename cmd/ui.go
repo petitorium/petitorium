@@ -909,9 +909,9 @@ func createQueryParamsTabWithData(colors *ColorManager,
 	})
 
 	buttonRow.AddItem(addButton, 15, 0, false)
-	buttonRow.AddItem(nil, 1, 0, false)
+	buttonRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 	buttonRow.AddItem(deleteAllButton, 15, 0, false)
-	buttonRow.AddItem(nil, 0, 1, false)
+	buttonRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	queryContainer.AddItem(buttonRow, 1, 0, false)
 
@@ -1010,6 +1010,7 @@ func addQueryParamRow(queryList *tview.Flex,
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(removeButton, 3, 0, false)
+	row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
 	queryList.AddItem(row, rowHeight, 0, false)
@@ -1140,6 +1141,7 @@ func addQueryParamRowWithData(queryList *tview.Flex,
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(removeButton, 3, 0, false)
+	row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	currentQueryRows = append(currentQueryRows, queryParamRow)
 	queryList.AddItem(row, rowHeight, 0, false)
@@ -1320,9 +1322,9 @@ func createHeadersTabWithData(colors *ColorManager,
 	})
 
 	buttonRow.AddItem(addButton, 15, 0, false)
-	buttonRow.AddItem(nil, 1, 0, false)
+	buttonRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 1, 0, false)
 	buttonRow.AddItem(deleteAllButton, 15, 0, false)
-	buttonRow.AddItem(nil, 0, 1, false)
+	buttonRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	headersContainer.AddItem(buttonRow, 1, 0, false)
 
@@ -1358,9 +1360,10 @@ func createQueryParamsTableHeader(colors *ColorManager) *tview.Flex {
 	headerRow.AddItem(spacer, 1, 0, false)
 	headerRow.AddItem(valueLabel, headerInputWidth, 0, false)
 	headerRow.AddItem(spacer, 1, 0, false)
-	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 3, 0, false)
 	headerRow.AddItem(spacer, 1, 0, false)
-	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 3, 0, false)
+	headerRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	return headerRow
 }
@@ -1387,9 +1390,10 @@ func createHeadersTableHeader(colors *ColorManager) *tview.Flex {
 	headerRow.AddItem(spacer, 1, 0, false)
 	headerRow.AddItem(valueLabel, headerInputWidth, 0, false)
 	headerRow.AddItem(spacer, 1, 0, false)
-	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 3, 0, false)
 	headerRow.AddItem(spacer, 1, 0, false)
-	headerRow.AddItem(nil, 3, 0, false)
+	headerRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 3, 0, false)
+	headerRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	return headerRow
 }
@@ -1922,6 +1926,7 @@ func addHeaderRow(headersList *tview.Flex,
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(removeButton, 3, 0, false)
+	row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
 	headersList.AddItem(row, rowHeight, 0, false)
@@ -2060,6 +2065,7 @@ func addHeaderRowWithData(headersList *tview.Flex,
 	row.AddItem(checkbox, 3, 0, false)
 	row.AddItem(spacer, 1, 0, false)
 	row.AddItem(removeButton, 3, 0, false)
+	row.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	currentHeaderRows = append(currentHeaderRows, headerRow)
 	headersList.AddItem(row, rowHeight, 0, false)
@@ -3502,7 +3508,7 @@ func createMultipartFieldsTab(colors *ColorManager, initialBody string, saveCall
 
 	buttonRow.AddItem(addButton, 15, 0, false)
 	buttonRow.AddItem(deleteAllButton, 15, 0, false)
-	buttonRow.AddItem(nil, 0, 1, false)
+	buttonRow.AddItem(tview.NewBox().SetBackgroundColor(colors.Background), 0, 1, false)
 
 	multipartContainer.AddItem(buttonRow, 1, 0, false)
 
